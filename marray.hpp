@@ -560,6 +560,9 @@ namespace MArray
     {
         template <bool isConst, typename T, unsigned N>
         struct marray_type { typedef marray<T, N> type; };
+        
+        template <typename T, unsigned N>
+        struct marray_type<true, T, N> { typedef const_marray<T, N> type; };
 
         template <typename T>
         struct marray_type<false, T, 0> { typedef typename marray<T, 1>::reference type; };
