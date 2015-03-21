@@ -1,7 +1,12 @@
 #ifndef _MARRAY_ITERATOR_HPP_
 #define _MARRAY_ITERATOR_HPP_
 
+#ifndef MARRAY_TEST
+#define MARRAY_TEST(...)
+#endif
+
 #include <vector>
+#include <array>
 #include <cstddef>
 
 namespace MArray
@@ -11,33 +16,36 @@ namespace MArray
     class Iterator
     {
         public:
-            Iterator(const std::vector<idx_type>& len,
-                     const std::vector<size_type>& stride_0)
-            : first(true), pos(len.size()), len(len), stride(1)
+            template <size_t ndim>
+            Iterator(const std::array<idx_type, ndim>& len,
+                     const std::array<size_type, ndim>& stride_0)
+            : first(true), pos(ndim), len(len.begin(), len.end()), stride(1)
             {
-                stride[0] = stride_0;
+                stride[0].assign(stride_0.begin(), stride_0.end());
                 check();
             }
 
-            Iterator(const std::vector<idx_type>& len,
-                     const std::vector<size_type>& stride_0,
-                     const std::vector<size_type>& stride_1)
-            : first(true), pos(len.size()), len(len), stride(2)
+            template <size_t ndim>
+            Iterator(const std::array<idx_type, ndim>& len,
+                     const std::array<size_type, ndim>& stride_0,
+                     const std::array<size_type, ndim>& stride_1)
+            : first(true), pos(ndim), len(len.begin(), len.end()), stride(2)
             {
-                stride[0] = stride_0;
-                stride[1] = stride_1;
+                stride[0].assign(stride_0.begin(), stride_0.end());
+                stride[1].assign(stride_1.begin(), stride_1.end());
                 check();
             }
 
-            Iterator(const std::vector<idx_type>& len,
-                     const std::vector<size_type>& stride_0,
-                     const std::vector<size_type>& stride_1,
-                     const std::vector<size_type>& stride_2)
-            : first(true), pos(len.size()), len(len), stride(3)
+            template <size_t ndim>
+            Iterator(const std::array<idx_type, ndim>& len,
+                     const std::array<size_type, ndim>& stride_0,
+                     const std::array<size_type, ndim>& stride_1,
+                     const std::array<size_type, ndim>& stride_2)
+            : first(true), pos(ndim), len(len.begin(), len.end()), stride(3)
             {
-                stride[0] = stride_0;
-                stride[1] = stride_1;
-                stride[2] = stride_2;
+                stride[0].assign(stride_0.begin(), stride_0.end());
+                stride[1].assign(stride_1.begin(), stride_1.end());
+                stride[2].assign(stride_2.begin(), stride_2.end());
                 check();
             }
 

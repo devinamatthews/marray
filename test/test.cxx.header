@@ -1,0 +1,6 @@
+#include "marray.hpp"
+
+using namespace MArray;
+
+int main(int argc, char **argv)
+{
