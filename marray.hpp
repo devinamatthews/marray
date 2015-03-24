@@ -908,12 +908,12 @@ namespace MArray
          * parameter of the array.
          */
         template <typename T, unsigned ndim, unsigned dim, typename U, typename... Args>
-        struct marray_init
+        struct marray_reset
         {
-            marray_init(const_marray<T, ndim>& array, U len, Args&&... args)
+            marray_reset(const_marray<T, ndim>& array, U len, Args&&... args)
             {
                 array.len_[dim-1] = len;
-                marray_init<T, ndim, dim+1, Args...>(array, std::forward<Args>(args)...);
+                marray_reset<T, ndim, dim+1, Args...>(array, std::forward<Args>(args)...);
             }
         };
 
@@ -923,9 +923,9 @@ namespace MArray
          * to complete the initialization.
          */
         template <typename T, unsigned ndim, typename U, typename... Args>
-        struct marray_init<T, ndim, ndim, U, Args...>
+        struct marray_reset<T, ndim, ndim, U, Args...>
         {
-            marray_init(const_marray<T, ndim>& array, U len, Args&&... args)
+            marray_reset(const_marray<T, ndim>& array, U len, Args&&... args)
             {
                 array.len_[ndim-1] = len;
                 array.reset(array.len_, std::forward<Args>(args)...);
@@ -1084,7 +1084,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
-        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend class detail::marray_init;
+        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend class detail::marray_reset;
 
         public:
             typedef unsigned idx_type;
@@ -1226,6 +1226,12 @@ namespace MArray
                 // make sure this doesn't segfault
                 a.reset();
             )
+
+            template <typename... Args>
+            void reset(typename std::enable_if<detail::are_marray_args<T, ndim, 1, Args...>::value,idx_type>::type len0, Args&&... args)
+            {
+                detail::marray_reset<T, ndim, 1, idx_type, Args...>(*this, len0, std::forward<Args>(args)...);
+            }
 
         public:
             const_marray(const const_marray& other)
@@ -1416,7 +1422,7 @@ namespace MArray
             explicit const_marray(typename std::enable_if<detail::are_marray_args<T, ndim, 1, Args...>::value,idx_type>::type len0, Args&&... args)
             : data_(NULL), size_(0), is_view_(false), layout_(DEFAULT)
             {
-                detail::marray_init<T, ndim, 1, idx_type, Args...>(*this, len0, std::forward<Args>(args)...);
+                detail::marray_reset<T, ndim, 1, idx_type, Args...>(*this, len0, std::forward<Args>(args)...);
             }
 
             MARRAY_TEST
