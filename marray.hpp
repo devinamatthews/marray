@@ -931,6 +931,37 @@ namespace MArray
                 array.reset(array.len_, std::forward<Args>(args)...);
             }
         };
+
+        /*
+         * This helper class resizes an marray<T, ndim> from one of the
+         * argument forms allowed by are_marray_args above. The default definition
+         * consumes one integral argument and assigns it to the (dim-1)th length
+         * parameter of the array.
+         */
+        template <typename T, unsigned ndim, unsigned dim, typename U, typename... Args>
+        struct marray_resize
+        {
+            marray_resize(marray<T, ndim>& array, U len, Args&&... args)
+            {
+                array.len_[dim-1] = len;
+                marray_resize<T, ndim, dim+1, Args...>(array, std::forward<Args>(args)...);
+            }
+        };
+
+        /*
+         * This specialization is triggered when all integral arguments have been
+         * consumed. Any remaining arguments are passed to marray::resize
+         * to complete the resizing.
+         */
+        template <typename T, unsigned ndim, typename U, typename... Args>
+        struct marray_resize<T, ndim, ndim, U, Args...>
+        {
+                marray_resize(marray<T, ndim>& array, U len, Args&&... args)
+            {
+                array.len_[ndim-1] = len;
+                array.resize(array.len_, std::forward<Args>(args)...);
+            }
+        };
     }
 
     /*
@@ -1165,6 +1196,16 @@ namespace MArray
                 is_view_ = false;
             }
 
+            template <typename U>
+            void reset(std::initializer_list<U> len,
+                       const T& val = T(), Layout layout = DEFAULT)
+            {
+                assert(len.size() == ndim);
+                std::array<idx_type, ndim> len_;
+                std::copy_n(len.begin(), ndim, len_.begin());
+                reset(len_, val, layout);
+            }
+
             MARRAY_TEST
             (
                 marray<double, 3> a;
@@ -1209,6 +1250,16 @@ namespace MArray
 
                 layout_ = layout;
                 is_view_ = true;
+            }
+
+            template <typename U>
+            void reset(std::initializer_list<U> len,
+                       pointer ptr, Layout layout = DEFAULT)
+            {
+                assert(len.size() == ndim);
+                std::array<idx_type, ndim> len_;
+                std::copy_n(len.begin(), ndim, len_.begin());
+                reset(len_, ptr, layout);
             }
 
             MARRAY_TEST
@@ -1367,9 +1418,7 @@ namespace MArray
                                   Layout layout = DEFAULT, typename std::enable_if<std::is_integral<U>::value>::type* = 0)
             : data_(NULL), size_(0), len_(), stride_(), is_view_(false), layout_(layout)
             {
-                assert(len.size() == ndim);
-                std::copy_n(len.begin(), ndim, len_.begin());
-                reset(len_, val, layout_);
+                reset(len, val, layout_);
             }
 
             MARRAY_TEST
@@ -1682,13 +1731,15 @@ namespace MArray
             explicit marray(const std::array<idx_type, ndim>& len, const T& val = T(), Layout layout = DEFAULT)
             : const_marray<T, ndim>(len, val, layout) {}
 
-            explicit marray(std::initializer_list<idx_type> len, const T& val = T(), Layout layout = DEFAULT)
+            template <typename U>
+            explicit marray(std::initializer_list<U> len, const T& val = T(), Layout layout = DEFAULT)
             : const_marray<T, ndim>(len, val, layout) {}
 
             explicit marray(const std::array<idx_type, ndim>& len, pointer ptr, Layout layout = DEFAULT)
             : const_marray<T, ndim>(len, ptr, layout) {}
 
-            explicit marray(std::initializer_list<idx_type> len, pointer ptr, Layout layout = DEFAULT)
+            template <typename U>
+            explicit marray(std::initializer_list<U> len, pointer ptr, Layout layout = DEFAULT)
             : const_marray<T, ndim>(len, ptr, layout) {}
 
             template <typename... Args>
@@ -1710,7 +1761,8 @@ namespace MArray
                 reset();
             }
 
-            void resize(const std::array<idx_type, ndim>& len, const T& val = T(), Layout layout = DEFAULT)
+            void resize(const std::array<idx_type, ndim>& len,
+                        const T& val = T(), Layout layout = DEFAULT)
             {
                 if (layout == DEFAULT) layout = layout_;
 
@@ -1727,6 +1779,22 @@ namespace MArray
                           pointer b_ =     data_;
                     while (it.nextIteration(a_, b_)) *b_ = *a_;
                 }
+            }
+
+            template <typename U>
+            void resize(std::initializer_list<U> len,
+                        const T& val = T(), Layout layout = DEFAULT)
+            {
+                assert(len.size() == ndim);
+                std::array<idx_type, ndim> len_;
+                std::copy_n(len.begin(), ndim, len_.begin());
+                resize(len_, val, layout);
+            }
+
+            template <typename... Args>
+            void resize(typename std::enable_if<detail::are_marray_args<T, ndim, 1, Args...>::value,idx_type>::type len0, Args&&... args)
+            {
+                detail::marray_resize<T, ndim, 1, idx_type, Args...>(*this, len0, std::forward<Args>(args)...);
             }
 
             void unView()
@@ -1963,6 +2031,18 @@ namespace MArray
                 is_view_ = false;
             }
 
+            void reset(const std::array<idx_type, 1>& len, const T& val = T())
+            {
+                reset(len[0], val);
+            }
+
+            template <typename U>
+            void reset(std::initializer_list<U> len, const T& val = T())
+            {
+                assert(len.size() == 1);
+                reset(*len.begin(), val);
+            }
+
             void reset(idx_type n, pointer ptr)
             {
                 idx_type old_size = (is_view_ ? 0 : size_);
@@ -1972,6 +2052,18 @@ namespace MArray
                 data_ = ptr;
 
                 is_view_ = true;
+            }
+
+            void reset(const std::array<idx_type, 1>& len, pointer ptr)
+            {
+                reset(len[0], ptr);
+            }
+
+            template <typename U>
+            void reset(std::initializer_list<U> len, pointer ptr)
+            {
+                assert(len.size() == 1);
+                reset(*len.begin(), ptr);
             }
 
         public:
@@ -2218,6 +2310,18 @@ namespace MArray
                     a_ += old.stride_;
                     b_ +=     stride_;
                 }
+            }
+
+            void resize(const std::array<idx_type, 1>& len, const T& val = T())
+            {
+                resize(len[0], val);
+            }
+
+            template <typename U>
+            void resize(std::initializer_list<U> len, const T& val = T())
+            {
+                assert(len.size() == 1);
+                resize(*len.begin(), val);
             }
 
             void unView()
