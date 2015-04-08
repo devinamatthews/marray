@@ -9,6 +9,7 @@
 #include <array>
 #include <cassert>
 #include <algorithm>
+#include <iostream>
 
 #include "iterator.hpp"
 #include "utility.hpp"
@@ -715,7 +716,7 @@ namespace MArray
      * Specifies the layout of the array data. The layout is only significant
      * when a data
      */
-    enum Layout {COLUMN_MAJOR, ROW_MAJOR, DEFAULT=ROW_MAJOR};
+    enum Layout : int {COLUMN_MAJOR, ROW_MAJOR, DEFAULT=ROW_MAJOR};
 
     namespace detail
     {
@@ -1515,7 +1516,7 @@ namespace MArray
             (
                 typedef marray<double, 3>::idx_type idx_type;
                 typedef marray<double, 3>::size_type size_type;
-                const_marray<double, 3> a(2, 4, 5, COLUMN_MAJOR);
+                const_marray<double, 3> a(2, 4, 5, 0.0, COLUMN_MAJOR);
                 const_marray<double, 2> b = a[0];
 
                 assert(a.data() == b.data());
@@ -1547,13 +1548,13 @@ namespace MArray
                 using slice::all;
                 typedef marray<double, 3>::idx_type idx_type;
                 typedef marray<double, 3>::size_type size_type;
-                const_marray<double, 4> a(2, 1, 4, 5, COLUMN_MAJOR);
+                const_marray<double, 4> a(2, 1, 4, 5, 0.0, COLUMN_MAJOR);
                 const_marray<double, 3> b = a[0][all];
 
                 assert(a.data() == b.data());
                 assert(b.size() == 1*4*5);
                 assert(b.lengths() == make_array<idx_type>(1, 4, 5));
-                assert(b.strides() == make_array<size_type>(2, 2*2, 2*1*4));
+                assert(b.strides() == make_array<size_type>(2, 2*1, 2*1*4));
                 assert(b.layout() == COLUMN_MAJOR);
             )
 
@@ -1565,6 +1566,29 @@ namespace MArray
             bool isView() const
             {
                 return is_view_;
+            }
+
+            const_marray<T, ndim> permute(const std::array<unsigned, ndim>& perm)
+            {
+                const_marray<T, ndim> view;
+                view.data_ = data_;
+                view.is_view_ = true;
+                view.layout_ = layout_;
+                view.size_ = size_;
+
+                for (unsigned i = 0;i < ndim;i++)
+                {
+                    assert(perm[i] < ndim);
+                    for (unsigned j = 0;j < i;j++) assert(perm[i] != perm[j]);
+                }
+
+                for (unsigned i = 0;i < ndim;i++)
+                {
+                    view.len_[i] = len_[perm[i]];
+                    view.stride_[i] = stride_[perm[i]];
+                }
+
+                return view;
             }
 
             const_marray<T, ndim-1> front(unsigned dim) const
@@ -1804,6 +1828,11 @@ namespace MArray
                 const_marray<T, ndim> old(*this);
                 reset(len_, T(), layout_);
                 copy(old, *this);
+            }
+
+            marray<T, ndim> permute(const std::array<unsigned, ndim>& perm)
+            {
+                return const_marray<T, ndim>::permute(perm);
             }
 
             void push_back(unsigned dim, const const_marray<T, ndim-1>& x)
@@ -2442,6 +2471,8 @@ namespace MArray
             {
                 return *this;
             }
+
+            using const_marray<T, 1>::data;
 
             pointer data()
             {

@@ -201,7 +201,7 @@ namespace MArray
             bool first;
             std::vector<idx_type> pos;
             std::vector<idx_type> len;
-            std::vector<std::vector<size_type> > stride;
+            std::vector<std::vector<size_type>> stride;
     };
 
 }

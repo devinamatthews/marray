@@ -5,3 +5,14 @@
 .project
 .cproject
 .deps
+test/Makefile
+test/autom4te.cache/
+test/compile
+test/config.log
+test/config.status
+test/test
+test/test-suite.log
+test/test.cxx
+test/test.log
+test/test.trs
+test/Makefile.in

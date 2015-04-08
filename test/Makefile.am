@@ -4,6 +4,7 @@ test_SOURCES = test.cxx
 VPATH += $(srcdir)/..
 CXXFLAGS += -std=c++11 -I$(srcdir)/.. -Wno-narrowing
 CLEANFILES = test.cxx
+TESTS = ./test
 
 test.cxx: marray.hpp utility.hpp iterator.hpp test.cxx.header test.cxx.footer
 	cat test.cxx.header > test.cxx
