@@ -7,6 +7,6 @@ CLEANFILES = test.cxx
 TESTS = ./test
 
 test.cxx: marray.hpp utility.hpp iterator.hpp test.cxx.header test.cxx.footer
-	cat test.cxx.header > test.cxx
+	cat $(srcdir)/test.cxx.header > test.cxx
 	$(CPP) $(CXXFLAGS) -DMARRAY_TEST\(...\)=MARRAY_TEST_BEGIN\{__VA_ARGS__\}MARRAY_TEST_END $< | $(GREP) -o 'MARRAY_TEST_BEGIN.*MARRAY_TEST_END' | $(SED) 's/MARRAY_TEST_BEGIN//g' | $(SED) 's/MARRAY_TEST_END//g' >> test.cxx
-	cat test.cxx.footer >> test.cxx
+	cat $(srcdir)/test.cxx.footer >> test.cxx
