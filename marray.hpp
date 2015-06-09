@@ -1117,6 +1117,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
         template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend class detail::marray_reset;
+        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend class detail::marray_resize;
 
         public:
             typedef unsigned idx_type;
