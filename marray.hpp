@@ -670,7 +670,7 @@ namespace MArray
             {
                 assert(x.front() <= x.back() && x.front() >= 0 && x.back() <= array_.len_[ndim-1]);
                 marray<T, newdim+1> ret;
-                ret.data_ = array_.data_+idx+array_.stride[ndim-1]*x.front();
+                ret.data_ = array_.data_+idx+array_.stride_[ndim-1]*x.front();
                 ret.size_ = 1;
                 ret.is_view_ = true;
                 ret.layout_ = array_.layout_;
@@ -942,10 +942,19 @@ namespace MArray
         template <typename T, unsigned ndim, unsigned dim, typename U, typename... Args>
         struct marray_resize
         {
+            typedef typename marray<T, ndim>::idx_type idx_type;
+
             marray_resize(marray<T, ndim>& array, U len, Args&&... args)
             {
-                array.len_[dim-1] = len;
-                marray_resize<T, ndim, dim+1, Args...>(array, std::forward<Args>(args)...);
+                std::array<idx_type, ndim> lens;
+                lens[dim-1] = len;
+                marray_resize<T, ndim, dim+1, Args...>(array, lens, std::forward<Args>(args)...);
+            }
+
+            marray_resize(marray<T, ndim>& array, std::array<idx_type, ndim>& lens, U len, Args&&... args)
+            {
+                lens[dim-1] = len;
+                marray_resize<T, ndim, dim+1, Args...>(array, lens, std::forward<Args>(args)...);
             }
         };
 
@@ -957,10 +966,18 @@ namespace MArray
         template <typename T, unsigned ndim, typename U, typename... Args>
         struct marray_resize<T, ndim, ndim, U, Args...>
         {
-                marray_resize(marray<T, ndim>& array, U len, Args&&... args)
+            typedef typename marray<T, ndim>::idx_type idx_type;
+
+            marray_resize(marray<T, ndim>& array, U len, Args&&... args)
             {
-                array.len_[ndim-1] = len;
-                array.resize(array.len_, std::forward<Args>(args)...);
+                std::array<idx_type, 1> lens = {len};
+                array.resize(lens, std::forward<Args>(args)...);
+            }
+
+            marray_resize(marray<T, ndim>& array, std::array<idx_type, ndim>& lens, U len, Args&&... args)
+            {
+                lens[ndim-1] = len;
+                array.resize(lens, std::forward<Args>(args)...);
             }
         };
     }
@@ -1167,6 +1184,13 @@ namespace MArray
             {
                 size_type old_size = (is_view_ ? 0 : size_);
                 len_ = len;
+
+                printf("len: ");
+                for (unsigned i = 0;i < ndim;i++)
+                {
+                    printf("%ld ", (long)len[i]);
+                }
+                printf("\n");
 
                 if (layout == ROW_MAJOR)
                 {
@@ -1723,6 +1747,8 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend struct detail::marray_reset;
+        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend struct detail::marray_resize;
 
         public:
             using typename const_marray<T, ndim>::idx_type;
