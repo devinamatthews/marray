@@ -1286,6 +1286,27 @@ namespace MArray
                 detail::marray_reset<T, ndim, 1, idx_type, Args...>(*this, len0, std::forward<Args>(args)...);
             }
 
+            const_marray& operator=(const const_marray& other)
+            {
+                if (other.len_ != len_) reset(other.len_, T(), other.layout_);
+
+                if (!other.data_ || !data_) return *this;
+
+                if (!other.is_view_ && !is_view_ && other.layout_ == layout_)
+                {
+                    std::copy(other.data_, other.data_+other.size_, data_);
+                }
+                else
+                {
+                    Iterator<idx_type, size_type> it(other.len_, other.stride_, stride_);
+                    const_pointer a_ = other.data_;
+                          pointer b_ =       data_;
+                    while (it.nextIteration(a_, b_)) *b_ = *a_;
+                }
+
+                return *this;
+            }
+
         public:
             const_marray(const const_marray& other)
             : data_(NULL), size_(other.size_), len_(other.len_),
@@ -1379,15 +1400,11 @@ namespace MArray
             )
 
             const_marray(const const_marray& other, const construct_copy_t& cp)
-            : data_(NULL), size_(other.size_), len_(other.len_),
-              stride_(other.stride_), is_view_(false),
-              layout_(other.layout_)
+            : data_(NULL), size_(0), len_(other.len_), stride_(),
+              is_view_(false), layout_(other.layout_)
             {
-                if (size_ > 0)
-                {
-                    data_ = new T[size_];
-                    copy(other, static_cast<marray<T, ndim>&>(*this));
-                }
+                reset(len_, T(), layout_);
+                *this = other;
             }
 
             MARRAY_TEST
@@ -1627,8 +1644,6 @@ namespace MArray
 
                 return view;
             }
-
-            const_marray& operator=(const const_marray& other) = delete;
 
             const_marray_ref<T, ndim, 2> operator[](idx_type i) const
             {
@@ -1904,28 +1919,13 @@ namespace MArray
 
             marray& operator=(const marray& other)
             {
-                *this = static_cast<const const_marray<T, ndim>&>(other);
+                const_marray<T, ndim>::operator=(other);
                 return *this;
             }
 
             marray& operator=(const const_marray<T, ndim>& other)
             {
-                if (other.len_ != len_) reset(other.len_, T(), other.layout_);
-
-                if (!other.data_ || !data_) return *this;
-
-                if (!other.is_view_ && !is_view_ && other.layout_ == layout_)
-                {
-                    std::copy(other.data_, other.data_+other.size_, data_);
-                }
-                else
-                {
-                    Iterator<idx_type, size_type> it(other.len_, other.stride_, stride_);
-                    const_pointer a_ = other.data_;
-                          pointer b_ =       data_;
-                    while (it.nextIteration(a_, b_)) *b_ = *a_;
-                }
-
+                const_marray<T, ndim>::operator=(other);
                 return *this;
             }
 
@@ -2096,6 +2096,20 @@ namespace MArray
                 reset(*len.begin(), ptr);
             }
 
+            const_marray& operator=(const const_marray& other)
+            {
+                assert(size_ == other.size_);
+                const_pointer a_ = other.data_;
+                      pointer b_ =       data_;
+                for (size_type i = 0;i < size_;i++)
+                {
+                    *b_ = *a_;
+                    a_ += other.stride_;
+                    b_ +=       stride_;
+                }
+                return *this;
+            }
+
         public:
             const_marray(const const_marray& other)
             : data_(NULL), size_(other.size_), stride_(other.stride_),
@@ -2132,7 +2146,7 @@ namespace MArray
               is_view_(false)
             {
                 data_ = new T[size_];
-                copy(other, static_cast<marray<T, 1>&>(*this));
+                *this = other;
             }
 
             explicit const_marray(idx_type n = 0, const T& val = T())
@@ -2182,8 +2196,6 @@ namespace MArray
                 assert(size_ > 0);
                 return *(data_+(size_-1)*stride_);
             }
-
-            const_marray& operator=(const const_marray& other) = delete;
 
             const_reference operator[](idx_type i) const
             {
@@ -2413,13 +2425,13 @@ namespace MArray
 
             marray& operator=(const marray& other)
             {
-                copy(other, *this);
+                const_marray<T, 1>::operator=(other);
                 return *this;
             }
 
             marray& operator=(const const_marray<T, 1>& other)
             {
-                copy(other, *this);
+                const_marray<T, 1>::operator=(other);
                 return *this;
             }
 
@@ -2503,44 +2515,7 @@ namespace MArray
             {
                 a.swap(b);
             }
-
-            friend void copy(const const_marray<T, 1>& a, marray&& b)
-            {
-                copy(a, b);
-            }
-
-            friend void copy(const const_marray<T, 1>& a, marray& b)
-            {
-                assert(a.size() == b.size());
-                const_pointer a_ = a.data();
-                      pointer b_ = b.data();
-                for (size_type i = 0;i < a.size();i++)
-                {
-                    *b_ = *a_;
-                    a_ += a.stride();
-                    b_ += b.stride();
-                }
-            }
     };
-
-    /*
-     * These helper functions are required to facilitate copying into temporary
-     * views created by incompletely indexing an array (since implicit
-     * conversion will not occur for rvalue references).
-     */
-    template <typename T, unsigned ndim, unsigned dim>
-    void copy(const const_marray<T, ndim-dim-1>& a, marray_ref<T, ndim, dim>&& b)
-    {
-        marray<T, ndim-dim-1> b_(b);
-        copy(a, b_);
-    }
-
-    template <typename T, unsigned ndim, unsigned newdim, unsigned dim>
-    void copy(const const_marray<T, ndim+newdim-dim-1>& a, marray_slice<T, ndim, newdim, dim>&& b)
-    {
-        marray<T, ndim+newdim-dim-1> b_(b);
-        copy(a, b_);
-    }
 
     /*
      * Convenient names for 1- and 2-dimensional array types.
