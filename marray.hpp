@@ -2004,6 +2004,8 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend struct detail::marray_reset;
+        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend struct detail::marray_resize;
 
         public:
             using typename const_marray<T, ndim>::idx_type;
@@ -2252,7 +2254,7 @@ namespace MArray
 
             marray& operator=(const marray& other)
             {
-                *this = static_cast<const const_marray<T, ndim>&>(other);
+                const_marray<T, ndim>::operator=(other);
                 return *this;
             }
 
@@ -2728,6 +2730,20 @@ namespace MArray
                        pointer ptr, Layout layout = DEFAULT)
             {
                 reset(len[0], ptr, 1);
+            }
+
+            const_marray& operator=(const const_marray& other)
+            {
+                assert(size_ == other.size_);
+                const_pointer a_ = other.data_;
+                      pointer b_ =       data_;
+                for (size_type i = 0;i < size_;i++)
+                {
+                    *b_ = *a_;
+                    a_ += other.stride_;
+                    b_ +=       stride_;
+                }
+                return *this;
             }
 
         public:
@@ -3239,7 +3255,7 @@ namespace MArray
 
             marray& operator=(const marray& other)
             {
-                *this = static_cast<const const_marray<T, 1>&>(other);
+                const_marray<T, 1>::operator=(other);
                 return *this;
             }
 
