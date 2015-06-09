@@ -416,7 +416,7 @@ namespace MArray
             template <typename I>
             const_marray_slice<T, ndim, dim+1, newdim+1> operator[](const range_t<I>& x) const
             {
-                assert(x.front() <= x.back() && x.front() >= 0 && x.back() <= array_.len[dim-1]);
+                assert(x.front() <= x.back() && x.front() >= 0 && x.back() <= array_.len_[dim-1]);
                 return const_marray_slice<T, ndim, dim+1, newdim+1>(array_, idx, dims, lens, x);
             }
 
@@ -509,7 +509,7 @@ namespace MArray
 
             marray_slice<T, ndim, dim+1, newdim+1> operator[](const slice::all_t& x)
             {
-                return marray_slice<T, ndim, dim+1, newdim+1>(array_, idx, dims, lens, range(idx_type(), array_.len_[ndim-1]));
+                return marray_slice<T, ndim, dim+1, newdim+1>(array_, idx, dims, lens, range(idx_type(), array_.len_[dim-1]));
             }
 
             pointer data()
@@ -1261,8 +1261,8 @@ namespace MArray
         protected:
             pointer data_ = NULL;
             size_type size_ = 0;
-            std::array<idx_type,ndim> len_;
-            std::array<size_type,ndim> stride_;
+            std::array<idx_type,ndim> len_ = {};
+            std::array<size_type,ndim> stride_ = {};
             bool is_view_ = false;
             Layout layout_ = DEFAULT;
             aligned_allocator<T, MARRAY_BASE_ALIGNMENT> alloc_;
@@ -1817,11 +1817,17 @@ namespace MArray
                 typedef marray<double, 3>::size_type size_type;
                 const_marray<double, 4> a(2, 1, 4, 5, 0.0, COLUMN_MAJOR);
                 const_marray<double, 3> b = a[0][all];
+                const_marray<double, 4> c = a[all][range(1)][all][range(1)];
 
                 assert(a.data() == b.data());
                 assert(b.lengths() == make_array<idx_type>(1, 4, 5));
                 assert(b.strides() == make_array<size_type>(2, 2*1, 2*1*4));
                 assert(b.layout() == COLUMN_MAJOR);
+
+                assert(a.data() == c.data());
+                assert(c.lengths() == make_array<idx_type>(2, 1, 4, 1));
+                assert(c.strides() == make_array<size_type>(1, 1*2, 1*2*1, 1*2*1*4));
+                assert(c.layout() == COLUMN_MAJOR);
             )
 
             /*
@@ -2004,8 +2010,8 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
-        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend struct detail::marray_reset;
-        template <typename T_, unsigned ndim_, unsigned dim_, typename U, typename... Args> friend struct detail::marray_resize;
+        template <typename T_, unsigned ndim_, typename... Args> friend class detail::are_reset_args;
+        template <typename T_, unsigned ndim_, typename... Args> friend class detail::are_resize_args;
 
         public:
             using typename const_marray<T, ndim>::idx_type;
@@ -2730,20 +2736,6 @@ namespace MArray
                        pointer ptr, Layout layout = DEFAULT)
             {
                 reset(len[0], ptr, 1);
-            }
-
-            const_marray& operator=(const const_marray& other)
-            {
-                assert(size_ == other.size_);
-                const_pointer a_ = other.data_;
-                      pointer b_ =       data_;
-                for (size_type i = 0;i < size_;i++)
-                {
-                    *b_ = *a_;
-                    a_ += other.stride_;
-                    b_ +=       stride_;
-                }
-                return *this;
             }
 
         public:
