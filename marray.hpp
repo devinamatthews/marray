@@ -93,7 +93,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            typedef typename const_marray<T, ndim>::size_type size_type;
+            typedef typename const_marray<T, ndim>::stride_type stride_type;
             typedef typename const_marray<T, ndim>::idx_type idx_type;
             typedef typename const_marray<T, ndim>::value_type value_type;
             typedef typename const_marray<T, ndim>::pointer pointer;
@@ -103,11 +103,11 @@ namespace MArray
 
         protected:
             const const_marray<T, ndim>& array_;
-            size_type idx;
+            stride_type idx;
 
             const_marray_ref(const const_marray_ref& other) = default;
 
-            const_marray_ref(const const_marray<T, ndim>& array_, size_type idx, idx_type i)
+            const_marray_ref(const const_marray<T, ndim>& array_, stride_type idx, idx_type i)
             : array_(array_), idx(idx+i*array_.stride_[dim-2]) {}
 
         public:
@@ -153,7 +153,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            using typename const_marray_ref<T, ndim, dim>::size_type;
+            using typename const_marray_ref<T, ndim, dim>::stride_type;
             using typename const_marray_ref<T, ndim, dim>::idx_type;
             using typename const_marray_ref<T, ndim, dim>::value_type;
             using typename const_marray_ref<T, ndim, dim>::pointer;
@@ -167,7 +167,7 @@ namespace MArray
 
             marray_ref(const marray_ref& other) = default;
 
-            marray_ref(const const_marray<T, ndim>& array_, size_type idx, idx_type i)
+            marray_ref(const const_marray<T, ndim>& array_, stride_type idx, idx_type i)
             : const_marray_ref<T, ndim, dim>(array_, idx, i) {}
 
         public:
@@ -231,7 +231,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            typedef typename marray<T, ndim>::size_type size_type;
+            typedef typename marray<T, ndim>::stride_type stride_type;
             typedef typename marray<T, ndim>::idx_type idx_type;
             typedef typename marray<T, ndim>::value_type value_type;
             typedef typename marray<T, ndim>::pointer pointer;
@@ -241,11 +241,11 @@ namespace MArray
 
         protected:
             const const_marray<T, ndim>& array_;
-            size_type idx;
+            stride_type idx;
 
             const_marray_ref(const const_marray_ref& other) = default;
 
-            const_marray_ref(const const_marray<T, ndim>& array_, size_type idx, idx_type i)
+            const_marray_ref(const const_marray<T, ndim>& array_, stride_type idx, idx_type i)
             : array_(array_), idx(idx+i*array_.stride_[ndim-2]) {}
 
         public:
@@ -293,7 +293,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            using typename const_marray_ref<T, ndim, ndim>::size_type;
+            using typename const_marray_ref<T, ndim, ndim>::stride_type;
             using typename const_marray_ref<T, ndim, ndim>::idx_type;
             using typename const_marray_ref<T, ndim, ndim>::value_type;
             using typename const_marray_ref<T, ndim, ndim>::pointer;
@@ -307,7 +307,7 @@ namespace MArray
 
             marray_ref(const marray_ref& other) = default;
 
-            marray_ref(const const_marray<T, ndim>& array_, size_type idx, idx_type i)
+            marray_ref(const const_marray<T, ndim>& array_, stride_type idx, idx_type i)
             : const_marray_ref<T, ndim, ndim>(array_, idx, i) {}
 
         public:
@@ -371,7 +371,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            typedef typename marray<T, ndim>::size_type size_type;
+            typedef typename marray<T, ndim>::stride_type stride_type;
             typedef typename marray<T, ndim>::idx_type idx_type;
             typedef typename marray<T, ndim>::value_type value_type;
             typedef typename marray<T, ndim>::pointer pointer;
@@ -381,19 +381,19 @@ namespace MArray
 
         protected:
             const const_marray<T, ndim>& array_;
-            size_type idx;
+            stride_type idx;
             std::array<unsigned, newdim> dims;
             std::array<idx_type, newdim> lens;
 
             const_marray_slice(const const_marray_slice& other) = default;
 
-            const_marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            const_marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                                const std::array<unsigned,newdim>& dims,
                                const std::array<idx_type,newdim>& lens, idx_type i)
             : array_(array_), idx(idx+i*array_.stride[dim-2]), dims(dims), lens(lens) {}
 
             template <typename I>
-            const_marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            const_marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                                const std::array<unsigned,newdim-1>& dims,
                                const std::array<idx_type,newdim-1>& lens, const range_t<I>& range_)
             : array_(array_), idx(idx+array_.stride_[dim-2]*range_.front())
@@ -446,7 +446,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            using typename const_marray_slice<T, ndim, dim, newdim>::size_type;
+            using typename const_marray_slice<T, ndim, dim, newdim>::stride_type;
             using typename const_marray_slice<T, ndim, dim, newdim>::idx_type;
             using typename const_marray_slice<T, ndim, dim, newdim>::value_type;
             using typename const_marray_slice<T, ndim, dim, newdim>::pointer;
@@ -462,13 +462,13 @@ namespace MArray
 
             marray_slice(const marray_slice& other) = default;
 
-            marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                          const std::array<unsigned,newdim>& dims,
                          const std::array<idx_type,newdim>& lens, idx_type i)
             : const_marray_slice<T, ndim, dim, newdim>(array_, idx, dims, lens, i) {}
 
             template <typename I>
-            marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                          const std::array<unsigned,newdim-1>& dims,
                          const std::array<idx_type,newdim-1>& lens, const range_t<I>& range_)
             : const_marray_slice<T, ndim, dim, newdim>(array_, idx, dims, lens, range_) {}
@@ -538,7 +538,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            typedef typename marray<T, ndim>::size_type size_type;
+            typedef typename marray<T, ndim>::stride_type stride_type;
             typedef typename marray<T, ndim>::idx_type idx_type;
             typedef typename marray<T, ndim>::value_type value_type;
             typedef typename marray<T, ndim>::pointer pointer;
@@ -548,19 +548,19 @@ namespace MArray
 
         protected:
             const const_marray<T, ndim>& array_;
-            size_type idx;
+            stride_type idx;
             std::array<unsigned, newdim> dims;
             std::array<idx_type, newdim> lens;
 
             const_marray_slice(const const_marray_slice& other) = default;
 
-            const_marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            const_marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                                const std::array<unsigned,newdim>& dims,
                                const std::array<idx_type,newdim>& lens, idx_type i)
             : array_(array_), idx(idx+i*array_.stride_[ndim-2]), dims(dims), lens(lens) {}
 
             template <typename I>
-            const_marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            const_marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                                const std::array<unsigned,newdim-1>& dims,
                                const std::array<idx_type,newdim-1>& lens, const range_t<I>& x)
             : array_(array_), idx(idx+x.front()*array_.stride_[ndim-2])
@@ -638,7 +638,7 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            using typename const_marray_slice<T, ndim, ndim, newdim>::size_type;
+            using typename const_marray_slice<T, ndim, ndim, newdim>::stride_type;
             using typename const_marray_slice<T, ndim, ndim, newdim>::idx_type;
             using typename const_marray_slice<T, ndim, ndim, newdim>::value_type;
             using typename const_marray_slice<T, ndim, ndim, newdim>::pointer;
@@ -654,13 +654,13 @@ namespace MArray
 
             marray_slice(const marray_slice& other) = default;
 
-            marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                          const std::array<unsigned,newdim>& dims,
                          const std::array<idx_type,newdim>& lens, idx_type i)
             : const_marray_slice<T, ndim, ndim, newdim>(array_, idx, dims, lens, i) {}
 
             template <typename I>
-            marray_slice(const const_marray<T, ndim>& array_, size_type idx,
+            marray_slice(const const_marray<T, ndim>& array_, stride_type idx,
                          const std::array<unsigned,newdim-1>& dims,
                          const std::array<idx_type,newdim-1>& lens, const range_t<I>& x)
             : const_marray_slice<T, ndim, ndim, newdim>(array_, idx, dims, lens, x) {}
@@ -1250,8 +1250,8 @@ namespace MArray
         template <typename T_, unsigned ndim_, typename... Args> friend class detail::are_resize_args;
 
         public:
-            typedef unsigned idx_type;
-            typedef size_t size_type;
+            typedef int idx_type;
+            typedef ptrdiff_t stride_type;
             typedef T value_type;
             typedef T* pointer;
             typedef const T* const_pointer;
@@ -1260,9 +1260,9 @@ namespace MArray
 
         protected:
             pointer data_ = NULL;
-            size_type size_ = 0;
+            stride_type size_ = 0;
             std::array<idx_type,ndim> len_ = {};
-            std::array<size_type,ndim> stride_ = {};
+            std::array<stride_type,ndim> stride_ = {};
             bool is_view_ = false;
             Layout layout_ = DEFAULT;
             aligned_allocator<T, MARRAY_BASE_ALIGNMENT> alloc_;
@@ -1279,7 +1279,7 @@ namespace MArray
                 }
                 else
                 {
-                    Iterator<idx_type, size_type> it(other.len_, other.stride_, stride_);
+                    Iterator<idx_type, stride_type> it(other.len_, other.stride_, stride_);
                     const_pointer a_ = other.data_;
                           pointer b_ =       data_;
                     while (it.nextIteration(a_, b_)) *b_ = *a_;
@@ -1311,13 +1311,13 @@ namespace MArray
             (
                 marray<double, 3> a(2, 4, 5);
                 typedef marray<double, 3>::idx_type idx_type;
-                typedef marray<double, 3>::size_type size_type;
+                typedef marray<double, 3>::stride_type stride_type;
                 // check that repeated calls work
                 a.reset();
                 a.reset();
                 assert(a.data() == NULL);
                 assert(a.lengths() == make_array<idx_type>(0, 0, 0));
-                assert(a.strides() == make_array<size_type>(0, 0, 0));
+                assert(a.strides() == make_array<stride_type>(0, 0, 0));
                 assert(a.layout() == DEFAULT);
             )
 
@@ -1405,17 +1405,17 @@ namespace MArray
                 const double *data = a.data();
                 const_marray<double, 3> ca(std::move(a));
                 typedef const_marray<double, 3>::idx_type idx_type;
-                typedef const_marray<double, 3>::size_type size_type;
+                typedef const_marray<double, 3>::stride_type stride_type;
 
                 assert(ca.data() == data);
                 assert(ca.lengths() == make_array<idx_type>(2, 4, 5));
-                assert(ca.strides() == make_array<size_type>(1, 2, 2*4));
+                assert(ca.strides() == make_array<stride_type>(1, 2, 2*4));
                 assert(ca.layout() == COLUMN_MAJOR);
                 assert(!ca.isView());
 
                 assert(a.data() == NULL);
                 assert(a.lengths() == make_array<idx_type>(0, 0, 0));
-                assert(a.strides() == make_array<size_type>(0, 0, 0));
+                assert(a.strides() == make_array<stride_type>(0, 0, 0));
                 assert(a.layout() == DEFAULT);
             )
 
@@ -1631,12 +1631,12 @@ namespace MArray
             (
                 marray<double, 3> a;
                 typedef marray<double, 3>::idx_type idx_type;
-                typedef marray<double, 3>::size_type size_type;
+                typedef marray<double, 3>::stride_type stride_type;
 
                 a.reset(make_array(2, 4, 5));
                 assert(a.data() != NULL);
                 assert(a.lengths() == make_array<idx_type>(2, 4, 5));
-                assert(a.strides() == make_array<size_type>(4*5, 5, 1));
+                assert(a.strides() == make_array<stride_type>(4*5, 5, 1));
                 assert(a.layout() == DEFAULT);
                 a.reset();
             )
@@ -1707,19 +1707,19 @@ namespace MArray
                 double p;
                 marray<double, 3> a;
                 typedef marray<double, 3>::idx_type idx_type;
-                typedef marray<double, 3>::size_type size_type;
+                typedef marray<double, 3>::stride_type stride_type;
 
                 a.reset(make_array(2, 4, 5), &p);
                 assert(a.data() == &p);
                 assert(a.lengths() == make_array<idx_type>(2, 4, 5));
-                assert(a.strides() == make_array<size_type>(4*5, 5, 1));
+                assert(a.strides() == make_array<stride_type>(4*5, 5, 1));
                 assert(a.layout() == DEFAULT);
                 a.reset();
 
                 a.reset(make_array(2, 4, 5), &p, make_array(25, 6, 1));
                 assert(a.data() == &p);
                 assert(a.lengths() == make_array<idx_type>(2, 4, 5));
-                assert(a.strides() == make_array<size_type>(25, 6, 1));
+                assert(a.strides() == make_array<stride_type>(25, 6, 1));
                 assert(a.layout() == DEFAULT);
                 a.reset();
             )
@@ -1747,26 +1747,26 @@ namespace MArray
                 double p;
                 marray<double, 3> a;
                 typedef marray<double, 3>::idx_type idx_type;
-                typedef marray<double, 3>::size_type size_type;
+                typedef marray<double, 3>::stride_type stride_type;
 
                 a.reset(2, 4, 5);
                 assert(a.data() != NULL);
                 assert(a.lengths() == make_array<idx_type>(2, 4, 5));
-                assert(a.strides() == make_array<size_type>(4*5, 5, 1));
+                assert(a.strides() == make_array<stride_type>(4*5, 5, 1));
                 assert(a.layout() == DEFAULT);
                 a.reset();
 
                 a.reset(2, 4, 5, &p);
                 assert(a.data() == &p);
                 assert(a.lengths() == make_array<idx_type>(2, 4, 5));
-                assert(a.strides() == make_array<size_type>(4*5, 5, 1));
+                assert(a.strides() == make_array<stride_type>(4*5, 5, 1));
                 assert(a.layout() == DEFAULT);
                 a.reset();
 
                 a.reset(2, 4, 5, &p, 25, 6, 1);
                 assert(a.data() == &p);
                 assert(a.lengths() == make_array<idx_type>(2, 4, 5));
-                assert(a.strides() == make_array<size_type>(25, 6, 1));
+                assert(a.strides() == make_array<stride_type>(25, 6, 1));
                 assert(a.layout() == DEFAULT);
                 a.reset();
             )
@@ -1787,13 +1787,13 @@ namespace MArray
             MARRAY_TEST
             (
                 typedef marray<double, 3>::idx_type idx_type;
-                typedef marray<double, 3>::size_type size_type;
+                typedef marray<double, 3>::stride_type stride_type;
                 const_marray<double, 3> a(2, 4, 5, 0.0, COLUMN_MAJOR);
                 const_marray<double, 2> b = a[0];
 
                 assert(a.data() == b.data());
                 assert(b.lengths() == make_array<idx_type>(4, 5));
-                assert(b.strides() == make_array<size_type>(2, 2*4));
+                assert(b.strides() == make_array<stride_type>(2, 2*4));
                 assert(b.layout() == COLUMN_MAJOR);
             )
 
@@ -1814,19 +1814,19 @@ namespace MArray
             (
                 using slice::all;
                 typedef marray<double, 3>::idx_type idx_type;
-                typedef marray<double, 3>::size_type size_type;
+                typedef marray<double, 3>::stride_type stride_type;
                 const_marray<double, 4> a(2, 1, 4, 5, 0.0, COLUMN_MAJOR);
                 const_marray<double, 3> b = a[0][all];
                 const_marray<double, 4> c = a[all][range(1)][all][range(1)];
 
                 assert(a.data() == b.data());
                 assert(b.lengths() == make_array<idx_type>(1, 4, 5));
-                assert(b.strides() == make_array<size_type>(2, 2*1, 2*1*4));
+                assert(b.strides() == make_array<stride_type>(2, 2*1, 2*1*4));
                 assert(b.layout() == COLUMN_MAJOR);
 
                 assert(a.data() == c.data());
                 assert(c.lengths() == make_array<idx_type>(2, 1, 4, 1));
-                assert(c.strides() == make_array<size_type>(1, 1*2, 1*2*1, 1*2*1*4));
+                assert(c.strides() == make_array<stride_type>(1, 1*2, 1*2*1, 1*2*1*4));
                 assert(c.layout() == COLUMN_MAJOR);
             )
 
@@ -1845,7 +1845,7 @@ namespace MArray
             {
                 if (!is_view_ && data_)
                 {
-                    for (size_type i = 0;i < size_;i++)
+                    for (stride_type i = 0;i < size_;i++)
                     {
                         std::allocator_traits<decltype(alloc_)>::destroy(alloc_, data_+i);
                     }
@@ -1854,10 +1854,24 @@ namespace MArray
             }
 
             /*
-             * Views.
+             * Copies.
              */
 
         public:
+            const_marray<T, ndim> copy() const
+            {
+                return const_marray<T, ndim>(*this, construct_copy);
+            }
+
+            friend const_marray<T, ndim> copy(const const_marray<T, ndim>& array)
+            {
+                return const_marray<T, ndim>(array, construct_copy);
+            }
+
+            /*
+             * Views.
+             */
+
             bool isView() const
             {
                 return is_view_;
@@ -1866,6 +1880,11 @@ namespace MArray
             const_marray<T, ndim> view() const
             {
                 return const_marray<T, ndim>(*this, construct_view);
+            }
+
+            friend const_marray<T, ndim> view(const const_marray<T, ndim>& array)
+            {
+                return const_marray<T, ndim>(array, construct_view);
             }
 
             template <typename U>
@@ -1933,19 +1952,19 @@ namespace MArray
             const_marray_ref<T, ndim, 2> operator[](idx_type i) const
             {
                 assert(i < len_[0]);
-                return const_marray_ref<T, ndim, 2>(*this, (size_type)0, i);
+                return const_marray_ref<T, ndim, 2>(*this, (stride_type)0, i);
             }
 
             template <typename I>
             const_marray_slice<T, ndim, 2, 1> operator[](const range_t<I>& x) const
             {
                 assert(x.front() >= 0 && x.back() <= len_[0]);
-                return const_marray_slice<T, ndim, 2, 1>(*this, (size_type)0, {}, {}, x);
+                return const_marray_slice<T, ndim, 2, 1>(*this, (stride_type)0, {}, {}, x);
             }
 
             const_marray_slice<T, ndim, 2, 1> operator[](const slice::all_t& x) const
             {
-                return const_marray_slice<T, ndim, 2, 1>(*this, (size_type)0, {}, {}, range(idx_type(), len_[0]));
+                return const_marray_slice<T, ndim, 2, 1>(*this, (stride_type)0, {}, {}, range(idx_type(), len_[0]));
             }
 
             /*
@@ -1978,12 +1997,12 @@ namespace MArray
                 return len_;
             }
 
-            const size_type& stride(unsigned dim) const
+            const stride_type& stride(unsigned dim) const
             {
                 return stride_[dim];
             }
 
-            const std::array<size_type, ndim>& strides() const
+            const std::array<stride_type, ndim>& strides() const
             {
                 return stride_;
             }
@@ -2015,7 +2034,7 @@ namespace MArray
 
         public:
             using typename const_marray<T, ndim>::idx_type;
-            using typename const_marray<T, ndim>::size_type;
+            using typename const_marray<T, ndim>::stride_type;
             using typename const_marray<T, ndim>::value_type;
             using typename const_marray<T, ndim>::pointer;
             using typename const_marray<T, ndim>::const_pointer;
@@ -2179,10 +2198,41 @@ namespace MArray
             }
 
             /*
+             * Copies.
+             */
+
+            using const_marray<T, ndim>::copy;
+
+            friend marray<T, ndim> copy(marray<T, ndim>& array)
+            {
+                return marray<T, ndim>(array, construct_copy);
+            }
+
+            friend marray<T, ndim> copy(marray<T, ndim>&& array)
+            {
+                return marray<T, ndim>(array, construct_copy);
+            }
+
+            marray<T, ndim> copy() const
+            {
+                return marray<T, ndim>(*this, construct_copy);
+            }
+
+            /*
              * Views.
              */
 
             using const_marray<T, ndim>::view;
+
+            friend marray<T, ndim> view(marray<T, ndim>& array)
+            {
+                return marray<T, ndim>(array, construct_view);
+            }
+
+            friend marray<T, ndim> view(marray<T, ndim>&& array)
+            {
+                return marray<T, ndim>(array, construct_view);
+            }
 
             marray<T, ndim> view()
             {
@@ -2236,6 +2286,101 @@ namespace MArray
                 resize(len);
             }
 
+            void rotateDim(unsigned dim, idx_type shift)
+            {
+                assert(dim < ndim);
+
+                idx_type n = len_[dim];
+                stride_type s = stride_[dim];
+
+                shift = shift%n;
+                if (shift < 0) shift += n;
+
+                if (shift == 0) return;
+
+                std::array<idx_type, ndim-1> sublen;
+                std::array<stride_type, ndim-1> substride;
+
+                std::copy_n(len_.begin(), dim, sublen.begin());
+                std::copy_n(len_.begin()+dim+1, ndim-dim-1, sublen.begin()+dim);
+
+                std::copy_n(stride_.begin(), dim, substride.begin());
+                std::copy_n(stride_.begin()+dim+1, ndim-dim-1, substride.begin()+dim);
+
+                pointer p = data_;
+                Iterator<idx_type, stride_type> it(sublen, substride);
+                while (it.nextIteration(p))
+                {
+                    pointer a = p;
+                    pointer b = p+(shift-1)*s;
+                    for (idx_type i = 0;i < shift/2;i++)
+                    {
+                        std::swap(*a, *b);
+                        a += s;
+                        b -= s;
+                    }
+
+                    a = p+shift*s;
+                    b = p+(n-1)*s;
+                    for (idx_type i = 0;i < (n-shift)/2;i++)
+                    {
+                        std::swap(*a, *b);
+                        a += s;
+                        b -= s;
+                    }
+
+                    a = p;
+                    b = p+(n-1)*s;
+                    for (idx_type i = 0;i < n/2;i++)
+                    {
+                        std::swap(*a, *b);
+                        a += s;
+                        b -= s;
+                    }
+                }
+            }
+
+            template <typename U>
+            void rotate(const std::array<U, ndim>& shift)
+            {
+                for (unsigned dim = 0;dim < ndim;dim++)
+                {
+                    rotateDim(dim, shift[dim]);
+                }
+            }
+
+            template <typename... Args>
+            typename std::enable_if<detail::are_integral<ndim, detail::are_empty, Args...>::value>::type
+            rotate(Args&&... args)
+            {
+                rotate(make_array(std::forward<Args>(args)...));
+            }
+
+            MARRAY_TEST
+            (
+                marray<int,2> a(4,4);
+
+                a[0][0] =  1; a[0][1] =  2; a[0][2] =  3; a[0][3] =  4;
+                a[1][0] =  5; a[1][1] =  6; a[1][2] =  7; a[1][3] =  8;
+                a[2][0] =  9; a[2][1] = 10; a[2][2] = 11; a[2][3] = 12;
+                a[3][0] = 13; a[3][1] = 14; a[3][2] = 15; a[3][3] = 16;
+
+                a.rotate(1,-1);
+
+                assert(a[0][0] ==  8 && a[0][1] ==  5 && a[0][2] ==  6 && a[0][3] ==  7 &&
+                       a[1][0] == 12 && a[1][1] ==  9 && a[1][2] == 10 && a[1][3] == 11 &&
+                       a[2][0] == 16 && a[2][1] == 13 && a[2][2] == 14 && a[2][3] == 15 &&
+                       a[3][0] ==  4 && a[3][1] ==  1 && a[3][2] ==  2 && a[3][3] ==  3);
+
+                marray<double,2> b(9,9);
+
+                b[0][1] = b[1][0] = 1.0;
+
+                b.rotate(0,-1);
+
+                assert(b[0][2] == 1.0 && b[1][1] == 1.0);
+            )
+
             /*
              * Access view.
              */
@@ -2274,7 +2419,7 @@ namespace MArray
             {
                 if (is_view_)
                 {
-                    Iterator<idx_type, size_type> it(len_, stride_);
+                    Iterator<idx_type, stride_type> it(len_, stride_);
                     pointer p = data_;
                     while (it.nextIteration(p)) *p = x;
                 }
@@ -2294,19 +2439,19 @@ namespace MArray
             marray_ref<T, ndim, 2> operator[](idx_type i)
             {
                 assert(i < len_[0]);
-                return marray_ref<T, ndim, 2>(*this, (size_type)0, i);
+                return marray_ref<T, ndim, 2>(*this, (stride_type)0, i);
             }
 
             template <typename I>
             marray_slice<T, ndim, 2, 1> operator[](const range_t<I>& x)
             {
                 assert(x.front() >= 0 && x.back() <= len_[0]);
-                return marray_slice<T, ndim, 2, 1>(*this, (size_type)0, {}, {}, x);
+                return marray_slice<T, ndim, 2, 1>(*this, (stride_type)0, {}, {}, x);
             }
 
             marray_slice<T, ndim, 2, 1> operator[](const slice::all_t& x)
             {
-                return marray_slice<T, ndim, 2, 1>(*this, (size_type)0, {}, {}, range(idx_type(), len_[0]));
+                return marray_slice<T, ndim, 2, 1>(*this, (stride_type)0, {}, {}, range(idx_type(), len_[0]));
             }
 
             /*
@@ -2380,8 +2525,8 @@ namespace MArray
         template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
 
         public:
-            typedef size_t idx_type;
-            typedef size_t size_type;
+            typedef ptrdiff_t idx_type;
+            typedef ptrdiff_t stride_type;
             typedef T value_type;
             typedef T* pointer;
             typedef const T* const_pointer;
@@ -2391,8 +2536,8 @@ namespace MArray
         protected:
             pointer data_ = NULL;
             idx_type size_ = 0;
-            std::array<idx_type, 1> len_ = {{0}};
-            std::array<size_type, 1> stride_ = {{1}};
+            std::array<idx_type, 1> len_ = {};
+            std::array<stride_type, 1> stride_ = {};
             bool is_view_ = false;
             Layout layout_ = DEFAULT;
             aligned_allocator<T, MARRAY_BASE_ALIGNMENT> alloc_;
@@ -2410,10 +2555,10 @@ namespace MArray
                     const_pointer a_ = other.data_;
                           pointer b_ =       data_;
 
-                    size_type as =       stride();
-                    size_type bs = other.stride();
+                    stride_type as =       stride();
+                    stride_type bs = other.stride();
 
-                    for (size_type i = 0;i < length();i++)
+                    for (stride_type i = 0;i < length();i++)
                     {
                         b_[i*bs] = a_[i*as];
                     }
@@ -2755,29 +2900,25 @@ namespace MArray
             }
 
         public:
-            template <typename U>
             const_marray(idx_type len, const_pointer ptr, Layout layout = DEFAULT)
             {
                 reset(len, const_cast<pointer>(ptr), layout);
             }
 
         protected:
-            template <typename U>
             void reset(idx_type len, pointer ptr, Layout layout = DEFAULT)
             {
                 reset(len, ptr, 1);
             }
 
         public:
-            template <typename U, typename V>
-            const_marray(idx_type len, pointer ptr, size_type stride)
+            const_marray(idx_type len, pointer ptr, stride_type stride)
             {
                 reset(len, const_cast<pointer>(ptr), stride);
             }
 
         protected:
-            template <typename U, typename V>
-            void reset(idx_type len, pointer ptr, size_type stride)
+            void reset(idx_type len, pointer ptr, stride_type stride)
             {
                 free();
 
@@ -2813,7 +2954,7 @@ namespace MArray
             {
                 if (!is_view_ && data_)
                 {
-                    for (size_type i = 0;i < size_;i++)
+                    for (stride_type i = 0;i < size_;i++)
                     {
                         std::allocator_traits<decltype(alloc_)>::destroy(alloc_, data_+i);
                     }
@@ -2822,10 +2963,24 @@ namespace MArray
             }
 
             /*
-             * Views.
+             * Copies.
              */
 
         public:
+            const_marray<T, 1> copy() const
+            {
+                return const_marray<T, 1>(*this, construct_copy);
+            }
+
+            friend const_marray<T, 1> copy(const const_marray<T, 1>& array)
+            {
+                return const_marray<T, 1>(array, construct_copy);
+            }
+
+            /*
+             * Views.
+             */
+
             bool isView() const
             {
                 return is_view_;
@@ -2834,6 +2989,11 @@ namespace MArray
             const_marray<T, 1> view() const
             {
                 return const_marray<T, 1>(*this, construct_view);
+            }
+
+            friend const_marray<T, 1> view(const const_marray<T, 1>& array)
+            {
+                return const_marray<T, 1>(array, construct_view);
             }
 
             template <typename U>
@@ -2939,17 +3099,17 @@ namespace MArray
                 return len_;
             }
 
-            size_type stride() const
+            stride_type stride() const
             {
                 return stride_[0];
             }
 
-            size_type stride(unsigned dim) const
+            stride_type stride(unsigned dim) const
             {
                 return stride_[0];
             }
 
-            std::array<size_type, 1> strides() const
+            std::array<stride_type, 1> strides() const
             {
                 return stride_;
             }
@@ -2957,7 +3117,7 @@ namespace MArray
             /*
              * Provided for similarity to std::vector.
              */
-            size_type size() const
+            stride_type size() const
             {
                 return len_[0];
             }
@@ -2979,7 +3139,7 @@ namespace MArray
 
         public:
             using typename const_marray<T, 1>::idx_type;
-            using typename const_marray<T, 1>::size_type;
+            using typename const_marray<T, 1>::stride_type;
             using typename const_marray<T, 1>::value_type;
             using typename const_marray<T, 1>::pointer;
             using typename const_marray<T, 1>::const_pointer;
@@ -3092,7 +3252,7 @@ namespace MArray
             : const_marray<T, 1>(len, ptr, layout) {}
 
             template <typename U, typename V>
-            marray(idx_type len, pointer ptr, size_type stride)
+            marray(idx_type len, pointer ptr, stride_type stride)
             : const_marray<T, 1>(len, ptr, stride) {}
 
             /*
@@ -3163,6 +3323,27 @@ namespace MArray
             }
 
             /*
+             * Copies.
+             */
+
+            using const_marray<T, 1>::copy;
+
+            marray<T, 1> copy() const
+            {
+                return marray<T, 1>(*this, construct_copy);
+            }
+
+            friend marray<T, 1> copy(marray<T, 1>& array)
+            {
+                return marray<T, 1>(array, construct_copy);
+            }
+
+            friend marray<T, 1> copy(marray<T, 1>&& array)
+            {
+                return marray<T, 1>(array, construct_copy);
+            }
+
+            /*
              * Views.
              */
 
@@ -3171,6 +3352,16 @@ namespace MArray
             marray<T, 1> view()
             {
                 return marray<T, 1>(*this, construct_view);
+            }
+
+            friend marray<T, 1> view(marray<T, 1>& array)
+            {
+                return marray<T, 1>(array, construct_view);
+            }
+
+            friend marray<T, 1> view(marray<T, 1>&& array)
+            {
+                return marray<T, 1>(array, construct_view);
             }
 
             using const_marray<T, 1>::permute;
@@ -3189,6 +3380,58 @@ namespace MArray
             /*
              * Modify.
              */
+
+            void rotate(idx_type shift)
+            {
+                idx_type n = len_[0];
+                stride_type s = stride_[0];
+
+                shift = shift%n;
+                if (shift < 0) shift += n;
+
+                if (shift == 0) return;
+
+                pointer p = data_;
+
+                pointer a = p;
+                pointer b = p+(shift-1)*s;
+                for (idx_type i = 0;i < shift/2;i++)
+                {
+                    std::swap(*a, *b);
+                    a += s;
+                    b -= s;
+                }
+
+                a = p+shift*s;
+                b = p+(n-1)*s;
+                for (idx_type i = 0;i < (n-shift)/2;i++)
+                {
+                    std::swap(*a, *b);
+                    a += s;
+                    b -= s;
+                }
+
+                a = p;
+                b = p+(n-1)*s;
+                for (idx_type i = 0;i < n/2;i++)
+                {
+                    std::swap(*a, *b);
+                    a += s;
+                    b -= s;
+                }
+            }
+
+            template <typename U>
+            void rotate(const std::array<U, 1>& shift)
+            {
+                rotate(shift[0]);
+            }
+
+            void rotateDim(unsigned dim, idx_type shift)
+            {
+                assert(dim == 0);
+                rotate(shift);
+            }
 
             void push_back(unsigned dim, const T& x)
             {
@@ -3265,7 +3508,7 @@ namespace MArray
                 }
                 else
                 {
-                    for (size_type i = 0;i < length();i++)
+                    for (stride_type i = 0;i < length();i++)
                     {
                         data_[i*stride()] = x;
                     }
