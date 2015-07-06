@@ -16,3 +16,6 @@ test/test.cxx
 test/test.log
 test/test.trs
 test/Makefile.in
+.ptp-sync
+.ptp-sync-folder
+.settings
