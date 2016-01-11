@@ -903,16 +903,9 @@ namespace MArray
         template <typename T, unsigned ndim, typename... Args>
         struct are_reset_args
         {
-            template <typename... Args_>
-            struct are_direct_args : std::true_type {};
-
-            template <typename... Args_>
-            struct are_ptr_args : std::false_type {};
-
-            template <typename... Args_>
-            struct are_remaining_args
-            : std::integral_constant<bool, are_direct_args<Args_...>::value ||
-                                           are_ptr_args<Args_...>::value> {};
+            template <typename... Args_> struct are_direct_args;
+            template <typename... Args_> struct are_ptr_args;
+            template <typename... Args_> struct are_remaining_args;
 
             constexpr static bool value = are_integral<ndim, are_remaining_args, typename std::decay<Args>::type...>::value;
 
@@ -968,6 +961,10 @@ namespace MArray
         };
 
         template <typename T, unsigned ndim, typename... Args>
+        template <typename... Args_>
+        struct are_reset_args<T, ndim, Args...>::are_direct_args : std::true_type {};
+
+        template <typename T, unsigned ndim, typename... Args>
         template <typename Arg>
         struct are_reset_args<T, ndim, Args...>::are_direct_args<Arg>
         : std::integral_constant<bool, std::is_convertible<Arg,T>::value ||
@@ -1002,6 +999,10 @@ namespace MArray
         struct are_reset_args<T, ndim, Args...>::are_direct_args<Arg1, Arg2, Arg3, Arg4, Args_...> : std::false_type {};
 
         template <typename T, unsigned ndim, typename... Args>
+        template <typename... Args_>
+        struct are_reset_args<T, ndim, Args...>::are_ptr_args : std::false_type {};
+
+        template <typename T, unsigned ndim, typename... Args>
         template <typename Arg>
         struct are_reset_args<T, ndim, Args...>::are_ptr_args<Arg> : std::is_convertible<Arg,const T*> {};
 
@@ -1014,6 +1015,12 @@ namespace MArray
         struct are_reset_args<T, ndim, Args...>::are_ptr_args<Arg, Args_...>
         : std::integral_constant<bool, std::is_convertible<Arg,const T*>::value &&
                                        are_integral<ndim, are_empty, Args_...>::value> {};
+
+        template <typename T, unsigned ndim, typename... Args>
+        template <typename... Args_>
+        struct are_reset_args<T, ndim, Args...>::are_remaining_args
+        : std::integral_constant<bool, are_direct_args<Args_...>::value ||
+                                       are_ptr_args<Args_...>::value> {};
 
         /*
          * Helper class to determine if the arguments Args... are of one of the
@@ -3247,11 +3254,9 @@ namespace MArray
             marray(const std::array<U, 1>& len, pointer ptr, const std::array<V, 1>& stride)
             : const_marray<T, 1>(len, ptr, stride) {}
 
-            template <typename U>
             marray(idx_type len, pointer ptr, Layout layout = DEFAULT)
             : const_marray<T, 1>(len, ptr, layout) {}
 
-            template <typename U, typename V>
             marray(idx_type len, pointer ptr, stride_type stride)
             : const_marray<T, 1>(len, ptr, stride) {}
 
