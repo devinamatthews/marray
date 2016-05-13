@@ -19,16 +19,8 @@ namespace MArray
     std::vector<typename std::decay<T>::type>
     make_vector(T&& t, Args&&... args)
     {
-        return std::vector<typename std::decay<T>::type>
-            {{std::forward<T>(t), std::forward<Args>(args)...}};
+        return {{std::forward<T>(t), std::forward<Args>(args)...}};
     }
-
-    MARRAY_TEST
-    (
-        std::vector<int> x1 = {1, 2, 3, 4};
-        auto x2 = make_vector(1, 2, 3, 4);
-        assert(x1 == x2);
-    )
 
     /*
      * Create an array from the specified elements, where the type of the array
@@ -38,16 +30,8 @@ namespace MArray
     std::array<typename std::decay<T>::type, sizeof...(Args)+1>
     make_array(T&& t, Args&&... args)
     {
-        return std::array<typename std::decay<T>::type, sizeof...(Args)+1>
-            {{std::forward<T>(t), std::forward<Args>(args)...}};
+        return {{std::forward<T>(t), std::forward<Args>(args)...}};
     }
-
-    MARRAY_TEST
-    (
-        std::array<int, 4> x1 = {1, 2, 3, 4};
-        auto x2 = make_array(1, 2, 3, 4);
-        assert(x1 == x2);
-    )
 
     template <typename T>
     class range_t
@@ -88,23 +72,10 @@ namespace MArray
                         return val != other.val;
                     }
 
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        assert(r.begin() == r.end()-4);
-                        assert(r.begin() != r.end());
-                    )
-
                     value_type operator*() const
                     {
                         return val;
                     }
-
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        assert(*r.begin() == 1);
-                    )
 
                     iterator& operator++()
                     {
@@ -119,15 +90,6 @@ namespace MArray
                         return old;
                     }
 
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        auto i = r.begin();
-                        ++i;
-                        auto j = i++;
-                        assert(*i == 3 && *j == 2);
-                    )
-
                     iterator& operator--()
                     {
                         --val;
@@ -140,15 +102,6 @@ namespace MArray
                         --val;
                         return old;
                     }
-
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        auto i = r.begin();
-                        --i;
-                        auto j = i--;
-                        assert(*i == -1 && *j == 0);
-                    )
 
                     iterator& operator+=(difference_type n)
                     {
@@ -166,16 +119,6 @@ namespace MArray
                         return iterator(i.val+n);
                     }
 
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        auto i = r.begin();
-                        assert(*(i+2) == 3);
-                        assert(*(5+i) == 6);
-                        i += 1;
-                        assert(*i == 2);
-                    )
-
                     iterator& operator-=(difference_type n)
                     {
                         val -= n;
@@ -187,25 +130,10 @@ namespace MArray
                         return iterator(val-n);
                     }
 
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        auto i = r.begin();
-                        assert(*(i-2) == -1);
-                        i -= 1;
-                        assert(*i == 0);
-                    )
-
                     difference_type operator-(const iterator& other)
                     {
                         return val-other.val;
                     }
-
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        assert(r.end()-r.begin() == 4);
-                    )
 
                     bool operator<(const iterator& other)
                     {
@@ -227,43 +155,16 @@ namespace MArray
                         return val >= other.val;
                     }
 
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        assert(r.begin() < r.end());
-                        assert(r.end() > r.begin());
-                        assert(r.begin() <= r.end());
-                        assert(r.end() >= r.begin());
-                        assert(r.begin() <= r.begin());
-                        assert(r.begin() >= r.begin());
-                    )
-
                     value_type operator[](difference_type n) const
                     {
                         return val+n;
                     }
-
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        assert(r.begin()[7] == 8);
-                    )
 
                     friend void swap(iterator& a, iterator& b)
                     {
                         using std::swap;
                         swap(a.val, b.val);
                     }
-
-                    MARRAY_TEST
-                    (
-                        range_t<int> r(1, 5);
-                        auto b = r.begin();
-                        auto e = r.end();
-                        swap(b, e);
-                        assert(b == r.end());
-                        assert(e == r.begin());
-                    )
             };
 
             constexpr range_t(T from, T to) : from(from), to(to) {}
@@ -272,12 +173,6 @@ namespace MArray
             {
                 return to-from;
             }
-
-            MARRAY_TEST
-            (
-                range_t<int> r(1, 5);
-                assert(r.size() == 4);
-            )
 
             iterator begin() const
             {
@@ -289,13 +184,6 @@ namespace MArray
                 return iterator(to);
             }
 
-            MARRAY_TEST
-            (
-                range_t<int> r(1, 5);
-                assert(*r.begin() == 1);
-                assert(*r.end() == 5);
-            )
-
             value_type front() const
             {
                 return from;
@@ -303,39 +191,18 @@ namespace MArray
 
             value_type back() const
             {
-                return to;
+                return to-1;
             }
-
-            MARRAY_TEST
-            (
-                range_t<int> r(1, 5);
-                assert(r.front() == 1);
-                assert(r.back() == 5);
-            )
 
             value_type operator[](size_type n) const
             {
                 return from+n;
             }
 
-            MARRAY_TEST
-            (
-                range_t<int> r(1, 5);
-                assert(r[7] == 8);
-            )
-
             operator std::vector<T>() const
             {
                 return std::vector<T>(begin(), end());
             }
-
-            MARRAY_TEST
-            (
-                range_t<int> r(1, 5);
-                std::vector<int> x1 = {1, 2, 3, 4};
-                std::vector<int> x2 = r;
-                assert(x1 == x2);
-            )
     };
 
     template <typename T>
@@ -344,25 +211,11 @@ namespace MArray
         return range_t<T>(T(), to);
     }
 
-    MARRAY_TEST
-    (
-        std::vector<int> x1 = {0, 1, 2, 3};
-        std::vector<int> x2 = range(4);
-        assert(x1 == x2);
-    )
-
     template <typename T>
     range_t<T> range(T from, T to)
     {
         return range_t<T>(from, to);
     }
-
-    MARRAY_TEST
-    (
-        std::vector<int> x1 = {1, 2, 3, 4};
-        std::vector<int> x2 = range(1, 5);
-        assert(x1 == x2);
-    )
 }
 
 #endif
