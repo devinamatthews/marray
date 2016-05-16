@@ -24,6 +24,8 @@ AX_CXX_COMPILE_STDCXX_11([noext])
 AC_LANG([C++])
 LT_INIT
 
+mkdir -p bin
+
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_SUBDIRS([external/googletest])
 AC_OUTPUT

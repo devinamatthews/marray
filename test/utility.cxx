@@ -2,18 +2,19 @@
 
 #include "gtest/gtest.h"
 
+using namespace std;
 using namespace MArray;
 
 TEST(utility, make_vector)
 {
-    std::vector<int> x1 = {1, 2, 3, 4};
+    vector<int> x1 = {1, 2, 3, 4};
     auto x2 = make_vector(1, 2, 3, 4);
     EXPECT_EQ(x1, x2);
 }
 
 TEST(utility, make_array)
 {
-    std::array<int, 4> x1 = {1, 2, 3, 4};
+    array<int, 4> x1 = {1, 2, 3, 4};
     auto x2 = make_array(1, 2, 3, 4);
     EXPECT_EQ(x1, x2);
 }
@@ -47,8 +48,8 @@ TEST(utility, range_iterator_decrement)
     auto i = r.end();
     --i;
     auto j = i--;
-    EXPECT_EQ(4, *i);
-    EXPECT_EQ(3, *j);
+    EXPECT_EQ(3, *i);
+    EXPECT_EQ(4, *j);
 }
 
 TEST(utility, range_iterator_add)
@@ -132,21 +133,21 @@ TEST(utility, range_index)
 TEST(utility, range_vector)
 {
     range_t<int> r(1, 5);
-    std::vector<int> x1 = {1, 2, 3, 4};
-    std::vector<int> x2 = r;
+    vector<int> x1 = {1, 2, 3, 4};
+    vector<int> x2 = r;
     EXPECT_EQ(x1, x2);
 }
 
 TEST(utility, range_to)
 {
-    std::vector<int> x1 = {0, 1, 2, 3};
-    std::vector<int> x2 = range(4);
+    vector<int> x1 = {0, 1, 2, 3};
+    vector<int> x2 = range(4);
     EXPECT_EQ(x1, x2);
 }
 
 TEST(utility, range_from_to)
 {
-    std::vector<int> x1 = {1, 2, 3, 4};
-    std::vector<int> x2 = range(1, 5);
+    vector<int> x1 = {1, 2, 3, 4};
+    vector<int> x2 = range(1, 5);
     EXPECT_EQ(x1, x2);
 }
