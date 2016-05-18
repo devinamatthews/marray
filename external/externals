@@ -1,1 +1,0 @@
-googletest, https://github.com/google/googletest.git, d225acc, /googletest, autoreconf -i

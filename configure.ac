@@ -22,10 +22,10 @@ AH_BOTTOM([
 AC_PROG_CXX([g++ clang++ icpc])
 AX_CXX_COMPILE_STDCXX_11([noext])
 AC_LANG([C++])
-LT_INIT
 
+mkdir -p external
+mkdir -p lib
 mkdir -p bin
 
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_SUBDIRS([external/googletest])
 AC_OUTPUT

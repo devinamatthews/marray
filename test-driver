@@ -104,6 +104,7 @@ trap "st=141; $do_exit" 13
 trap "st=143; $do_exit" 15
 
 # Test script is run here.
+"$@"
 "$@" >$log_file 2>&1
 estatus=$?
 
