@@ -2340,6 +2340,10 @@ namespace MArray
         const_matrix_view<T> bt = (transb ? b^T : b);
               matrix_view<T> ct = (transc ? c^T : c);
 
+        assert(at.length(0) == ct.length(0));
+        assert(bt.length(1) == ct.length(1));
+        assert(at.length(1) == bt.length(0));
+
         gemm(alpha, at.data(), at.stride(1),
                     bt.data(), bt.stride(1),
               beta, ct.data(), ct.stride(1));
