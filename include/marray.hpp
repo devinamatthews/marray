@@ -1352,6 +1352,59 @@ namespace MArray
                 return permute(make_array((unsigned)std::forward<Args>(args)...));
             }
 
+            template <typename U, unsigned newdim>
+            const_marray_view<T, newdim+1> lower(const std::array<U, newdim>& split) const
+            {
+                assert(newdim < ndim);
+
+                for (unsigned i = 0;i < newdim;i++)
+                {
+                    assert(split[i] <= ndim);
+                    if (i != 0) assert(split[i-1] <= split[i]);
+                }
+
+                std::array<idx_type, newdim> newlen;
+                std::array<stride_type, newdim> newstride;
+
+                for (unsigned i = 0;i <= newdim;i++)
+                {
+                    int begin = (i == 0 ? 0 : split[i-1]);
+                    int end = (i == newdim-1 ? ndim-1 : split[i]-1);
+                    if (begin > end) continue;
+
+                    if (stride_[begin] < stride_[end])
+                    {
+                        newlen[i] = len_[end];
+                        newstride[i] = stride_[begin];
+                        for (unsigned j = begin;j < end;j++)
+                        {
+                            assert(stride_[j+1] == stride_[j]*len_[j]);
+                            newlen[i] *= len_[j];
+                        }
+                    }
+                    else
+                    {
+                        newlen[i] = len_[end];
+                        newstride[i] = stride_[end];
+                        for (unsigned j = begin;j < end;j++)
+                        {
+                            assert(stride_[j] == stride_[j+1]*len_[j+1]);
+                            newlen[i] *= len_[j];
+                        }
+                    }
+                }
+
+                return {newlen, data_, newstride};
+            }
+
+            template <typename... Args>
+            detail::enable_if_t<detail::are_convertible<unsigned, Args...>::value,
+                                const_marray_view<T, sizeof...(Args)+1>>
+            lower(Args&&... args) const
+            {
+                return lower(make_array((unsigned)std::forward<Args>(args)...));
+            }
+
             template <unsigned ndim_=ndim>
             typename std::enable_if<ndim_==1, const_reference>::type
             front() const
@@ -1629,6 +1682,22 @@ namespace MArray
             permute(Args&&... args)
             {
                 return base::permute(std::forward<Args>(args)...);
+            }
+
+            using base::lower;
+
+            template <typename U, unsigned newdim>
+            marray_view<T, newdim+1> lower(const std::array<U, newdim>& split)
+            {
+                return base::lower(split);
+            }
+
+            template <typename... Args>
+            detail::enable_if_t<detail::are_convertible<unsigned, Args...>::value,
+                                marray_view<T, sizeof...(Args)+1>>
+            lower(Args&&... args)
+            {
+                return base::lower(std::forward<Args>(args)...);
             }
 
             void rotate_dim(unsigned dim, stride_type shift)
@@ -2139,6 +2208,9 @@ namespace MArray
 
             using base::permute;
             using parent::permute;
+
+            using base::lower;
+            using parent::lower;
 
             using parent::rotate_dim;
             using parent::rotate;
