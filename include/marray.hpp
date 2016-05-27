@@ -6,6 +6,7 @@
 #include <cassert>
 #include <algorithm>
 #include <iostream>
+#include <numeric>
 #include <utility>
 
 #include "miterator.hpp"
@@ -21,20 +22,24 @@
 #define MARRAY_STRIDE_ALIGNMENT VECTOR_ALIGNMENT
 #endif
 
+#ifndef MARRAY_BLAS_PROTOTYPED
 extern "C"
 {
 
 void sgemm_(const char* transa, const char* transb,
+            const int* m, const int* n, const int* k,
             const float* alpha, const float* A, const int* lda,
                                 const float* B, const int* ldb,
             const float*  beta,       float* C, const int* ldc);
 
 void dgemm_(const char* transa, const char* transb,
+            const int* m, const int* n, const int* k,
             const double* alpha, const double* A, const int* lda,
                                  const double* B, const int* ldb,
             const double*  beta,       double* C, const int* ldc);
 
 }
+#endif
 
 namespace MArray
 {
@@ -83,7 +88,7 @@ namespace MArray
          * dimension i of length len_i (i.e. it selects all of the data along
          * that dimension).
          */
-        struct all_t {};
+        struct all_t { constexpr all_t() {} };
         constexpr all_t all;
     }
 
@@ -92,10 +97,10 @@ namespace MArray
      * does not default- or value-initialize its elements (useful for avoiding
      * redundant memory operations for scalar types).
      */
-    struct uninitialized_t {};
+    struct uninitialized_t { constexpr uninitialized_t() {} };
     constexpr uninitialized_t uninitialized;
 
-    struct transpose_t {};
+    struct transpose_t { constexpr transpose_t() {} };
     namespace transpose { constexpr transpose_t T; }
 
     /*
@@ -462,9 +467,9 @@ namespace MArray
         template <typename T, unsigned ndim, unsigned dim>
         class const_marray_ref
         {
-            template <typename T_, unsigned ndim_> friend class const_marray_view;
-            template <typename T_, unsigned ndim_> friend class marray_view;
-            template <typename T_, unsigned ndim_, typename Allocator_> friend class marray;
+            template <typename T_, unsigned ndim_> friend class MArray::const_marray_view;
+            template <typename T_, unsigned ndim_> friend class MArray::marray_view;
+            template <typename T_, unsigned ndim_, typename Allocator_> friend class MArray::marray;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class const_marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
@@ -572,9 +577,9 @@ namespace MArray
         template <typename T, unsigned ndim, unsigned dim>
         class marray_ref : public const_marray_ref<T, ndim, dim>
         {
-            template <typename T_, unsigned ndim_> friend class const_marray_view;
-            template <typename T_, unsigned ndim_> friend class marray_view;
-            template <typename T_, unsigned ndim_, typename Allocator_> friend class marray;
+            template <typename T_, unsigned ndim_> friend class MArray::const_marray_view;
+            template <typename T_, unsigned ndim_> friend class MArray::marray_view;
+            template <typename T_, unsigned ndim_, typename Allocator_> friend class MArray::marray;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class const_marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
@@ -742,9 +747,9 @@ namespace MArray
         template <typename T, unsigned ndim, unsigned dim, unsigned newdim>
         class const_marray_slice
         {
-            template <typename T_, unsigned ndim_> friend class const_marray_view;
-            template <typename T_, unsigned ndim_> friend class marray_view;
-            template <typename T_, unsigned ndim_, typename Allocator_> friend class marray;
+            template <typename T_, unsigned ndim_> friend class MArray::const_marray_view;
+            template <typename T_, unsigned ndim_> friend class MArray::marray_view;
+            template <typename T_, unsigned ndim_, typename Allocator_> friend class MArray::marray;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class const_marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
@@ -889,9 +894,9 @@ namespace MArray
         template <typename T, unsigned ndim, unsigned dim, unsigned newdim>
         class marray_slice : public const_marray_slice<T, ndim, dim, newdim>
         {
-            template <typename T_, unsigned ndim_> friend class const_marray_view;
-            template <typename T_, unsigned ndim_> friend class marray_view;
-            template <typename T_, unsigned ndim_, typename Allocator_> friend class marray;
+            template <typename T_, unsigned ndim_> friend class MArray::const_marray_view;
+            template <typename T_, unsigned ndim_> friend class MArray::marray_view;
+            template <typename T_, unsigned ndim_, typename Allocator_> friend class MArray::marray;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class const_marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
             template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
@@ -988,7 +993,7 @@ namespace MArray
                 typename std::enable_if<diff==0, marray_view<T, newdim+1>>::type
                 operator[](const range_t<I>& x)
                 {
-                    return parent::operator[](x);
+                    return {parent::operator[](x)};
                 }
 
                 template <typename I, int diff=ndim-dim>
@@ -1002,7 +1007,7 @@ namespace MArray
                 typename std::enable_if<diff==0, marray_view<T, newdim+1>>::type
                 operator[](slice::all_t x)
                 {
-                    return parent::operator[](x);
+                    return {parent::operator[](x)};
                 }
 
                 template <int diff=ndim-dim>
@@ -1043,7 +1048,7 @@ namespace MArray
 
                 operator marray_view<T, ndim+newdim-dim+1>()
                 {
-                    return parent::operator const_marray_view<T, ndim+newdim-dim+1>();
+                    return {parent::operator const_marray_view<T, ndim+newdim-dim+1>()};
                 }
         };
 
@@ -1074,10 +1079,10 @@ namespace MArray
         template <typename T_, unsigned ndim_> friend class const_marray_view;
         template <typename T_, unsigned ndim_> friend class marray_view;
         template <typename T_, unsigned ndim_, typename Allocator_> friend class marray;
-        template <typename T_, unsigned ndim_, unsigned dim_> friend class const_marray_ref;
-        template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
-        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
-        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_> friend class detail::const_marray_ref;
+        template <typename T_, unsigned ndim_, unsigned dim_> friend class detail::marray_ref;
+        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class detail::const_marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class detail::marray_slice;
 
         public:
             typedef unsigned idx_type;
@@ -1176,7 +1181,7 @@ namespace MArray
 
             template <typename... Args>
             using ends_with_stride = detail::are_convertible<stride_type,
-                detail::trailing_types_t<sizeof...(Args)-ndim, Args...>>;
+                detail::trailing_types_t<(sizeof...(Args) > ndim ? sizeof...(Args)-ndim : 0), Args...>>;
 
             void reset()
             {
@@ -1580,10 +1585,10 @@ namespace MArray
         template <typename T_, unsigned ndim_> friend class const_marray_view;
         template <typename T_, unsigned ndim_> friend class marray_view;
         template <typename T_, unsigned ndim_, typename Allocator_> friend class marray;
-        template <typename T_, unsigned ndim_, unsigned dim_> friend class const_marray_ref;
-        template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
-        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
-        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_> friend class detail::const_marray_ref;
+        template <typename T_, unsigned ndim_, unsigned dim_> friend class detail::marray_ref;
+        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class detail::const_marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class detail::marray_slice;
 
         protected:
             typedef const_marray_view<T, ndim> base;
@@ -1632,12 +1637,6 @@ namespace MArray
             marray_view(marray_view&& other)
             : parent(other) {}
 
-            marray_view& operator=(const marray_view<T, ndim>& other)
-            {
-                copy(other, *this);
-                return *this;
-            }
-
             template <typename U>
             marray_view(const std::array<U, ndim>& len, pointer ptr, Layout layout=DEFAULT)
             {
@@ -1665,6 +1664,25 @@ namespace MArray
             marray_view(Args&&... args)
             {
                 reset(std::forward<Args>(args)...);
+            }
+
+            marray_view& operator=(const const_marray_view<T, ndim>& other)
+            {
+                copy(other, *this);
+                return *this;
+            }
+
+            marray_view& operator=(const marray_view& other)
+            {
+                return operator=(static_cast<const const_marray_view<T, ndim>&>(other));
+            }
+
+            marray_view& operator=(const T& value)
+            {
+                auto it = make_iterator(len_, stride_);
+                auto a_ = data_;
+                while (it.next(a_)) *a_ = value;
+                return *this;
             }
 
             using base::permute;
@@ -1765,8 +1783,7 @@ namespace MArray
 
             template <typename... Args>
             detail::enable_if_t<sizeof...(Args) == ndim &&
-                                detail::are_convertible<stride_type, Args...>::value,
-                                marray_view<T, ndim>>
+                                detail::are_convertible<stride_type, Args...>::value>
             rotate(Args&&... args)
             {
                 rotate(make_array((stride_type)std::forward<Args>(args)...));
@@ -1895,10 +1912,10 @@ namespace MArray
         template <typename T_, unsigned ndim_> friend class const_marray_view;
         template <typename T_, unsigned ndim_> friend class marray_view;
         template <typename T_, unsigned ndim_, typename Allocator_> friend class marray;
-        template <typename T_, unsigned ndim_, unsigned dim_> friend class const_marray_ref;
-        template <typename T_, unsigned ndim_, unsigned dim_> friend class marray_ref;
-        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class const_marray_slice;
-        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_> friend class detail::const_marray_ref;
+        template <typename T_, unsigned ndim_, unsigned dim_> friend class detail::marray_ref;
+        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class detail::const_marray_slice;
+        template <typename T_, unsigned ndim_, unsigned dim_, unsigned newdim_> friend class detail::marray_slice;
 
         protected:
             typedef const_marray_view<T, ndim> base;
@@ -1994,15 +2011,11 @@ namespace MArray
                 reset();
             }
 
-            marray& operator=(const marray_view<T, ndim>& other)
-            {
-                copy(other, *this);
-                return *this;
-            }
+            using parent::operator=;
 
             marray& operator=(const marray& other)
             {
-                copy(other, *this);
+                parent::operator=(other);
                 return *this;
             }
 
@@ -2305,29 +2318,37 @@ namespace MArray
         return const_cast<matrix_view<T>&>(m)^transpose::T;
     }
 
-    void gemm(float alpha, const float* a, int lda
+    inline
+    void gemm(int m, int n, int k,
+              float alpha, const float* a, int lda,
                            const float* b, int ldb,
               float  beta,       float* c, int ldc)
     {
-        sgemm_("N", "N", &alpha, a, &lda,
-                                 b, &ldb,
-                          &beta, c, &ldc);
+        sgemm_("N", "N", &m, &n, &k,
+               &alpha, a, &lda,
+                       b, &ldb,
+                &beta, c, &ldc);
     }
 
-    void gemm(double alpha, const double* a, int lda
+    inline
+    void gemm(int m, int n, int k,
+              double alpha, const double* a, int lda,
                             const double* b, int ldb,
               double  beta,       double* c, int ldc)
     {
-        dgemm_("N", "N", &alpha, a, &lda,
-                                 b, &ldb,
-                          &beta, c, &ldc);
+        dgemm_("N", "N", &m, &n, &k,
+               &alpha, a, &lda,
+                       b, &ldb,
+                &beta, c, &ldc);
     }
 
-    template <typename T>
-    void gemm(const T& alpha, const const_matrix_view<T>& a,
-                              const const_matrix_view<T>& b,
-              const T&  beta,             matrix_view<T>& c)
+    template <typename U>
+    void gemm(const U& alpha, const const_matrix_view<U>& a,
+                              const const_matrix_view<U>& b,
+              const U&  beta,             matrix_view<U>& c)
     {
+        using transpose::T;
+
         assert(a.stride(0) == 1 || a.stride(1) == 1);
         assert(b.stride(0) == 1 || b.stride(1) == 1);
         assert(c.stride(0) == 1 || c.stride(1) == 1);
@@ -2336,15 +2357,16 @@ namespace MArray
         bool transa = (a.stride(1) == 1) != transc;
         bool transb = (b.stride(1) == 1) != transc;
 
-        const_matrix_view<T> at = (transa ? a^T : a);
-        const_matrix_view<T> bt = (transb ? b^T : b);
-              matrix_view<T> ct = (transc ? c^T : c);
+        const_matrix_view<U> at = (transa ? a^T : a);
+        const_matrix_view<U> bt = (transb ? b^T : b);
+              matrix_view<U> ct = (transc ? c^T : c);
 
         assert(at.length(0) == ct.length(0));
         assert(bt.length(1) == ct.length(1));
         assert(at.length(1) == bt.length(0));
 
-        gemm(alpha, at.data(), at.stride(1),
+        gemm(ct.length(0), ct.length(1), at.length(1),
+             alpha, at.data(), at.stride(1),
                     bt.data(), bt.stride(1),
               beta, ct.data(), ct.stride(1));
     }
