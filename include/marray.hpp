@@ -382,6 +382,7 @@ namespace MArray
             }
         };
 
+        /*
         template <typename... Parameters>
         struct check_types
         {
@@ -409,9 +410,25 @@ namespace MArray
         template <template <typename...> class Condition, typename... Args>
         struct check_types<Parameters...>::do_check<Condition, types<Args...>>
         : check_types<Parameters...>::template do_check<Condition, Args...> {};
+        */
 
         template <typename T, typename... Args>
-        using are_convertible = typename check_types<T>::template do_check<std::is_convertible, Args...>;
+        struct are_convertible;
+
+        template <typename T>
+        struct are_convertible<T> : std::true_type {};
+
+        template <typename T, typename Arg, typename... Args>
+        struct are_convertible<T, Arg, Args...> :
+            conditional_t<std::is_convertible<Arg, T>::value,
+                          are_convertible<T, Args...>,
+                          std::false_type> {};
+
+        template <typename T, typename... Args>
+        struct are_convertible<T, types<Args...>> : are_convertible<T, Args...> {};
+
+        //template <typename T, typename... Args>
+        //struct are_convertible : check_types<T>::template do_check<std::is_convertible, Args...> {};
 
         template <typename T, typename=void>
         struct is_index_or_slice_helper : std::false_type {};
@@ -426,10 +443,25 @@ namespace MArray
         struct is_index_or_slice_helper<slice::all_t> : std::true_type {};
 
         template <typename T>
-        using is_index_or_slice = is_index_or_slice_helper<typename std::decay<T>::type>;
+        struct is_index_or_slice : is_index_or_slice_helper<typename std::decay<T>::type> {};
 
         template <typename... Args>
-        using are_indices_or_slices = typename check_types<>::template do_check<is_index_or_slice, Args...>;
+        struct are_indices_or_slices;
+
+        template<>
+        struct are_indices_or_slices<> : std::true_type {};
+
+        template <typename Arg, typename... Args>
+        struct are_indices_or_slices<Arg, Args...> :
+            conditional_t<is_index_or_slice<Arg>::value,
+                          are_indices_or_slices<Args...>,
+                          std::false_type> {};
+
+        template <typename... Args>
+        struct are_indices_or_slices<types<Args...>> : are_indices_or_slices<Args...> {};
+
+        //template <typename... Args>
+        //struct are_indices_or_slices : check_types<>::template do_check<is_index_or_slice, Args...> {};
     }
 
     template <typename T, unsigned ndim>
@@ -1152,6 +1184,39 @@ namespace MArray
             }
 
             template <typename... Args>
+            struct starts_with_len : detail::are_convertible<idx_type,
+                detail::leading_types_t<ndim, Args...>> {};
+
+            template <typename... Args>
+            struct has_const_ptr : detail::are_convertible<const_pointer,
+                detail::nth_type_t<ndim, Args...>> {};
+
+            template <typename... Args>
+            struct has_ptr : detail::are_convertible<pointer,
+                detail::nth_type_t<ndim, Args...>> {};
+
+            template <typename... Args>
+            struct has_value : detail::are_convertible<const_reference,
+                detail::nth_type_t<ndim, Args...>> {};
+
+            template <typename... Args>
+            struct has_uninit : detail::are_convertible<uninitialized_t,
+                detail::nth_type_t<ndim, Args...>> {};
+
+            template <typename... Args>
+            struct has_layout : detail::are_convertible<Layout,
+                detail::nth_type_t<ndim+1, Args...>> {};
+
+            template <typename... Args>
+            struct has_layout_early : detail::are_convertible<Layout,
+                detail::nth_type_t<ndim, Args...>> {};
+
+            template <typename... Args>
+            struct ends_with_stride : detail::are_convertible<stride_type,
+                detail::trailing_types_t<(sizeof...(Args) > ndim ? sizeof...(Args)-ndim : 0), Args...>> {};
+
+            /*
+            template <typename... Args>
             using starts_with_len = detail::are_convertible<idx_type,
                 detail::leading_types_t<ndim, Args...>>;
 
@@ -1182,6 +1247,7 @@ namespace MArray
             template <typename... Args>
             using ends_with_stride = detail::are_convertible<stride_type,
                 detail::trailing_types_t<(sizeof...(Args) > ndim ? sizeof...(Args)-ndim : 0), Args...>>;
+            */
 
             void reset()
             {
