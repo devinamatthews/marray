@@ -257,14 +257,80 @@ namespace MArray
         template <unsigned N, typename... Args>
         using nth_type_t = middle_types_t<N, N+1, Args...>;
 
-        struct apply_some_args
+        /*
+        struct apply_leading_args_helper
+        {
+            template <typename Types>
+            struct leading;
+        };
+
+        template <typename... Args1>
+        struct apply_leading_args_helper::leading<types<Args1...>>
+        {
+            template <typename Types>
+            struct trailing;
+        };
+
+        template <typename... Args1>
+        template <typename... Args2>
+        struct apply_leading_args_helper::leading<types<Args1...>>::trailing<types<Args2...>>
+        {
+            template <typename Func, size_t Size=sizeof...(Args1)>
+            enable_if_t<Size == 0, typename std::result_of<Func(Args2&&...)>::type>
+            operator()(Func&& func, Args1&&... args1, Args2&&... args2) const
+            {
+                return func();
+            }
+
+            template <typename Func, size_t Size=sizeof...(Args1)>
+            enable_if_t<Size != 0, typename std::result_of<Func(Args2&&...)>::type>
+            operator()(Func&& func, Args1&&... args1, Args2&&... args2) const
+            {
+                return func(std::forward<Args1>(args1)...);
+            }
+        };
+
+        struct apply_trailing_args_helper
+        {
+            template <typename Types1>
+            struct leading;
+        };
+
+        template <typename... Args1>
+        struct apply_trailing_args_helper::leading<types<Args1...>>
+        {
+            template <typename Types>
+            struct trailing;
+        };
+
+        template <typename... Args1>
+        template <typename... Args2>
+        struct apply_trailing_args_helper::leading<types<Args1...>>::trailing<types<Args2...>>
+        {
+            template <typename Func, size_t Size=sizeof...(Args2)>
+            enable_if_t<Size == 0, typename std::result_of<Func(Args2&&...)>::type>
+            operator()(Func&& func, Args1&&... args1, Args2&&... args2) const
+            {
+                return func();
+            }
+
+            template <typename Func, size_t Size=sizeof...(Args2)>
+            enable_if_t<Size != 0, typename std::result_of<Func(Args2&&...)>::type>
+            operator()(Func&& func, Args1&&... args1, Args2&&... args2) const
+            {
+                return func(std::forward<Args2>(args2)...);
+            }
+        };
+        */
+
+        struct apply_middle_args_helper
         {
             template <typename Types1>
             struct leading;
         };
 
         template <typename... Args>
-        struct apply_some_args::leading<types<Args...>>
+        struct apply_middle_args_helper::leading<types<Args...>>
         {
             template <typename Types>
             struct middle;
@@ -272,7 +338,7 @@ namespace MArray
 
         template <typename... Args1>
         template <typename... Args2>
-        struct apply_some_args::leading<types<Args1...>>::middle<types<Args2...>>
+        struct apply_middle_args_helper::leading<types<Args1...>>::middle<types<Args2...>>
         {
             template <typename Types>
             struct trailing;
@@ -281,38 +347,111 @@ namespace MArray
         template <typename... Args1>
         template <typename... Args2>
         template <typename... Args3>
-        struct apply_some_args::leading<types<Args1...>>::middle<types<Args2...>>::trailing<types<Args3...>>
+        struct apply_middle_args_helper::leading<types<Args1...>>::middle<types<Args2...>>::trailing<types<Args3...>>
         {
-            template <typename Func, size_t Size=sizeof...(Args2)>
-            enable_if_t<Size == 0, typename std::result_of<Func(Args2&&...)>::type>
-            operator()(Func&& func, Args1&&... args1, Args2&&... args2, Args3&&... args3) const
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 == 0 && Size2 == 0 && Size3 == 0,
+                        typename std::result_of<Func()>::type>
+            operator()(Func&& func) const
             {
                 return func();
             }
 
-            template <typename Func, size_t Size=sizeof...(Args2)>
-            enable_if_t<Size != 0, typename std::result_of<Func(Args2&&...)>::type>
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 != 0 && Size2 == 0 && Size3 == 0,
+                        typename std::result_of<Func()>::type>
+            operator()(Func&& func, Args1&&... args1) const
+            {
+                return func();
+            }
+
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 == 0 && Size2 != 0 && Size3 == 0,
+                        typename std::result_of<Func(Args2&&...)>::type>
+            operator()(Func&& func, Args2&&... args2) const
+            {
+                return func(std::forward<Args2>(args2)...);
+            }
+
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 != 0 && Size2 != 0 && Size3 == 0,
+                        typename std::result_of<Func(Args2&&...)>::type>
+            operator()(Func&& func, Args1&&... args1, Args2&&... args2) const
+            {
+                return func(std::forward<Args2>(args2)...);
+            }
+
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 == 0 && Size2 == 0 && Size3 != 0,
+                        typename std::result_of<Func()>::type>
+            operator()(Func&& func, Args3&&... args3) const
+            {
+                return func();
+            }
+
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 != 0 && Size2 == 0 && Size3 != 0,
+                        typename std::result_of<Func()>::type>
+            operator()(Func&& func, Args1&&... args1, Args3&&... args3) const
+            {
+                return func();
+            }
+
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 == 0 && Size2 != 0 && Size3 != 0,
+                        typename std::result_of<Func(Args2&&...)>::type>
+            operator()(Func&& func, Args2&&... args2, Args3&&... args3) const
+            {
+                return func(std::forward<Args2>(args2)...);
+            }
+
+            template <typename Func,
+                      size_t Size1=sizeof...(Args1),
+                      size_t Size2=sizeof...(Args2),
+                      size_t Size3=sizeof...(Args3)>
+            enable_if_t<Size1 != 0 && Size2 != 0 && Size3 != 0,
+                        typename std::result_of<Func(Args2&&...)>::type>
             operator()(Func&& func, Args1&&... args1, Args2&&... args2, Args3&&... args3) const
             {
                 return func(std::forward<Args2>(args2)...);
             }
         };
 
+        /*
         template <unsigned First>
         struct apply_trailing_args
         {
             template <typename Func, typename... Args>
             auto operator()(Func&& func, Args&&... args) ->
-            decltype(typename
-                     apply_some_args::template leading<leading_types_t<First, Args...>>
-                                    ::template middle<trailing_types_t<First, Args...>>
-                                    ::template trailing<types<>>
+            decltype(typename apply_trailing_args_helper
+                         ::template leading<leading_types_t<First, Args...>>
+                         ::template trailing<trailing_types_t<First, Args...>>
                          ()(std::forward<Func>(func), std::forward<Args>(args)...)) const
             {
-                return typename
-                apply_some_args::template leading<leading_types_t<First, Args...>>
-                               ::template middle<trailing_types_t<First, Args...>>
-                               ::template trailing<types<>>
+                return typename apply_trailing_args_helper
+                    ::template leading<leading_types_t<First, Args...>>
+                    ::template trailing<trailing_types_t<First, Args...>>
                     ()(std::forward<Func>(func), std::forward<Args>(args)...);
             }
         };
@@ -322,16 +461,53 @@ namespace MArray
         {
             template <typename Func, typename... Args>
             auto operator()(Func&& func, Args&&... args) ->
-            decltype(typename
-                     apply_some_args::template leading<types<>>
-                                    ::template middle<leading_types_t<Last, Args...>>
-                                    ::template trailing<trailing_types_t<Last, Args...>>
+            decltype(typename apply_leading_args_helper
+                         ::template leading<leading_types_t<Last, Args...>>
+                         ::template trailing<trailing_types_t<Last, Args...>>
                          ()(std::forward<Func>(func), std::forward<Args>(args)...)) const
             {
-                return typename
-                apply_some_args::template leading<types<>>
-                               ::template middle<leading_types_t<Last, Args...>>
-                               ::template trailing<trailing_types_t<Last, Args...>>
+                return typename apply_leading_args_helper
+                    ::template leading<leading_types_t<Last, Args...>>
+                    ::template trailing<trailing_types_t<Last, Args...>>
+                    ()(std::forward<Func>(func), std::forward<Args>(args)...);
+            }
+        };
+        */
+
+        template <unsigned First>
+        struct apply_trailing_args
+        {
+            template <typename Func, typename... Args>
+            auto operator()(Func&& func, Args&&... args) ->
+            decltype(typename apply_middle_args_helper
+                         ::template leading<leading_types_t<First, Args...>>
+                         ::template middle<trailing_types_t<First, Args...>>
+                         ::template trailing<types<>>
+                         ()(std::forward<Func>(func), std::forward<Args>(args)...)) const
+            {
+                return typename apply_middle_args_helper
+                    ::template leading<leading_types_t<First, Args...>>
+                    ::template middle<trailing_types_t<First, Args...>>
+                    ::template trailing<types<>>
+                    ()(std::forward<Func>(func), std::forward<Args>(args)...);
+            }
+        };
+
+        template <unsigned Last>
+        struct apply_leading_args
+        {
+            template <typename Func, typename... Args>
+            auto operator()(Func&& func, Args&&... args) ->
+            decltype(typename apply_middle_args_helper
+                         ::template leading<types<>>
+                         ::template middle<leading_types_t<Last, Args...>>
+                         ::template trailing<trailing_types_t<Last, Args...>>
+                         ()(std::forward<Func>(func), std::forward<Args>(args)...)) const
+            {
+                return typename apply_middle_args_helper
+                    ::template leading<types<>>
+                    ::template middle<leading_types_t<Last, Args...>>
+                    ::template trailing<trailing_types_t<Last, Args...>>
                     ()(std::forward<Func>(func), std::forward<Args>(args)...);
             }
         };
@@ -341,16 +517,16 @@ namespace MArray
         {
             template <typename Func, typename... Args>
             auto operator()(Func&& func, Args&&... args) ->
-            decltype(typename
-                     apply_some_args::template leading<leading_types_t<First, Args...>>
-                                    ::template middle<middle_types_t<First, Last, Args...>>
-                                    ::template trailing<trailing_types_t<Last, Args...>>
+            decltype(typename apply_middle_args_helper
+                         ::template leading<leading_types_t<First, Args...>>
+                         ::template middle<middle_types_t<First, Last, Args...>>
+                         ::template trailing<trailing_types_t<Last, Args...>>
                          ()(std::forward<Func>(func), std::forward<Args>(args)...)) const
             {
-                return typename
-                apply_some_args::template leading<leading_types_t<First, Args...>>
-                               ::template middle<middle_types_t<First, Last, Args...>>
-                               ::template trailing<trailing_types_t<Last, Args...>>
+                return typename apply_middle_args_helper
+                    ::template leading<leading_types_t<First, Args...>>
+                    ::template middle<middle_types_t<First, Last, Args...>>
+                    ::template trailing<trailing_types_t<Last, Args...>>
                     ()(std::forward<Func>(func), std::forward<Args>(args)...);
             }
         };
