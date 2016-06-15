@@ -1599,7 +1599,7 @@ namespace MArray
                 return permute(make_array((unsigned)std::forward<Args>(args)...));
             }
 
-            template <typename U, unsigned newdim>
+            template <typename U, size_t newdim>
             const_marray_view<T, newdim+1> lower(const std::array<U, newdim>& split) const
             {
                 assert(newdim < ndim);
@@ -1610,8 +1610,8 @@ namespace MArray
                     if (i != 0) assert(split[i-1] <= split[i]);
                 }
 
-                std::array<idx_type, newdim> newlen;
-                std::array<stride_type, newdim> newstride;
+                std::array<idx_type, newdim+1> newlen;
+                std::array<stride_type, newdim+1> newstride;
 
                 for (unsigned i = 0;i <= newdim;i++)
                 {
@@ -1815,10 +1815,10 @@ namespace MArray
                 return stride_;
             }
 
-            operator const marray_view<T, ndim>&() const
-            {
-                return static_cast<const marray_view<T, ndim>&>(*this);
-            }
+            //operator const marray_view<T, ndim>&() const
+            //{
+            //    return static_cast<const marray_view<T, ndim>&>(*this);
+            //}
     };
 
     template <typename T, unsigned ndim>
@@ -1946,7 +1946,7 @@ namespace MArray
 
             using base::lower;
 
-            template <typename U, unsigned newdim>
+            template <typename U, size_t newdim>
             marray_view<T, newdim+1> lower(const std::array<U, newdim>& split)
             {
                 return base::lower(split);
@@ -2542,22 +2542,21 @@ namespace MArray
     }
 
     template <typename T>
+    const_matrix_view<T> operator^(const const_matrix_view<T>& m, transpose_t t)
+    {
+        return {m.length(1), m.length(0), m.data(), m.stride(1), m.stride(0)};
+    }
+
+    template <typename T>
     matrix_view<T> operator^(matrix_view<T>& m, transpose_t t)
     {
-        return matrix_view<T>(m.length(1), m.length(0), m.data(),
-                              m.stride(1), m.stride(0));
+        return {m.length(1), m.length(0), m.data(), m.stride(1), m.stride(0)};
     }
 
     template <typename T>
     matrix_view<T> operator^(matrix_view<T>&& m, transpose_t t)
     {
         return m^transpose::T;
-    }
-
-    template <typename T>
-    const_matrix_view<T> operator^(const matrix_view<T>& m, transpose_t t)
-    {
-        return const_cast<matrix_view<T>&>(m)^transpose::T;
     }
 
     inline
