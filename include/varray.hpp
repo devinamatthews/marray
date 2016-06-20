@@ -53,36 +53,6 @@ namespace MArray
 
             const_varray_view& operator=(const const_varray_view& other) = delete;
 
-            void reset()
-            {
-                data_ = nullptr;
-                len_.clear();
-                stride_.clear();
-                ndim_ = 0;
-            }
-
-            void reset(const varray_view<T>& other)
-            {
-                data_ = other.data_;
-                len_ = other.len_;
-                stride_ = other.stride_;
-                ndim_ = other.ndim_;
-            }
-
-            void reset(const std::vector<idx_type>& len, const_pointer ptr, Layout layout = DEFAULT)
-            {
-                reset(len, ptr, default_strides(len, layout));
-            }
-
-            void reset(const std::vector<idx_type>& len, const_pointer ptr, const std::vector<stride_type>& stride)
-            {
-                assert(len.size() > 0);
-                assert(len.size() == stride.size());
-                data_ = const_cast<pointer>(ptr);
-                len_ = len;
-                stride_ = stride;
-            }
-
         public:
             static std::vector<stride_type> default_strides(const std::vector<idx_type>& len, Layout layout=DEFAULT)
             {
@@ -111,7 +81,17 @@ namespace MArray
 
             const_varray_view() {}
 
-            const_varray_view(const const_varray_view& other)
+            const_varray_view(const const_varray_view<T>& other)
+            {
+                reset(other);
+            }
+
+            const_varray_view(const varray_view<T>& other)
+            {
+                reset(other);
+            }
+
+            const_varray_view(const varray<T>& other)
             {
                 reset(other);
             }
@@ -126,12 +106,126 @@ namespace MArray
                 reset(len, ptr, stride);
             }
 
-            const_varray_view<T> permute(const std::vector<unsigned>& perm) const
+            void reset()
+            {
+                data_ = nullptr;
+                len_.clear();
+                stride_.clear();
+                ndim_ = 0;
+            }
+
+            void reset(const const_varray_view<T>& other)
+            {
+                data_ = other.data_;
+                len_ = other.len_;
+                stride_ = other.stride_;
+                ndim_ = other.ndim_;
+            }
+
+            void reset(const varray_view<T>& other)
+            {
+                reset(static_cast<const const_varray_view<T>&>(other));
+            }
+
+            void reset(const varray<T>& other)
+            {
+                reset(static_cast<const const_varray_view<T>&>(other));
+            }
+
+            void reset(const std::vector<idx_type>& len, const_pointer ptr, Layout layout = DEFAULT)
+            {
+                reset(len, ptr, default_strides(len, layout));
+            }
+
+            void reset(const std::vector<idx_type>& len, const_pointer ptr, const std::vector<stride_type>& stride)
+            {
+                assert(len.size() > 0);
+                assert(len.size() == stride.size());
+                data_ = const_cast<pointer>(ptr);
+                len_ = len;
+                stride_ = stride;
+            }
+
+            void shift(stride_type n)
+            {
+                assert(ndim_ == 0);
+                shift(0, n);
+            }
+
+            void shift(unsigned dim, stride_type n)
+            {
+                assert(dim < ndim_);
+                data_ += n*stride_[dim];
+            }
+
+            void shift_down()
+            {
+                assert(ndim_ == 0);
+                shift_down(0);
+            }
+
+            void shift_down(unsigned dim)
+            {
+                assert(dim < ndim_);
+                shift(dim, len_[dim]);
+            }
+
+            void shift_up()
+            {
+                assert(ndim_ == 0);
+                shift_up(0);
+            }
+
+            void shift_up(unsigned dim)
+            {
+                assert(dim < ndim_);
+                shift(dim, -stride_type(len_[dim]));
+            }
+
+            const_varray_view<T> shifted(stride_type n) const
+            {
+                assert(ndim_ == 0);
+                return shifted(0, n);
+            }
+
+            const_varray_view<T> shifted(unsigned dim, stride_type n) const
+            {
+                assert(dim < ndim_);
+                const_varray_view<T> r(*this);
+                r.shift(dim, n);
+                return r;
+            }
+
+            const_varray_view<T> shifted_down() const
+            {
+                assert(ndim_ == 0);
+                return shifted_down(0);
+            }
+
+            const_varray_view<T> shifted_down(unsigned dim) const
+            {
+                assert(dim < ndim_);
+                return shifted(dim, len_[dim]);
+            }
+
+            const_varray_view<T> shifted_up() const
+            {
+                assert(ndim_ == 0);
+                return shifted_up(0);
+            }
+
+            const_varray_view<T> shifted_up(unsigned dim) const
+            {
+                assert(dim < ndim_);
+                return shifted(dim, -stride_type(len_[dim]));
+            }
+
+            void permute(const std::vector<unsigned>& perm)
             {
                 assert(perm.size() == ndim_);
 
-                std::vector<idx_type> len(ndim_);
-                std::vector<stride_type> stride(ndim_);
+                std::vector<idx_type> len = ndim_;
+                std::vector<stride_type> stride = ndim_;
 
                 for (unsigned i = 0;i < ndim_;i++)
                 {
@@ -141,56 +235,70 @@ namespace MArray
 
                 for (unsigned i = 0;i < ndim_;i++)
                 {
-                    len[i] = len_[perm[i]];
-                    stride[i] = stride_[perm[i]];
+                    len_[i] = len[perm[i]];
+                    stride_[i] = stride[perm[i]];
                 }
-
-                return {len, data_, stride};
             }
 
-            const_varray_view<T> lower(const std::vector<unsigned>& split) const
+            const_varray_view<T> permuted(const std::vector<unsigned>& perm) const
+            {
+                const_varray_view<T> r(*this);
+                r.permute(perm);
+                return r;
+            }
+
+            void lower(const std::vector<unsigned>& split)
             {
                 assert(split.size() < ndim_);
 
-                unsigned newdim = split.size();
-                for (unsigned i = 0;i < newdim;i++)
+                unsigned newdim = split.size()+1;
+                for (unsigned i = 0;i < newdim-1;i++)
                 {
                     assert(split[i] <= ndim_);
                     if (i != 0) assert(split[i-1] <= split[i]);
                 }
 
-                std::vector<idx_type> newlen(newdim+1);
-                std::vector<stride_type> newstride(newdim+1);
+                std::vector<idx_type> len = len_;
+                std::vector<stride_type> stride = stride_;
 
-                for (unsigned i = 0;i <= newdim;i++)
+                for (unsigned i = 0;i < newdim;i++)
                 {
                     int begin = (i == 0 ? 0 : split[i-1]);
                     int end = (i == newdim-1 ? ndim_-1 : split[i]-1);
                     if (begin > end) continue;
 
-                    if (stride_[begin] < stride_[end])
+                    if (stride[begin] < stride[end])
                     {
-                        newlen[i] = len_[end];
-                        newstride[i] = stride_[begin];
+                        len_[i] = len[end];
+                        stride_[i] = stride[begin];
                         for (unsigned j = begin;j < end;j++)
                         {
-                            assert(stride_[j+1] == stride_[j]*len_[j]);
-                            newlen[i] *= len_[j];
+                            assert(stride[j+1] == stride[j]*len[j]);
+                            len_[i] *= len[j];
                         }
                     }
                     else
                     {
-                        newlen[i] = len_[end];
-                        newstride[i] = stride_[end];
+                        len_[i] = len[end];
+                        stride_[i] = stride[end];
                         for (unsigned j = begin;j < end;j++)
                         {
-                            assert(stride_[j] == stride_[j+1]*len_[j+1]);
-                            newlen[i] *= len_[j];
+                            assert(stride[j] == stride[j+1]*len[j+1]);
+                            len_[i] *= len[j];
                         }
                     }
                 }
 
-                return {newlen, data_, newstride};
+                len_.resize(newdim);
+                stride_.resize(newdim);
+                ndim_ = newdim;
+            }
+
+            const_varray_view<T> lowered(const std::vector<unsigned>& split) const
+            {
+                const_varray_view<T> r(*this);
+                r.lower(split);
+                return r;
             }
 
             const_reference front() const
@@ -286,10 +394,15 @@ namespace MArray
             {
                 return stride_;
             }
+
+            unsigned dimension() const
+            {
+                return ndim_;
+            }
     };
 
     template <typename T>
-    class varray_view : public const_varray_view<T>
+    class varray_view : protected const_varray_view<T>
     {
         template <typename T_> friend class const_varray_view;
         template <typename T_> friend class varray_view;
@@ -315,8 +428,6 @@ namespace MArray
             using base::stride_;
             using base::ndim_;
 
-            using base::reset;
-
             varray_view(const parent& other)
             : parent(other) {}
 
@@ -339,6 +450,46 @@ namespace MArray
                 reset(len, ptr, stride);
             }
 
+            void reset()
+            {
+                data_ = nullptr;
+                len_.clear();
+                stride_.clear();
+                ndim_ = 0;
+            }
+
+            void reset(const const_varray_view<T>& other)
+            {
+                data_ = other.data_;
+                len_ = other.len_;
+                stride_ = other.stride_;
+                ndim_ = other.ndim_;
+            }
+
+            void reset(const varray_view<T>& other)
+            {
+                reset(static_cast<const const_varray_view<T>&>(other));
+            }
+
+            void reset(const varray<T>& other)
+            {
+                reset(static_cast<const const_varray_view<T>&>(other));
+            }
+
+            void reset(const std::vector<idx_type>& len, const_pointer ptr, Layout layout = DEFAULT)
+            {
+                reset(len, ptr, default_strides(len, layout));
+            }
+
+            void reset(const std::vector<idx_type>& len, const_pointer ptr, const std::vector<stride_type>& stride)
+            {
+                assert(len.size() > 0);
+                assert(len.size() == stride.size());
+                data_ = const_cast<pointer>(ptr);
+                len_ = len;
+                stride_ = stride;
+            }
+
             varray_view& operator=(const const_varray_view<T>& other)
             {
                 copy(other, *this);
@@ -358,18 +509,57 @@ namespace MArray
                 return *this;
             }
 
-            using base::permute;
+            using base::shift;
+            using base::shift_down;
+            using base::shift_up;
+            using base::shifted;
+            using base::shifted_down;
+            using base::shifted_up;
 
-            varray_view<T> permute(const std::vector<unsigned>& perm)
+            varray_view<T> shifted(stride_type n)
             {
-                return base::permute(perm);
+                return base::shifted(n);
+            }
+
+            varray_view<T> shifted(unsigned dim, stride_type n)
+            {
+                return base::shifted(dim, n);
+            }
+
+            varray_view<T> shifted_down()
+            {
+                return base::shifted_down();
+            }
+
+            varray_view<T> shifted_down(unsigned dim)
+            {
+                return base::shifted_down(dim);
+            }
+
+            varray_view<T> shifted_up()
+            {
+                return base::shifted_up();
+            }
+
+            varray_view<T> shifted_up(unsigned dim)
+            {
+                return base::shifted_up(dim);
+            }
+
+            using base::permute;
+            using base::permuted;
+
+            varray_view<T> permuted(const std::vector<unsigned>& perm)
+            {
+                return base::permuted(perm);
             }
 
             using base::lower;
+            using base::lowered;
 
-            varray_view<T> lower(const std::vector<unsigned>& split)
+            varray_view<T> lowered(const std::vector<unsigned>& split)
             {
-                return base::lower(split);
+                return base::lowered(split);
             }
 
             void rotate_dim(unsigned dim, stride_type shift)
@@ -483,10 +673,16 @@ namespace MArray
             {
                 return const_cast<pointer>(base::data());
             }
+
+            using base::length;
+            using base::lengths;
+            using base::stride;
+            using base::strides;
+            using base::dimension;
     };
 
     template <typename T, typename Allocator=aligned_allocator<T, MARRAY_BASE_ALIGNMENT>>
-    class varray : public varray_view<T>, private Allocator
+    class varray : protected varray_view<T>, private Allocator
     {
         template <typename T_> friend class const_varray_view;
         template <typename T_> friend class varray_view;
@@ -685,16 +881,10 @@ namespace MArray
             using parent::data;
 
             using base::length;
-            using parent::length;
-
             using base::lengths;
-            using parent::lengths;
-
             using base::stride;
-            using parent::stride;
-
             using base::strides;
-            using parent::strides;
+            using base::dimension;
 
             void swap(varray& other)
             {
