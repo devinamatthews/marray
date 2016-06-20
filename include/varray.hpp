@@ -286,6 +286,20 @@ namespace MArray
             {
                 return stride_;
             }
+
+            void swap(const_varray_view& other)
+            {
+                using std::swap;
+                swap(data_,   other.data_);
+                swap(len_,    other.len_);
+                swap(stride_, other.stride_);
+                swap(ndim_,   other.ndim_);
+            }
+
+            friend void swap(const_varray_view& other& a, const_varray_view& other& b)
+            {
+                a.swap(b);
+            }
     };
 
     template <typename T>
@@ -482,6 +496,13 @@ namespace MArray
             pointer data()
             {
                 return const_cast<pointer>(base::data());
+            }
+
+            using base::swap;
+
+            friend void swap(varray_view& a, varray_view& b)
+            {
+                a.swap(b);
             }
     };
 
@@ -699,10 +720,7 @@ namespace MArray
             void swap(varray& other)
             {
                 using std::swap;
-                swap(data_,   other.data_);
-                swap(len_,    other.len_);
-                swap(stride_, other.stride_);
-                swap(ndim_,   other.ndim_);
+                base::swap(other);
                 swap(size_,   other.size_);
                 swap(layout_, other.layout_);
             }

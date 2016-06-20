@@ -22,6 +22,10 @@
 #define MARRAY_STRIDE_ALIGNMENT VECTOR_ALIGNMENT
 #endif
 
+#ifndef MARRAY_DEFAULT_LAYOUT
+#define MARRAY_DEFAULT_LAYOUT ROW_MAJOR
+#endif
+
 #ifndef MARRAY_BLAS_PROTOTYPED
 extern "C"
 {
@@ -109,7 +113,7 @@ namespace MArray
     class Layout
     {
         public:
-            enum {COLUMN_MAJOR, ROW_MAJOR, DEFAULT=ROW_MAJOR};
+            enum {COLUMN_MAJOR, ROW_MAJOR, DEFAULT=MARRAY_DEFAULT_LAYOUT};
 
             bool operator==(Layout other)
             {
