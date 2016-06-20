@@ -399,6 +399,20 @@ namespace MArray
             {
                 return ndim_;
             }
+            
+            void swap(const_varray_view& other)
+            {
+                using std::swap;
+                swap(data_,   other.data_);
+                swap(len_,    other.len_);
+                swap(stride_, other.stride_);
+                swap(ndim_,   other.ndim_);
+            }
+
+            friend void swap(const_varray_view& other& a, const_varray_view& other& b)
+            {
+                a.swap(b);
+            }
     };
 
     template <typename T>
@@ -679,6 +693,12 @@ namespace MArray
             using base::stride;
             using base::strides;
             using base::dimension;
+            using base::swap;
+
+            friend void swap(varray_view& a, varray_view& b)
+            {
+                a.swap(b);
+            }
     };
 
     template <typename T, typename Allocator=aligned_allocator<T, MARRAY_BASE_ALIGNMENT>>
@@ -889,10 +909,7 @@ namespace MArray
             void swap(varray& other)
             {
                 using std::swap;
-                swap(data_,   other.data_);
-                swap(len_,    other.len_);
-                swap(stride_, other.stride_);
-                swap(ndim_,   other.ndim_);
+                base::swap(other);
                 swap(size_,   other.size_);
                 swap(layout_, other.layout_);
             }
