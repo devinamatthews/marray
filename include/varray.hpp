@@ -361,16 +361,17 @@ namespace MArray
                 return data_;
             }
 
-            idx_type length() const
-            {
-                assert(ndim_ == 1);
-                return len_[0];
-            }
-
             idx_type length(unsigned dim) const
             {
                 assert(dim < ndim_);
                 return len_[dim];
+            }
+
+            idx_type length(unsigned dim, idx_type len)
+            {
+                assert(dim < ndim_);
+                std::swap(len, len_[dim]);
+                return len;
             }
 
             const std::vector<idx_type>& lengths() const
@@ -378,16 +379,17 @@ namespace MArray
                 return len_;
             }
 
-            stride_type stride() const
-            {
-                assert(ndim_ == 1);
-                return stride_[0];
-            }
-
             stride_type stride(unsigned dim) const
             {
                 assert(dim < ndim_);
                 return stride_[dim];
+            }
+
+            stride_type stride(unsigned dim, stride_type stride) const
+            {
+                assert(dim < ndim_);
+                std::swap(stride, stride_[dim]);
+                return stride;
             }
 
             const std::vector<stride_type>& strides() const
@@ -900,11 +902,29 @@ namespace MArray
             using base::data;
             using parent::data;
 
-            using base::length;
             using base::lengths;
-            using base::stride;
             using base::strides;
             using base::dimension;
+
+            idx_type length(unsigned dim) const
+            {
+                return base::length(dim);
+            }
+
+            idx_type length(unsigned dim, idx_type len)
+            {
+                return base::length(dim, len);
+            }
+
+            stride_type stride(unsigned dim) const
+            {
+                return base::stride(dim);
+            }
+
+            stride_type stride(unsigned dim, stride_type stride) const
+            {
+                return base::stride(dim, stride);
+            }
 
             void swap(varray& other)
             {

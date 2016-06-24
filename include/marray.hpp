@@ -653,8 +653,7 @@ namespace MArray
     template <typename T, unsigned ndim, typename Allocator>
     class marray;
 
-    template <typename T, unsigned ndim> void copy(const const_marray_view<T, ndim>& a, marray_view<T, ndim>& b);
-    template <typename T, unsigned ndim> void copy(const const_marray_view<T, ndim>& a, marray_view<T, ndim>&& b);
+    template <typename T, unsigned ndim> void copy(const_marray_view<T, ndim> a, marray_view<T, ndim> b);
 
     namespace detail
     {
@@ -713,7 +712,7 @@ namespace MArray
                 typename std::enable_if<diff==0, const T&>::type
                 operator[](idx_type i) const
                 {
-                    return data()[i];
+                    return data()[i*array.stride_[0]];
                 }
 
                 template <int diff=ndim-dim>
@@ -1674,7 +1673,7 @@ namespace MArray
             }
 
             template <typename U>
-            void permute(const std::array<U, ndim>& perm) const
+            void permute(const std::array<U, ndim>& perm)
             {
                 std::array<idx_type, ndim> len = len_;
                 std::array<stride_type, ndim> stride = stride_;
@@ -1703,7 +1702,7 @@ namespace MArray
             template <typename... Args>
             detail::enable_if_t<sizeof...(Args) == ndim &&
                                 detail::are_convertible<unsigned, Args...>::value>
-            permute(Args&&... args) const
+            permute(Args&&... args)
             {
                 permute(make_array((unsigned)std::forward<Args>(args)...));
             }
@@ -1904,10 +1903,25 @@ namespace MArray
                 return len_[0];
             }
 
+            template <unsigned ndim_=ndim>
+            typename std::enable_if<ndim_==1, idx_type>::type
+            length(idx_type len)
+            {
+                std::swap(len, len_[0]);
+                return len;
+            }
+
             idx_type length(unsigned dim) const
             {
                 assert(dim < ndim);
                 return len_[dim];
+            }
+
+            idx_type length(unsigned dim, idx_type len)
+            {
+                assert(dim < ndim);
+                std::swap(len, len_[dim]);
+                return len;
             }
 
             const std::array<idx_type, ndim>& lengths() const
@@ -1922,10 +1936,25 @@ namespace MArray
                 return stride_[0];
             }
 
+            template <unsigned ndim_=ndim>
+            typename std::enable_if<ndim_==1, stride_type>::type
+            stride(stride_type stride)
+            {
+                std::swap(stride, stride_[0]);
+                return stride;
+            }
+
             stride_type stride(unsigned dim) const
             {
                 assert(dim < ndim);
                 return stride_[dim];
+            }
+
+            stride_type stride(unsigned dim, stride_type stride)
+            {
+                assert(dim < ndim);
+                std::swap(stride, stride_[dim]);
+                return stride;
             }
 
             const std::array<stride_type, ndim>& strides() const
@@ -2154,7 +2183,7 @@ namespace MArray
             template <typename U>
             marray_view<T, ndim> permuted(const std::array<U, ndim>& perm)
             {
-                return base::permute(perm);
+                return base::permuted(perm);
             }
 
             template <typename... Args>
@@ -2713,11 +2742,57 @@ namespace MArray
             using base::data;
             using parent::data;
 
-            using base::length;
             using base::lengths;
-            using base::stride;
             using base::strides;
             using base::dimension;
+
+            template <unsigned ndim_=ndim>
+            typename std::enable_if<ndim_==1, idx_type>::type
+            length() const
+            {
+                return base::length();
+            }
+
+            template <unsigned ndim_=ndim>
+            typename std::enable_if<ndim_==1, idx_type>::type
+            length(idx_type len)
+            {
+                return base::length(len);
+            }
+
+            idx_type length(unsigned dim) const
+            {
+                return base::length(dim);
+            }
+
+            idx_type length(unsigned dim, idx_type len)
+            {
+                 return base::length(dim, len);
+            }
+
+            template <unsigned ndim_=ndim>
+            typename std::enable_if<ndim_==1, stride_type>::type
+            stride() const
+            {
+                return base::stride();
+            }
+
+            template <unsigned ndim_=ndim>
+            typename std::enable_if<ndim_==1, stride_type>::type
+            stride(stride_type stride)
+            {
+                return base::stride(stride);
+            }
+
+            stride_type stride(unsigned dim) const
+            {
+                return base::stride(dim);
+            }
+
+            stride_type stride(unsigned dim, stride_type stride)
+            {
+                return base::stride(dim, stride);
+            }
 
             void swap(marray& other)
             {
@@ -2747,7 +2822,7 @@ namespace MArray
     template <typename T, typename Allocator=aligned_allocator<T, MARRAY_BASE_ALIGNMENT>> using matrix = marray<T, 2, Allocator>;
 
     template <typename T, unsigned ndim>
-    void copy(const const_marray_view<T, ndim>& a, marray_view<T, ndim>& b)
+    void copy(const_marray_view<T, ndim> a, marray_view<T, ndim> b)
     {
         assert(a.lengths() == b.lengths());
 
@@ -2755,12 +2830,6 @@ namespace MArray
         auto a_ = a.data();
         auto b_ = b.data();
         while (it.next(a_, b_)) *b_ = *a_;
-    }
-
-    template <typename T, unsigned ndim>
-    void copy(const const_marray_view<T, ndim>& a, marray_view<T, ndim>&& b)
-    {
-        copy(a, b);
     }
 
     template <typename T>
