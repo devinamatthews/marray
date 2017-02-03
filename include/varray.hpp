@@ -1,1236 +1,835 @@
 #ifndef _MARRAY_VARRAY_HPP_
 #define _MARRAY_VARRAY_HPP_
 
-#include <type_traits>
-#include <array>
-#include <cassert>
-#include <algorithm>
-#include <iostream>
-#include <numeric>
-#include <utility>
-
-#include "viterator.hpp"
 #include "marray.hpp"
-#include "utility.hpp"
 
 namespace MArray
 {
-    template <typename T>
-    class const_varray_view;
 
-    template <typename T>
-    class varray_view;
+template <typename T>
+class varray_view;
 
-    template <typename T, typename Allocator>
-    class varray;
+template <typename T, typename Allocator=std::allocator<T>>
+class varray;
 
-    template <typename T> void copy(const_varray_view<T> a, varray_view<T> b);
+}
 
-    template <typename T>
-    class const_varray_view
-    {
-        template <typename T_> friend class const_varray_view;
-        template <typename T_> friend class varray_view;
-        template <typename T_, typename Allocator_> friend class varray;
+#include "varray_view.hpp"
 
-        public:
-            typedef ssize_t idx_type;
-            typedef size_t size_type;
-            typedef ptrdiff_t stride_type;
-            typedef T value_type;
-            typedef T* pointer;
-            typedef const T* const_pointer;
-            typedef T& reference;
-            typedef const T& const_reference;
+namespace MArray
+{
 
-        protected:
+template <typename T, typename U>
+detail::enable_if_assignable_t<U&,T>
+copy(const varray_view<T>& a, const varray_view<U>& b);
+
+template <typename T, typename U>
+detail::enable_if_assignable_t<U&,T>
+copy(const T& a, const varray_view<U>& b);
+
+template <typename T, typename Allocator>
+class varray
+{
+    public:
+        typedef T value_type;
+        typedef T* pointer;
+        typedef const T* const_pointer;
+        typedef T& reference;
+        typedef const T& const_reference;
+
+    protected:
+        struct alloc_s_ : Allocator
+        {
+            typedef std::allocator_traits<Allocator> traits_;
+
             pointer data_ = nullptr;
-            std::vector<idx_type> len_;
-            std::vector<stride_type> stride_;
-
-            const_varray_view& operator=(const const_varray_view& other) = delete;
-
-        public:
-            static std::vector<stride_type> default_strides(const std::vector<idx_type>& len, Layout layout=DEFAULT)
-            {
-                return default_strides<idx_type>(len, layout);
-            }
-
-            template <typename U>
-            static detail::enable_if_integral_t<U,std::vector<stride_type>>
-            default_strides(const std::vector<U>& len, Layout layout=DEFAULT)
-            {
-                std::vector<stride_type> stride(len.size());
-
-                if (stride.empty()) return stride;
-
-                auto ndim = len.size();
-                if (layout == ROW_MAJOR)
-                {
-                    stride[ndim-1] = 1;
-                    for (auto i = ndim;i --> 1;)
-                    {
-                        stride[i-1] = stride[i]*len[i];
-                    }
-                }
-                else
-                {
-                    stride[0] = 1;
-                    for (unsigned i = 1;i < ndim;i++)
-                    {
-                        stride[i] = stride[i-1]*len[i-1];
-                    }
-                }
-
-                return stride;
-            }
-
-            const_varray_view() {}
-
-            const_varray_view(const const_varray_view<T>& other)
-            {
-                reset(other);
-            }
-
-            const_varray_view(const varray_view<T>& other)
-            {
-                reset(other);
-            }
-
-            template <typename Alloc, typename=
-                detail::enable_if_not_integral_t<Alloc>>
-            const_varray_view(const varray<T, Alloc>& other)
-            {
-                reset(other);
-            }
-
-            const_varray_view(const_varray_view<T>&& other)
-            {
-                reset(std::move(other));
-            }
-
-            const_varray_view(varray_view<T>&& other)
-            {
-                reset(std::move(other));
-            }
-
-            const_varray_view(const std::vector<idx_type>& len, const_pointer ptr, Layout layout=DEFAULT)
-            {
-                reset(len, ptr, layout);
-            }
-
-            template <typename U, typename=
-                detail::enable_if_integral_t<U>>
-            const_varray_view(const std::vector<U>& len, const_pointer ptr, Layout layout=DEFAULT)
-            {
-                reset(len, ptr, layout);
-            }
-
-            const_varray_view(const std::vector<idx_type>& len, const_pointer ptr, const std::vector<stride_type>& stride)
-            {
-                reset(len, ptr, stride);
-            }
-
-            template <typename U, typename V, typename=
-                detail::enable_if_t<std::is_integral<U>::value &&
-                                     std::is_integral<V>::value>>
-            const_varray_view(const std::vector<U>& len, const_pointer ptr, const std::vector<V>& stride)
-            {
-                reset(len, ptr, stride);
-            }
-
-            void reset()
-            {
-                data_ = nullptr;
-                len_.clear();
-                stride_.clear();
-            }
-
-            void reset(const const_varray_view<T>& other)
-            {
-                data_ = other.data_;
-                len_ = other.len_;
-                stride_ = other.stride_;
-            }
-
-            void reset(const varray_view<T>& other)
-            {
-                reset(static_cast<const const_varray_view<T>&>(other));
-            }
-
-            template <typename Alloc>
-            detail::enable_if_not_integral_t<Alloc>
-            reset(const varray<T, Alloc>& other)
-            {
-                reset(static_cast<const const_varray_view<T>&>(other));
-            }
-
-            void reset(const_varray_view<T>&& other)
-            {
-                data_ = other.data_;
-                len_ = std::move(other.len_);
-                stride_ = std::move(other.stride_);
-            }
-
-            void reset(varray_view<T>&& other)
-            {
-                reset(static_cast<const_varray_view<T>&&>(other));
-            }
-
-            void reset(const std::vector<idx_type>& len, const_pointer ptr, Layout layout = DEFAULT)
-            {
-                reset<idx_type>(len, ptr, layout);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            reset(const std::vector<U>& len, const_pointer ptr, Layout layout = DEFAULT)
-            {
-                reset(len, ptr, default_strides(len, layout));
-            }
-
-            void reset(const std::vector<idx_type>& len, const_pointer ptr, const std::vector<stride_type>& stride)
-            {
-                reset<idx_type, stride_type>(len, ptr, stride);
-            }
-
-            template <typename U, typename V>
-            detail::enable_if_t<std::is_integral<U>::value &&
-                                 std::is_integral<V>::value>
-            reset(const std::vector<U>& len, const_pointer ptr, const std::vector<V>& stride)
-            {
-                assert(len.size() == stride.size());
-                data_ = const_cast<pointer>(ptr);
-                len_ = len;
-                stride_ = stride;
-            }
-
-            void shift(unsigned dim, idx_type n)
-            {
-                assert(dim < dimension());
-                data_ += n*stride_[dim];
-            }
-
-            void shift_down(unsigned dim)
-            {
-                shift(dim, len_[dim]);
-            }
-
-            void shift_up(unsigned dim)
-            {
-                shift(dim, -len_[dim]);
-            }
-
-            const_varray_view<T> shifted(unsigned dim, idx_type n) const
-            {
-                assert(dim < dimension());
-                const_varray_view<T> r(*this);
-                r.shift(dim, n);
-                return r;
-            }
-
-            const_varray_view<T> shifted_down(unsigned dim) const
-            {
-                return shifted(dim, len_[dim]);
-            }
-
-            const_varray_view<T> shifted_up(unsigned dim) const
-            {
-                return shifted(dim, -len_[dim]);
-            }
-
-            void permute(const std::vector<unsigned>& perm)
-            {
-                permute<unsigned>(perm);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            permute(const std::vector<U>& perm)
-            {
-                assert(perm.size() == dimension());
-
-                std::vector<idx_type> len(dimension());
-                std::vector<stride_type> stride(dimension());
-
-                for (unsigned i = 0;i < dimension();i++)
-                {
-                    assert(0 <= perm[i] && perm[i] < dimension());
-                    for (unsigned j = 0;j < i;j++) assert(perm[i] != perm[j]);
-                }
-
-                for (unsigned i = 0;i < dimension();i++)
-                {
-                    len_[i] = len[perm[i]];
-                    stride_[i] = stride[perm[i]];
-                }
-            }
-
-            const_varray_view<T> permuted(const std::vector<unsigned>& perm) const
-            {
-                return permuted<unsigned>(perm);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U,const_varray_view<T>>
-            permuted(const std::vector<U>& perm) const
-            {
-                const_varray_view<T> r(*this);
-                r.permute(perm);
-                return r;
-            }
-
-            void lower(const std::vector<unsigned>& split)
-            {
-                lower<unsigned>(split);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            lower(const std::vector<U>& split)
-            {
-                assert(split.size() < dimension());
-
-                unsigned newdim = split.size()+1;
-                for (unsigned i = 0;i < newdim-1;i++)
-                {
-                    assert(split[i] <= dimension());
-                    if (i != 0) assert(split[i-1] <= split[i]);
-                }
-
-                std::vector<idx_type> len = len_;
-                std::vector<stride_type> stride = stride_;
-
-                for (unsigned i = 0;i < newdim;i++)
-                {
-                    unsigned begin = (i == 0 ? 0 : split[i-1]);
-                    unsigned end = (i == newdim-1 ? dimension()-1 : split[i]-1);
-                    if (begin > end) continue;
-
-                    if (stride[begin] < stride[end])
-                    {
-                        len_[i] = len[end];
-                        stride_[i] = stride[begin];
-                        for (auto j = begin;j < end;j++)
-                        {
-                            assert(stride[j+1] == stride[j]*len[j]);
-                            len_[i] *= len[j];
-                        }
-                    }
-                    else
-                    {
-                        len_[i] = len[end];
-                        stride_[i] = stride[end];
-                        for (auto j = begin;j < end;j++)
-                        {
-                            assert(stride[j] == stride[j+1]*len[j+1]);
-                            len_[i] *= len[j];
-                        }
-                    }
-                }
-
-                len_.resize(newdim);
-                stride_.resize(newdim);
-            }
-
-            const_varray_view<T> lowered(const std::vector<unsigned>& split) const
-            {
-                return lowered<unsigned>(split);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U,const_varray_view<T>>
-            lowered(const std::vector<U>& split) const
-            {
-                const_varray_view<T> r(*this);
-                r.lower(split);
-                return r;
-            }
-
-            const_reference front() const
-            {
-                assert(dimension() == 1);
-                assert(len_[0] > 0);
-                return data_[0];
-            }
-
-            const_varray_view<T> front(unsigned dim) const
-            {
-                assert(dim < dimension());
-                assert(len_[dim] > 0);
-
-                std::vector<idx_type> len(dimension()-1);
-                std::vector<stride_type> stride(dimension()-1);
-
-                std::copy_n(len_.begin(), dim, len.begin());
-                std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
-                std::copy_n(stride_.begin(), dim, stride.begin());
-                std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
-
-                return {len, data_, stride};
-            }
-
-            const_reference back() const
-            {
-                assert(dimension() == 1);
-                assert(len_[0] > 0);
-                return data_[(len_[0]-1)*stride_[0]];
-            }
-
-            const_varray_view<T> back(unsigned dim) const
-            {
-                const_varray_view<T> view = front(dim);
-                view.data_ += (len_[dim]-1)*stride_[dim];
-                return view;
-            }
-
-            template <typename... Args>
-            detail::enable_if_t<detail::are_indices_or_slices<Args...>::value &&
-                                !detail::are_convertible<idx_type, Args...>::value,
-                                const_varray_view<T>>
-            operator()(Args&&...) const
-            {
-                //TODO
-            }
-
-            template <typename... Args>
-            detail::enable_if_t<detail::are_convertible<idx_type, Args...>::value,
-                                const_reference>
-            operator()(Args&&...) const
-            {
-                //TODO
-            }
-
-            const_pointer data() const
-            {
-                return data_;
-            }
-
-            const_pointer data(const_pointer ptr)
-            {
-                std::swap(const_cast<pointer&>(ptr), data_);
-                return ptr;
-            }
-
-            idx_type length(unsigned dim) const
-            {
-                assert(dim < dimension());
-                return len_[dim];
-            }
-
-            idx_type length(unsigned dim, idx_type len)
-            {
-                assert(dim < dimension());
-                std::swap(len, len_[dim]);
-                return len;
-            }
-
-            const std::vector<idx_type>& lengths() const
-            {
-                return len_;
-            }
-
-            stride_type stride(unsigned dim) const
-            {
-                assert(dim < dimension());
-                return stride_[dim];
-            }
-
-            stride_type stride(unsigned dim, stride_type stride)
-            {
-                assert(dim < dimension());
-                std::swap(stride, stride_[dim]);
-                return stride;
-            }
-
-            const std::vector<stride_type>& strides() const
-            {
-                return stride_;
-            }
-
-            unsigned dimension() const
-            {
-                return static_cast<unsigned>(len_.size());
-            }
-            
-            void swap(const_varray_view& other)
-            {
-                using std::swap;
-                swap(data_,   other.data_);
-                swap(len_,    other.len_);
-                swap(stride_, other.stride_);
-            }
-
-            friend void swap(const_varray_view& a, const_varray_view& b)
-            {
-                a.swap(b);
-            }
-    };
-
-    template <typename T>
-    class varray_view : protected const_varray_view<T>
-    {
-        template <typename T_> friend class const_varray_view;
-        template <typename T_> friend class varray_view;
-        template <typename T_, typename Allocator_> friend class varray;
-
-        protected:
-            typedef const_varray_view<T> base;
-
-        public:
-            typedef typename base::idx_type idx_type;
-            typedef typename base::size_type size_type;
-            typedef typename base::stride_type stride_type;
-            typedef typename base::value_type value_type;
-            typedef typename base::pointer pointer;
-            typedef typename base::const_pointer const_pointer;
-            typedef typename base::reference reference;
-            typedef typename base::const_reference const_reference;
-
-        protected:
-            using base::data_;
-            using base::len_;
-            using base::stride_;
-
-        public:
-            using base::default_strides;
-
-            varray_view() {}
-
-            varray_view(const varray_view& other)
-            : base(other) {}
-
-            template <typename Alloc, typename=
-                detail::enable_if_not_integral_t<Alloc>>
-            varray_view(const varray<T, Alloc>& other)
-            : base(other) {}
-
-            varray_view(varray_view&& other)
-            : base(std::move(other)) {}
-
-            varray_view(const std::vector<idx_type>& len, pointer ptr, Layout layout=DEFAULT)
-            {
-                reset(len, ptr, layout);
-            }
-
-            template <typename U, typename=
-                detail::enable_if_integral_t<U>>
-            varray_view(const std::vector<U>& len, pointer ptr, Layout layout=DEFAULT)
-            {
-                reset(len, ptr, layout);
-            }
-
-            varray_view(const std::vector<idx_type>& len, pointer ptr, const std::vector<stride_type>& stride)
-            {
-                reset(len, ptr, stride);
-            }
-
-            template <typename U, typename V, typename=
-                detail::enable_if_t<std::is_integral<U>::value &&
-                                     std::is_integral<V>::value>>
-            varray_view(const std::vector<U>& len, pointer ptr, const std::vector<V>& stride)
-            {
-                reset(len, ptr, stride);
-            }
-
-            void reset()
-            {
-                base::reset();
-            }
-
-            void reset(const varray_view<T>& other)
-            {
-                base::reset(other);
-            }
-
-            template <typename Alloc>
-            detail::enable_if_not_integral_t<Alloc>
-            reset(const varray<T, Alloc>& other)
-            {
-                base::reset(other);
-            }
-
-            void reset(varray_view<T>&& other)
-            {
-                base::reset(std::move(other));
-            }
-
-            void reset(const std::vector<idx_type>& len, pointer ptr, Layout layout = DEFAULT)
-            {
-                base::reset(len, ptr, layout);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            reset(const std::vector<U>& len, pointer ptr, Layout layout = DEFAULT)
-            {
-                base::reset(len, ptr, layout);
-            }
-
-            void reset(const std::vector<idx_type>& len, pointer ptr, const std::vector<stride_type>& stride)
-            {
-                base::reset(len, ptr, stride);
-            }
-
-            template <typename U, typename V>
-            detail::enable_if_t<std::is_integral<U>::value &&
-                                 std::is_integral<V>::value>
-            reset(const std::vector<U>& len, pointer ptr, const std::vector<V>& stride)
-            {
-                base::reset(len, ptr, stride);
-            }
-
-            const varray_view& operator=(const const_varray_view<T>& other) const
-            {
-                copy(other, *this);
-                return *this;
-            }
-
-            const varray_view& operator=(const varray_view<T>& other) const
-            {
-                copy(other, *this);
-                return *this;
-            }
-
-            template <typename Alloc>
-            const varray_view& operator=(const varray<T, Alloc>& other) const
-            {
-                copy(other, *this);
-                return *this;
-            }
-
-            const varray_view& operator=(const T& value) const
-            {
-                auto it = make_iterator(len_, stride_);
-                auto a_ = data_;
-                while (it.next(a_)) *a_ = value;
-                return *this;
-            }
-
-            using base::shift;
-            using base::shift_down;
-            using base::shift_up;
-
-            varray_view<T> shifted(unsigned dim, idx_type n) const
-            {
-                return base::shifted(dim, n);
-            }
-
-            varray_view<T> shifted_down(unsigned dim) const
-            {
-                return base::shifted_down(dim);
-            }
-
-            varray_view<T> shifted_up(unsigned dim) const
-            {
-                return base::shifted_up(dim);
-            }
-
-            using base::permute;
-
-            varray_view<T> permuted(const std::vector<unsigned>& perm) const
-            {
-                return base::permuted(perm);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U,varray_view<T>>
-            permuted(const std::vector<U>& perm) const
-            {
-                return base::permuted(perm);
-            }
-
-            using base::lower;
-
-            varray_view<T> lowered(const std::vector<unsigned>& split) const
-            {
-                return base::lowered(split);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U,varray_view<T>>
-            lowered(const std::vector<U>& split) const
-            {
-                return base::lowered(split);
-            }
-
-            void rotate_dim(unsigned dim, idx_type shift)
-            {
-                assert(dim < dimension());
-
-                idx_type n = len_[dim];
-                stride_type s = stride_[dim];
-
-                shift = shift%n;
-                if (shift < 0) shift += n;
-
-                if (shift == 0) return;
-
-                std::vector<idx_type> sublen(dimension()-1);
-                std::vector<stride_type> substride(dimension()-1);
-
-                std::copy_n(len_.begin(), dim, sublen.begin());
-                std::copy_n(len_.begin()+dim+1, dimension()-dim-1, sublen.begin()+dim);
-
-                std::copy_n(stride_.begin(), dim, substride.begin());
-                std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, substride.begin()+dim);
-
-                pointer p = data_;
-                auto it = make_iterator(sublen, substride);
-                while (it.next(p))
-                {
-                    pointer a = p;
-                    pointer b = p+(shift-1)*s;
-                    for (idx_type i = 0;i < shift/2;i++)
-                    {
-                        std::swap(*a, *b);
-                        a += s;
-                        b -= s;
-                    }
-
-                    a = p+shift*s;
-                    b = p+(n-1)*s;
-                    for (idx_type i = 0;i < (n-shift)/2;i++)
-                    {
-                        std::swap(*a, *b);
-                        a += s;
-                        b -= s;
-                    }
-
-                    a = p;
-                    b = p+(n-1)*s;
-                    for (idx_type i = 0;i < n/2;i++)
-                    {
-                        std::swap(*a, *b);
-                        a += s;
-                        b -= s;
-                    }
-                }
-            }
-
-            void rotate(const std::vector<idx_type>& shift)
-            {
-                rotate<idx_type>(shift);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            rotate(const std::vector<U>& shift)
-            {
-                assert(shift.size() == dimension());
-                for (unsigned dim = 0;dim < dimension();dim++)
-                {
-                    rotate_dim(dim, shift[dim]);
-                }
-            }
-
-            reference front() const
-            {
-                return const_cast<reference>(base::front());
-            }
-
-            varray_view<T> front(unsigned dim) const
-            {
-                return base::front(dim);
-            }
-
-            reference back() const
-            {
-                return const_cast<reference>(base::back());
-            }
-
-            varray_view<T> back(unsigned dim) const
-            {
-                return base::back(dim);
-            }
-
-            template <typename... Args>
-            detail::enable_if_t<detail::are_indices_or_slices<Args...>::value &&
-                                !detail::are_convertible<idx_type, Args...>::value,
-                                varray_view<T>>
-            operator()(Args&&... args) const
-            {
-                return base::operator()(std::forward<Args>(args)...);
-            }
-
-            template <typename... Args>
-            detail::enable_if_t<detail::are_convertible<idx_type, Args...>::value,
-                                reference>
-            operator()(Args&&... args) const
-            {
-                return const_cast<reference>(base::operator()(std::forward<Args>(args)...));
-            }
-
-            pointer data() const
-            {
-                return const_cast<pointer>(base::data());
-            }
-
-            pointer data(pointer ptr)
-            {
-                return const_cast<pointer>(base::data(ptr));
-            }
-
-            using base::length;
-            using base::lengths;
-            using base::stride;
-            using base::strides;
-            using base::dimension;
-
-            void swap(varray_view& other)
-            {
-                base::swap(other);
-            }
-
-            friend void swap(varray_view& a, varray_view& b)
-            {
-                a.swap(b);
-            }
-    };
-
-    template <typename T, typename Allocator=std::allocator<T>>
-    class varray : protected varray_view<T>, private Allocator
-    {
-        template <typename T_> friend class const_varray_view;
-        template <typename T_> friend class varray_view;
-        template <typename T_, typename Allocator_> friend class varray;
-
-        protected:
-            typedef varray_view<T> base;
-
-        public:
-            typedef typename base::idx_type idx_type;
-            typedef typename base::size_type size_type;
-            typedef typename base::stride_type stride_type;
-            typedef typename base::value_type value_type;
-            typedef typename base::pointer pointer;
-            typedef typename base::const_pointer const_pointer;
-            typedef typename base::reference reference;
-            typedef typename base::const_reference const_reference;
-
-        protected:
-            using base::data_;
-            using base::len_;
-            using base::stride_;
             size_t size_ = 0;
-            Layout layout_ = DEFAULT;
 
-        public:
-            using base::default_strides;
+            alloc_s_() {}
 
-            varray() {}
+            alloc_s_(const Allocator& alloc) : Allocator(alloc) {}
 
-            varray(const const_varray_view<T>& other, Layout layout=DEFAULT)
+            void allocate(size_t size)
             {
-                reset(other, layout);
+                data_ = traits_::allocate(*this, size);
+                size_ = size;
             }
 
-            varray(const varray_view<T>& other, Layout layout=DEFAULT)
+            void deallocate()
             {
-                reset(other, layout);
-            }
-
-            template <typename OAlloc, typename=
-                detail::enable_if_not_integral_t<OAlloc>>
-            varray(const varray<T, OAlloc>& other, Layout layout=DEFAULT)
-            {
-                reset(other, layout);
-            }
-
-            varray(const varray& other)
-            {
-                reset(other);
-            }
-
-            varray(varray&& other)
-            {
-                reset(std::move(other));
-            }
-
-            explicit varray(const std::vector<idx_type>& len, const T& val=T(), Layout layout=DEFAULT)
-            {
-                reset(len, val, layout);
-            }
-
-            template <typename U, typename=
-                detail::enable_if_integral_t<U>>
-            explicit varray(const std::vector<U>& len, const T& val=T(), Layout layout=DEFAULT)
-            {
-                reset(len, val, layout);
-            }
-
-            varray(const std::vector<idx_type>& len, uninitialized_t u, Layout layout=DEFAULT)
-            {
-                reset(len, u, layout);
-            }
-
-            template <typename U, typename=
-                detail::enable_if_integral_t<U>>
-            varray(const std::vector<U>& len, uninitialized_t u, Layout layout=DEFAULT)
-            {
-                reset(len, u, layout);
-            }
-
-            ~varray()
-            {
-                reset();
-            }
-
-            const varray& operator=(const const_varray_view<T>& other) const
-            {
-                base::operator=(other);
-                return *this;
-            }
-
-            const varray& operator=(const varray_view<T>& other) const
-            {
-                base::operator=(other);
-                return *this;
-            }
-
-            const varray& operator=(const varray& other) const
-            {
-                base::operator=(other);
-                return *this;
-            }
-
-            template <typename OAlloc>
-            const varray& operator=(const varray<T, OAlloc>& other) const
-            {
-                base::operator=(other);
-                return *this;
-            }
-
-            const varray& operator=(const T& value) const
-            {
-                base::operator=(value);
-                return *this;
-            }
-
-            void reset()
-            {
-                if (data_)
-                {
-                    for (size_t i = 0;i < size_;i++) data_[i].~T();
-                    Allocator::deallocate(data_, size_);
-                }
+                traits_::deallocate(*this, data_, size_);
+                data_ = nullptr;
                 size_ = 0;
-                layout_ = DEFAULT;
-
-                base::reset();
             }
 
-            void reset(const const_varray_view<T>& other, Layout layout=DEFAULT)
+            void destroy()
             {
-                if (std::is_scalar<T>::value)
+                for (size_t i = 0;i < size_;i++)
                 {
-                    reset(other.len_, uninitialized, layout);
+                    traits_::destroy(*this, data_+i);
                 }
-                else
+            }
+
+            operator const_pointer() const { return data_; }
+
+            operator pointer() { return data_; }
+
+            explicit operator bool() const { return data_; }
+        } alloc_;
+        std::vector<idx_type> len_;
+        std::vector<stride_type> stride_;
+        layout layout_ = layout::DEFAULT;
+
+        template <unsigned Dim, typename Ptr>
+        void get_slice(Ptr& ptr, std::vector<idx_type>& len,
+                       std::vector<stride_type>& stride) const {}
+
+        template <unsigned Dim, typename Ptr, typename... Args>
+        void get_slice(Ptr& ptr, std::vector<idx_type>& len,
+                       std::vector<stride_type>& stride,
+                       idx_type arg, Args&&... args) const
+        {
+            MARRAY_ASSERT(arg >= 0 && arg < len_[Dim]);
+            ptr += arg*stride_[Dim];
+            get_slice<Dim+1>(ptr, len, stride, std::forward<Args>(args)...);
+        }
+
+        template <unsigned Dim, typename Ptr, typename I, typename... Args>
+        void get_slice(Ptr& ptr, std::vector<idx_type>& len,
+                       std::vector<stride_type>& stride,
+                       const range_t<I>& arg, Args&&... args) const
+        {
+            MARRAY_ASSERT(arg.front() <= arg.back());
+            MARRAY_ASSERT(arg.front() >= 0 && arg.back() <= len_[Dim]);
+            ptr += arg.front()*stride_[Dim];
+            len.push_back(arg.size());
+            stride.push_back(arg.step()*stride_[Dim]);
+            get_slice<Dim+1>(ptr, len, stride, std::forward<Args>(args)...);
+        }
+
+        template <unsigned Dim, typename Ptr, typename... Args>
+        void get_slice(Ptr& ptr, std::vector<idx_type>& len,
+                       std::vector<stride_type>& stride,
+                       all_t, Args&&... args) const
+        {
+            len.push_back(len_[Dim]);
+            stride.push_back(stride_[Dim]);
+            get_slice<Dim+1>(ptr, len, stride, std::forward<Args>(args)...);
+        }
+
+        template <unsigned Dim, typename Ptr>
+        void get_reference(Ptr& ptr) const {}
+
+        template <unsigned Dim, typename Ptr, typename... Args>
+        void get_reference(Ptr& ptr, idx_type arg, Args&&... args) const
+        {
+            MARRAY_ASSERT(arg >= 0 && arg < len_[Dim]);
+            ptr += arg*stride_[Dim];
+            get_reference<Dim+1>(ptr, std::forward<Args>(args)...);
+        }
+
+    public:
+        static std::vector<stride_type> default_strides(const std::vector<idx_type>& len, layout layout = layout::DEFAULT)
+        {
+            return default_strides<idx_type>(len, layout);
+        }
+
+        template <typename U>
+        static detail::enable_if_integral_t<U,std::vector<stride_type>>
+        default_strides(const std::vector<U>& len, layout layout = layout::DEFAULT)
+        {
+            std::vector<stride_type> stride(len.size());
+
+            if (stride.empty()) return stride;
+
+            auto ndim = len.size();
+            if (layout == layout::ROW_MAJOR)
+            {
+                stride[ndim-1] = 1;
+                for (auto i = ndim;i --> 1;)
                 {
-                    reset(other.len_, T(), layout);
+                    stride[i-1] = stride[i]*len[i];
                 }
-
-                *this = other;
             }
-
-            void reset(const varray_view<T>& other, Layout layout=DEFAULT)
+            else
             {
-                reset(static_cast<const const_varray_view<T>&>(other), layout);
-            }
-
-            template <typename OAlloc>
-            detail::enable_if_not_integral_t<OAlloc>
-            reset(const varray<T, OAlloc>& other, Layout layout=DEFAULT)
-            {
-                reset(static_cast<const const_varray_view<T>&>(other), layout);
-            }
-
-            void reset(varray&& other)
-            {
-                swap(other);
-            }
-
-            void reset(const std::vector<idx_type>& len, const T& val=T(), Layout layout=DEFAULT)
-            {
-                reset<idx_type>(len, val, layout);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            reset(const std::vector<U>& len, const T& val=T(), Layout layout=DEFAULT)
-            {
-                reset(len, uninitialized, layout);
-                std::uninitialized_fill_n(data_, size_, val);
-            }
-
-            void reset(const std::vector<idx_type>& len, uninitialized_t, Layout layout=DEFAULT)
-            {
-                reset<idx_type>(len, uninitialized, layout);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            reset(const std::vector<U>& len, uninitialized_t, Layout layout=DEFAULT)
-            {
-                size_ = std::accumulate(len.begin(), len.end(), size_t(1), std::multiplies<size_t>());
-                layout_ = layout;
-
-                base::reset(len, Allocator::allocate(size_), default_strides(len, layout));
-            }
-
-            void resize(const std::vector<idx_type>& len, const T& val=T())
-            {
-                resize<idx_type>(len, val);
-            }
-
-            template <typename U>
-            detail::enable_if_integral_t<U>
-            resize(const std::vector<U>& len, const T& val=T())
-            {
-                varray a(std::move(*this));
-                reset(len, val, layout_);
-                varray_view<T> b(*this);
-
-                /*
-                 * It is OK to change the geometry of 'a' even if it is not
-                 * a view since it is about to go out of scope.
-                 */
-                for (unsigned i = 0;i < dimension();i++)
+                stride[0] = 1;
+                for (unsigned i = 1;i < ndim;i++)
                 {
-                    a.len_[i] = b.len_[i] = std::min(a.len_[i], b.len_[i]);
+                    stride[i] = stride[i-1]*len[i-1];
                 }
-
-                copy(a, b);
             }
 
-            void push_back(const T& x)
+            return stride;
+        }
+
+        varray() {}
+
+        varray(const varray& other)
+        {
+            reset(other);
+        }
+
+        varray(varray&& other)
+        {
+            reset(std::move(other));
+        }
+
+        template <typename U, typename=detail::enable_if_assignable_t<reference,U>>
+        varray(const varray_view<U>& other, layout layout = layout::DEFAULT)
+        {
+            reset(other, layout);
+        }
+
+        template <typename U, typename UAlloc,
+                  typename=detail::enable_if_assignable_t<reference,U>>
+        varray(const varray<U, UAlloc>& other, layout layout = layout::DEFAULT)
+        {
+            reset(other, layout);
+        }
+
+        explicit varray(const std::vector<idx_type>& len, const T& val=T(), layout layout = layout::DEFAULT)
+        {
+            reset(len, val, layout);
+        }
+
+        varray(const std::vector<idx_type>& len, layout layout)
+        {
+            reset(len, T(), layout);
+        }
+
+        template <typename U, typename=detail::enable_if_integral_t<U>>
+        explicit varray(const std::vector<U>& len, const T& val=T(), layout layout = layout::DEFAULT)
+        {
+            reset(len, val, layout);
+        }
+
+        template <typename U, typename=detail::enable_if_integral_t<U>>
+        varray(const std::vector<U>& len, layout layout)
+        {
+            reset(len, T(), layout);
+        }
+
+        varray(const std::vector<idx_type>& len, uninitialized_t u, layout layout = layout::DEFAULT)
+        {
+            reset(len, u, layout);
+        }
+
+        template <typename U, typename=detail::enable_if_integral_t<U>>
+        varray(const std::vector<U>& len, uninitialized_t u, layout layout = layout::DEFAULT)
+        {
+            reset(len, u, layout);
+        }
+
+        ~varray()
+        {
+            reset();
+        }
+
+        const varray& operator=(const varray& other)
+        {
+            copy(other.view(), view());
+            return *this;
+        }
+
+        template <typename U, typename=detail::enable_if_assignable_t<reference,U>>
+        const varray& operator=(const varray_view<U>& other)
+        {
+            copy(other, view());
+            return *this;
+        }
+
+        template <typename U, typename UAlloc,
+                  typename=detail::enable_if_assignable_t<reference,U>>
+        const varray& operator=(const varray<U, UAlloc>& other)
+        {
+            copy(other.view(), view());
+            return *this;
+        }
+
+        template <typename U, typename=detail::enable_if_assignable_t<reference,U>>
+        const varray& operator=(const U& value)
+        {
+            copy(value, view());
+            return *this;
+        }
+
+        void reset()
+        {
+            if (alloc_)
             {
-                assert(base::ndim_ == 1);
-                resize(base::len_[0]+1);
-                back() = x;
+                alloc_.destroy();
+                alloc_.deallocate();
             }
 
-            void push_back(unsigned dim, const varray_view<T>& x)
+            len_.clear();
+            stride_.clear();
+            layout_ = layout::DEFAULT;
+        }
+
+        void reset(varray&& other)
+        {
+            swap(other);
+        }
+
+        template <typename U>
+        detail::enable_if_assignable_t<reference,U>
+        reset(const varray_view<U>& other, layout layout = layout::DEFAULT)
+        {
+            if (std::is_scalar<T>::value)
             {
-                assert(x.ndim_+1 == dimension());
-                assert(dim < dimension());
-
-                for (unsigned i = 0, j = 0;i < dimension();i++)
-                {
-                    assert(i == dim || len_[i] == x.len_[j++]);
-                }
-
-                std::vector<idx_type> len = len_;
-                len[dim]++;
-                resize(len);
-                back(dim) = x;
+                reset(other.lengths(), uninitialized, layout);
             }
-
-            void pop_back()
+            else
             {
-                assert(base::ndim_ == 1);
-                resize(base::len_[0]-1);
+                reset(other.lengths(), T(), layout);
             }
 
-            void pop_back(unsigned dim)
+            *this = other;
+        }
+
+        template <typename U, typename UAlloc>
+        detail::enable_if_assignable_t<reference,U>
+        reset(const varray<U, UAlloc>& other, layout layout = layout::DEFAULT)
+        {
+            if (std::is_scalar<T>::value)
             {
-                assert(dim < dimension());
-                assert(base::len_[dim] > 0);
-
-                std::vector<idx_type> len = len_;
-                len[dim]--;
-                resize(len);
+                reset(other.lengths(), uninitialized, layout);
             }
-
-            using base::permute;
-
-            varray_view<T> permuted(const std::vector<unsigned>& perm)
+            else
             {
-                return base::permuted(perm);
+                reset(other.lengths(), T(), layout);
             }
 
-            template <typename U>
-            detail::enable_if_integral_t<U,varray_view<T>>
-            permuted(const std::vector<U>& perm)
+            *this = other;
+        }
+
+        void reset(const std::vector<idx_type>& len, const T& val=T(), layout layout = layout::DEFAULT)
+        {
+            reset<idx_type>(len, val, layout);
+        }
+
+        void reset(const std::vector<idx_type>& len, layout layout)
+        {
+            reset<idx_type>(len, T(), layout);
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U>
+        reset(const std::vector<U>& len, const T& val=T(), layout layout = layout::DEFAULT)
+        {
+            reset(len, uninitialized, layout);
+            std::uninitialized_fill_n(alloc_.data_, alloc_.size_, val);
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U>
+        reset(const std::vector<U>& len, layout layout)
+        {
+            reset(len, T(), layout);
+        }
+
+        void reset(const std::vector<idx_type>& len, uninitialized_t, layout layout = layout::DEFAULT)
+        {
+            reset<idx_type>(len, uninitialized, layout);
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U>
+        reset(const std::vector<U>& len, uninitialized_t, layout layout = layout::DEFAULT)
+        {
+            MARRAY_ASSERT(len.size() > 0);
+
+            reset();
+
+            size_t size = std::accumulate(len.begin(), len.end(), size_type(1), std::multiplies<size_type>());
+            alloc_.allocate(size);
+
+            layout_ = layout;
+            len_.assign(len.begin(), len.end());
+            stride_ = default_strides(len, layout);
+        }
+
+        void resize(const std::vector<idx_type>& len, const T& val=T())
+        {
+            resize<idx_type>(len, val);
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U>
+        resize(const std::vector<U>& len, const T& val=T())
+        {
+            MARRAY_ASSERT(len.size() == dimension());
+
+            varray a(std::move(*this));
+            reset(len, val, layout_);
+            auto b = view();
+
+            /*
+             * It is OK to change the geometry of 'a' even if it is not
+             * a view since it is about to go out of scope.
+             */
+            for (unsigned i = 0;i < dimension();i++)
             {
-                return base::permuted(perm);
+                idx_type len = std::min(a.length(i), b.length(i));
+                a.len_[i] = len;
+                b.length(i, len);
             }
 
-            const_varray_view<T> permuted(const std::vector<unsigned>& perm) const
+            b = a;
+        }
+
+        void push_back(const T& x)
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            resize({len_[0]+1});
+            back() = x;
+        }
+
+        template <typename U>
+        detail::enable_if_assignable_t<reference,U>
+        push_back(unsigned dim, const varray_view<U>& x)
+        {
+            MARRAY_ASSERT(x.dimension()+1 == dimension());
+            MARRAY_ASSERT(dim < dimension());
+
+            for (unsigned i = 0, j = 0;i < dimension();i++)
             {
-                return base::permuted(perm);
+                MARRAY_ASSERT(i == dim || len_[i] == x.length(j++));
             }
 
-            template <typename U>
-            detail::enable_if_integral_t<U,const_varray_view<T>>
-            permuted(const std::vector<U>& perm) const
+            std::vector<idx_type> len = len_;
+            len[dim]++;
+            resize(len);
+            back(dim) = x;
+        }
+
+        void pop_back()
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            MARRAY_ASSERT(len_[0] > 0);
+            resize({len_[0]-1});
+        }
+
+        void pop_back(unsigned dim)
+        {
+            MARRAY_ASSERT(dim < dimension());
+            MARRAY_ASSERT(len_[dim] > 0);
+
+            std::vector<idx_type> len = len_;
+            len[dim]--;
+            resize(len);
+        }
+
+        varray_view<const T> cview() const
+        {
+            return {len_, data(), stride_};
+        }
+
+        varray_view<const T> view() const
+        {
+            return {len_, data(), stride_};
+        }
+
+        varray_view<T> view()
+        {
+            return {len_, data(), stride_};
+        }
+
+        friend varray_view<const T> cview(const varray& x)
+        {
+            return x.view();
+        }
+
+        friend varray_view<const T> view(const varray& x)
+        {
+            return x.view();
+        }
+
+        friend varray_view<T> view(varray& x)
+        {
+            return x.view();
+        }
+
+        varray_view<const T> permuted(const std::vector<unsigned>& perm) const
+        {
+            return permuted<unsigned>(perm);
+        }
+
+        varray_view<T> permuted(const std::vector<unsigned>& perm)
+        {
+            return permuted<unsigned>(perm);
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U,varray_view<const T>>
+        permuted(const std::vector<U>& perm) const
+        {
+            varray_view<const T> v = view();
+            v.permute(perm);
+            return v;
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U,varray_view<T>>
+        permuted(const std::vector<U>& perm)
+        {
+            varray_view<T> v = view();
+            v.permute(perm);
+            return v;
+        }
+
+        varray_view<const T> lowered(const std::vector<unsigned>& split) const
+        {
+            return lowered<unsigned>(split);
+        }
+
+        varray_view<T> lowered(const std::vector<unsigned>& split)
+        {
+            return lowered<unsigned>(split);
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U,varray_view<const T>>
+        lowered(const std::vector<U>& split) const
+        {
+            varray_view<const T> v = view();
+            v.lower(split);
+            return v;
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U,varray_view<T>>
+        lowered(const std::vector<U>& split)
+        {
+            varray_view<T> v = view();
+            v.lower(split);
+            return v;
+        }
+
+        void rotate_dim(unsigned dim, idx_type shift)
+        {
+            MArray::rotate_dim(*this, dim, shift);
+        }
+
+        void rotate(const std::vector<idx_type>& shift)
+        {
+            rotate<idx_type>(shift);
+        }
+
+        template <typename U>
+        detail::enable_if_integral_t<U>
+        rotate(const std::vector<U>& shift)
+        {
+            MARRAY_ASSERT(shift.size() == dimension());
+            for (unsigned dim = 0;dim < dimension();dim++)
             {
-                return base::permuted(perm);
+                rotate_dim(dim, shift[dim]);
             }
+        }
 
-            using base::lower;
+        const_reference cfront() const
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            MARRAY_ASSERT(len_[0] > 0);
+            return data()[0];
+        }
 
-            varray_view<T> lowered(const std::vector<unsigned>& split)
-            {
-                return base::lowered(split);
-            }
+        const_reference front() const
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            MARRAY_ASSERT(len_[0] > 0);
+            return data()[0];
+        }
 
-            template <typename U>
-            detail::enable_if_integral_t<U,varray_view<T>>
-            lowered(const std::vector<U>& split)
-            {
-                return base::lowered(split);
-            }
+        reference front()
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            MARRAY_ASSERT(len_[0] > 0);
+            return data()[0];
+        }
 
-            const_varray_view<T> lowered(const std::vector<unsigned>& split) const
-            {
-                return base::lowered(split);
-            }
+        varray_view<const T> cfront(unsigned dim) const
+        {
+            MARRAY_ASSERT(dimension() > 1);
+            MARRAY_ASSERT(dim < dimension());
+            MARRAY_ASSERT(len_[dim] > 0);
 
-            template <typename U>
-            detail::enable_if_integral_t<U,const_varray_view<T>>
-            lowered(const std::vector<U>& split) const
-            {
-                return base::lowered(split);
-            }
+            std::vector<idx_type> len(dimension()-1);
+            std::vector<stride_type> stride(dimension()-1);
 
-            using base::rotate_dim;
-            using base::rotate;
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
 
-            reference front()
-            {
-                return base::front();
-            }
+            return {len, data(), stride};
+        }
 
-            const_reference front() const
-            {
-                return base::front();
-            }
+        varray_view<const T> front(unsigned dim) const
+        {
+            MARRAY_ASSERT(dimension() > 1);
+            MARRAY_ASSERT(dim < dimension());
+            MARRAY_ASSERT(len_[dim] > 0);
 
-            varray_view<T> front(unsigned dim)
-            {
-                return base::front(dim);
-            }
+            std::vector<idx_type> len(dimension()-1);
+            std::vector<stride_type> stride(dimension()-1);
 
-            const_varray_view<T> front(unsigned dim) const
-            {
-                return base::front(dim);
-            }
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
 
-            reference back()
-            {
-                return base::back();
-            }
+            return {len, data(), stride};
+        }
 
-            const_reference back() const
-            {
-                return base::back();
-            }
+        varray_view<T> front(unsigned dim)
+        {
+            MARRAY_ASSERT(dimension() > 1);
+            MARRAY_ASSERT(dim < dimension());
+            MARRAY_ASSERT(len_[dim] > 0);
 
-            varray_view<T> back(unsigned dim)
-            {
-                return base::back(dim);
-            }
+            std::vector<idx_type> len(dimension()-1);
+            std::vector<stride_type> stride(dimension()-1);
 
-            const_varray_view<T> back(unsigned dim) const
-            {
-                return base::back(dim);
-            }
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
 
-            template <typename... Args>
-            detail::enable_if_t<detail::are_indices_or_slices<Args...>::value &&
-                                !detail::are_convertible<idx_type, Args...>::value,
-                                varray_view<T>>
-            operator()(Args&&... args)
-            {
-                return base::operator()(std::forward<Args>(args)...);
-            }
+            return {len, data(), stride};
+        }
 
-            template <typename... Args>
-            detail::enable_if_t<detail::are_indices_or_slices<Args...>::value &&
-                                !detail::are_convertible<idx_type, Args...>::value,
-                                const_varray_view<T>>
-            operator()(Args&&... args) const
-            {
-                return base::operator()(std::forward<Args>(args)...);
-            }
+        const_reference cback() const
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            MARRAY_ASSERT(len_[0] > 0);
+            return data()[(len_[0]-1)*stride_[0]];
+        }
 
-            template <typename... Args>
-            detail::enable_if_t<detail::are_convertible<idx_type, Args...>::value,
-                                reference>
-            operator()(Args&&... args)
-            {
-                return base::operator()(std::forward<Args>(args)...);
-            }
+        const_reference back() const
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            MARRAY_ASSERT(len_[0] > 0);
+            return data()[(len_[0]-1)*stride_[0]];
+        }
 
-            template <typename... Args>
-            detail::enable_if_t<detail::are_convertible<idx_type, Args...>::value,
-                                const_reference>
-            operator()(Args&&... args) const
-            {
-                return base::operator()(std::forward<Args>(args)...);
-            }
+        reference back()
+        {
+            MARRAY_ASSERT(dimension() == 1);
+            MARRAY_ASSERT(len_[0] > 0);
+            return data()[(len_[0]-1)*stride_[0]];
+        }
 
-            pointer data()
-            {
-                return base::data();
-            }
+        varray_view<const T> cback(unsigned dim) const
+        {
+            MARRAY_ASSERT(dimension() > 1);
+            MARRAY_ASSERT(dim < dimension());
+            MARRAY_ASSERT(len_[dim] > 0);
 
-            const_pointer data() const
-            {
-                return base::data();
-            }
+            std::vector<idx_type> len(dimension()-1);
+            std::vector<stride_type> stride(dimension()-1);
 
-            idx_type length(unsigned dim) const
-            {
-                return base::length(dim);
-            }
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
 
-            const std::vector<idx_type>& lengths() const
-            {
-                return base::lengths();
-            }
+            return {len, data()+(len_[dim]-1)*stride_[dim], stride};
+        }
 
-            stride_type stride(unsigned dim) const
-            {
-                return base::stride(dim);
-            }
+        varray_view<const T> back(unsigned dim) const
+        {
+            MARRAY_ASSERT(dimension() > 1);
+            MARRAY_ASSERT(dim < dimension());
+            MARRAY_ASSERT(len_[dim] > 0);
 
-            const std::vector<stride_type>& strides() const
-            {
-                return base::strides();
-            }
+            std::vector<idx_type> len(dimension()-1);
+            std::vector<stride_type> stride(dimension()-1);
 
-            unsigned dimension() const
-            {
-                return base::dimension();
-            }
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
 
-            void swap(varray& other)
-            {
-                using std::swap;
-                base::swap(other);
-                swap(size_,   other.size_);
-                swap(layout_, other.layout_);
-            }
+            return {len, data()+(len_[dim]-1)*stride_[dim], stride};
+        }
 
-            friend void swap(varray& a, varray& b)
-            {
-                a.swap(b);
-            }
-    };
+        varray_view<T> back(unsigned dim)
+        {
+            MARRAY_ASSERT(dimension() > 1);
+            MARRAY_ASSERT(dim < dimension());
+            MARRAY_ASSERT(len_[dim] > 0);
 
-    template <typename T>
-    void copy(const_varray_view<T> a, varray_view<T> b)
-    {
-        assert(a.lengths() == b.lengths());
+            std::vector<idx_type> len(dimension()-1);
+            std::vector<stride_type> stride(dimension()-1);
 
-        auto it = make_iterator(a.lengths(), a.strides(), b.strides());
-        auto a_ = a.data();
-        auto b_ = b.data();
-        while (it.next(a_, b_)) *b_ = *a_;
-    }
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
+
+            return {len, data()+(len_[dim]-1)*stride_[dim], stride};
+        }
+
+        template <typename... Args>
+        detail::enable_if_t<detail::are_indices_or_slices<Args...>::value &&
+                            !detail::are_convertible<idx_type, Args...>::value,
+                            varray_view<const T>>
+        operator()(Args&&... args) const
+        {
+            MARRAY_ASSERT(sizeof...(Args) == dimension());
+
+            const_pointer ptr = data();
+            std::vector<idx_type> len;
+            std::vector<stride_type> stride;
+
+            get_slice<0>(ptr, len, stride, std::forward<Args>(args)...);
+
+            return {len, ptr, stride};
+        }
+
+        template <typename... Args>
+        detail::enable_if_t<detail::are_indices_or_slices<Args...>::value &&
+                            !detail::are_convertible<idx_type, Args...>::value,
+                            varray_view<T>>
+        operator()(Args&&... args)
+        {
+            MARRAY_ASSERT(sizeof...(Args) == dimension());
+
+            pointer ptr = data();
+            std::vector<idx_type> len;
+            std::vector<stride_type> stride;
+
+            get_slice<0>(ptr, len, stride, std::forward<Args>(args)...);
+
+            return {len, ptr, stride};
+        }
+
+        template <typename... Args>
+        detail::enable_if_t<detail::are_convertible<idx_type, Args...>::value,
+                            const_reference>
+        operator()(Args&&... args) const
+        {
+            MARRAY_ASSERT(sizeof...(Args) == dimension());
+            const_pointer ptr = data();
+            get_reference<0>(ptr, std::forward<Args>(args)...);
+            return *ptr;
+        }
+
+        template <typename... Args>
+        detail::enable_if_t<detail::are_convertible<idx_type, Args...>::value,
+                            reference>
+        operator()(Args&&... args)
+        {
+            MARRAY_ASSERT(sizeof...(Args) == dimension());
+            pointer ptr = data();
+            get_reference<0>(ptr, std::forward<Args>(args)...);
+            return *ptr;
+        }
+
+        const_pointer cdata() const
+        {
+            return alloc_;
+        }
+
+        const_pointer data() const
+        {
+            return alloc_;
+        }
+
+        pointer data()
+        {
+            return alloc_;
+        }
+
+        idx_type length(unsigned dim) const
+        {
+            return len_[dim];
+        }
+
+        const std::vector<idx_type>& lengths() const
+        {
+            return len_;
+        }
+
+        stride_type stride(unsigned dim) const
+        {
+            return stride_[dim];
+        }
+
+        const std::vector<stride_type>& strides() const
+        {
+            return stride_;
+        }
+
+        unsigned dimension() const
+        {
+            return static_cast<unsigned>(len_.size());
+        }
+
+        void swap(varray& other)
+        {
+            using std::swap;
+            swap(alloc_.data_, other.alloc_.data_);
+            swap(alloc_.size_, other.alloc_.size_);
+            swap(len_, other.len_);
+            swap(stride_, other.stride_);
+            swap(layout_, other.layout_);
+        }
+
+        friend void swap(varray& a, varray& b)
+        {
+            a.swap(b);
+        }
+};
+
+template <unsigned NDim, typename T, typename Alloc>
+marray_view<const T, NDim> fix(const varray<T, Alloc>& other)
+{
+    MARRAY_ASSERT(NDim == other.dimension());
+
+    std::array<idx_type, NDim> len;
+    std::array<stride_type, NDim> stride;
+    std::copy_n(other.lengths().begin(), NDim, len.begin());
+    std::copy_n(other.strides().begin(), NDim, stride.begin());
+
+    return {len, other.data(), stride};
+}
+
+template <unsigned NDim, typename T, typename Alloc>
+marray_view<T, NDim> fix(varray<T, Alloc>& other)
+{
+    MARRAY_ASSERT(NDim == other.dimension());
+
+    std::array<idx_type, NDim> len;
+    std::array<stride_type, NDim> stride;
+    std::copy_n(other.lengths().begin(), NDim, len.begin());
+    std::copy_n(other.strides().begin(), NDim, stride.begin());
+
+    return {len, other.data(), stride};
+}
+
+template <typename T, typename U>
+detail::enable_if_assignable_t<U&,T>
+copy(const varray_view<T>& a, const varray_view<U>& b)
+{
+    MARRAY_ASSERT(a.lengths() == b.lengths());
+
+    auto it = make_iterator(a.lengths(), a.strides(), b.strides());
+    auto a_ = a.data();
+    auto b_ = b.data();
+    while (it.next(a_, b_)) *b_ = *a_;
+}
+
+template <typename T, typename U>
+detail::enable_if_assignable_t<U&,T>
+copy(const T& a, const varray_view<U>& b)
+{
+    auto it = make_iterator(b.lengths(), b.strides());
+    auto b_ = b.data();
+    while (it.next(b_)) *b_ = a;
+}
 
 }
 
