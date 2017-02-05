@@ -89,33 +89,11 @@ class marray_view
             return *this;
         }
 
-        template <typename U, typename=detail::enable_if_assignable_t<reference,U>>
-        const marray_view& operator=(const marray_view<U, NDim>& other) const
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_view& operator=(const Expression& other) const
         {
             assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U, unsigned NIndexed, unsigned NSliced,
-                  typename=detail::enable_if_assignable_t<reference,U>>
-        const marray_view& operator=(const marray_slice<U, NDim+NIndexed, NIndexed, NSliced>& other) const
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U, typename Alloc,
-                  typename=detail::enable_if_assignable_t<reference,U>>
-        const marray_view& operator=(const marray<U, NDim, Alloc>& other) const
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U, typename=detail::enable_if_assignable_t<reference,U>>
-        const marray_view& operator=(const U& value) const
-        {
-            assign_expr(*this, value);
             return *this;
         }
 

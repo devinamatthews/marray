@@ -109,12 +109,12 @@ struct add_expr
 
     result_type eval() const
     {
-        return eval(first) + eval(second);
+        return MArray::eval(first) + MArray::eval(second);
     }
 
     result_type eval_at(idx_type i) const
     {
-        return eval_at(first, i) + eval_at(second, i);
+        return MArray::eval_at(first, i) + MArray::eval_at(second, i);
     }
 };
 
@@ -134,12 +134,12 @@ struct sub_expr
 
     result_type eval() const
     {
-        return eval(first) - eval(second);
+        return MArray::eval(first) - MArray::eval(second);
     }
 
     result_type eval_at(idx_type i) const
     {
-        return eval_at(first, i) - eval_at(second, i);
+        return MArray::eval_at(first, i) - MArray::eval_at(second, i);
     }
 };
 
@@ -159,12 +159,12 @@ struct mul_expr
 
     result_type eval() const
     {
-        return eval(first) * eval(second);
+        return MArray::eval(first) * MArray::eval(second);
     }
 
     result_type eval_at(idx_type i) const
     {
-        return eval_at(first, i) * eval_at(second, i);
+        return MArray::eval_at(first, i) * MArray::eval_at(second, i);
     }
 };
 
@@ -184,12 +184,12 @@ struct div_expr
 
     result_type eval() const
     {
-        return eval(first) / eval(second);
+        return MArray::eval(first) / MArray::eval(second);
     }
 
     result_type eval_at(idx_type i) const
     {
-        return eval_at(first, i) / eval_at(second, i);
+        return MArray::eval_at(first, i) / MArray::eval_at(second, i);
     }
 };
 
@@ -209,12 +209,12 @@ struct pow_expr
 
     result_type eval() const
     {
-        return std::pow(eval(first), eval(second));
+        return std::pow(MArray::eval(first), MArray::eval(second));
     }
 
     result_type eval_at(idx_type i) const
     {
-        return std::pow(eval_at(first, i), eval_at(second, i));
+        return std::pow(MArray::eval_at(first, i), MArray::eval_at(second, i));
     }
 };
 
@@ -230,12 +230,12 @@ struct negate_expr
 
     result_type eval() const
     {
-        return -eval(expr);
+        return -MArray::eval(expr);
     }
 
     result_type eval_at(idx_type i) const
     {
-        return -eval_at(expr, i);
+        return -MArray::eval_at(expr, i);
     }
 };
 
@@ -251,12 +251,12 @@ struct exp_expr
 
     result_type eval() const
     {
-        return std::exp(eval(expr));
+        return std::exp(MArray::eval(expr));
     }
 
     result_type eval_at(idx_type i) const
     {
-        return std::exp(eval_at(expr, i));
+        return std::exp(MArray::eval_at(expr, i));
     }
 };
 
@@ -272,12 +272,12 @@ struct sqrt_expr
 
     result_type eval() const
     {
-        return std::sqrt(eval(expr));
+        return std::sqrt(MArray::eval(expr));
     }
 
     result_type eval_at(idx_type i) const
     {
-        return std::sqrt(eval_at(expr, i));
+        return std::sqrt(MArray::eval_at(expr, i));
     }
 };
 
@@ -330,7 +330,8 @@ struct is_binary_expression : std::false_type {};
 
 template <typename Expr>
 struct is_binary_expression<Expr,
-    detail::enable_if_t<is_expression<typename Expr::first_type>::value>>
+    detail::enable_if_t<is_expression<typename Expr::first_type>::value ||
+                        is_expression<typename Expr::second_type>::value>>
     : std::true_type {};
 
 template <typename Array, typename Dim>
@@ -393,11 +394,16 @@ make_expression_helper(const marray_slice<T, NDim, NIndexed, NSliced>& x,
                        detail::integer_sequence<size_t, I...>,
                        detail::integer_sequence<size_t, J...>)
 {
+    //printf("marray_slice expr:\n");
+    //for (idx_type i : std::vector<idx_type>{x.template slice_length<I>()...}) printf("%ld ", i); printf("- ");
+    //for (idx_type i : std::vector<idx_type>{x.template base_length<NIndexed+NSliced+J>()...}) printf("%ld ", i); printf("\n");
+    //for (stride_type i : std::vector<stride_type>{x.template slice_stride<I>()...}) printf("%ld ", i); printf("- ");
+    //for (stride_type i : std::vector<stride_type>{x.template base_stride<NIndexed+NSliced+J>()...}) printf("%ld ", i); printf("\n");
     return {x.data(),
-            sliced_dim(x.template slice_length<I>(),
-                       x.template slice_stride<I>())...,
-            sliced_dim(x.template base_length<NIndexed+NSliced+J>(),
-                       x.template base_stride<NIndexed+NSliced+J>())...};
+            slice_dim(x.template slice_length<I>(),
+                      x.template slice_stride<I>())...,
+            slice_dim(x.template base_length<NIndexed+NSliced+J>(),
+                      x.template base_stride<NIndexed+NSliced+J>())...};
 }
 
 template <typename T, unsigned NDim, size_t... I>
@@ -405,15 +411,32 @@ typename expression_type<marray_view<T, NDim>>::type
 make_expression_helper(const marray_view<T, NDim>& x,
                        detail::integer_sequence<size_t, I...>)
 {
-    return {x.data(), sliced_dim(x.template length<I>(), x.template stride<I>())...};
+    //printf("marray_view expr:\n");
+    //for (idx_type i : std::vector<idx_type>{x.template length<I>()...}) printf("%ld ", i); printf("\n");
+    //for (stride_type i : std::vector<stride_type>{x.template stride<I>()...}) printf("%ld ", i); printf("\n");
+    return {x.data(), slice_dim(x.template length<I>(), x.template stride<I>())...};
+}
+
+template <typename T, unsigned NDim, typename Alloc, size_t... I>
+typename expression_type<marray<const T, NDim, Alloc>>::type
+make_expression_helper(const marray<T, NDim, Alloc>& x,
+                       detail::integer_sequence<size_t, I...>)
+{
+    //printf("marray expr:\n");
+    //for (idx_type i : std::vector<idx_type>{x.template length<I>()...}) printf("%ld ", i); printf("\n");
+    //for (stride_type i : std::vector<stride_type>{x.template stride<I>()...}) printf("%ld ", i); printf("\n");
+    return {x.data(), slice_dim(x.template length<I>(), x.template stride<I>())...};
 }
 
 template <typename T, unsigned NDim, typename Alloc, size_t... I>
 typename expression_type<marray<T, NDim, Alloc>>::type
-make_expression_helper(const marray<T, NDim, Alloc>& x,
+make_expression_helper(marray<T, NDim, Alloc>& x,
                        detail::integer_sequence<size_t, I...>)
 {
-    return {x.data(), sliced_dim(x.template length<I>(), x.template stride<I>())...};
+    //printf("marray expr:\n");
+    //for (idx_type i : std::vector<idx_type>{x.template length<I>()...}) printf("%ld ", i); printf("\n");
+    //for (stride_type i : std::vector<stride_type>{x.template stride<I>()...}) printf("%ld ", i); printf("\n");
+    return {x.data(), slice_dim(x.template length<I>(), x.template stride<I>())...};
 }
 
 template <typename T, unsigned NDim, unsigned NIndexed, unsigned NSliced>
@@ -432,8 +455,15 @@ make_expression(const marray_view<T, NDim>& x)
 }
 
 template <typename T, unsigned NDim, typename Alloc>
-typename expression_type<marray<T, NDim, Alloc>>::type
+typename expression_type<marray<const T, NDim, Alloc>>::type
 make_expression(const marray<T, NDim, Alloc>& x)
+{
+    return make_expression_helper(x, detail::static_range<NDim>());
+}
+
+template <typename T, unsigned NDim, typename Alloc>
+typename expression_type<marray<T, NDim, Alloc>>::type
+make_expression(marray<T, NDim, Alloc>& x)
 {
     return make_expression_helper(x, detail::static_range<NDim>());
 }
@@ -586,7 +616,7 @@ std::array<idx_type, sizeof...(I)>
 get_array_lengths_helper(const array_expr<T, Dims...>& array,
                          detail::integer_sequence<size_t, I...>)
 {
-    return {get_array_length(std::get<I>(array.dims)...)};
+    return {get_array_length(std::get<I>(array.dims))...};
 }
 
 template <typename T, typename... Dims>
@@ -596,12 +626,12 @@ get_array_lengths(const array_expr<T, Dims...>& array)
     return get_array_lengths_helper(array, detail::static_range<sizeof...(Dims)>());
 }
 
-bool check_expr_length(const bcast_dim&, idx_type)
+inline bool check_expr_length(const bcast_dim&, idx_type)
 {
     return true;
 }
 
-bool check_expr_length(const slice_dim& dim, idx_type len)
+inline bool check_expr_length(const slice_dim& dim, idx_type len)
 {
     return len == dim.len;
 }
@@ -628,6 +658,13 @@ bool check_expr_lengths(const array_expr<T, Dims...>& array,
 }
 
 template <typename Expr, size_t NDim>
+detail::enable_if_t<std::is_arithmetic<Expr>::value,bool>
+check_expr_lengths(const Expr& expr, const std::array<idx_type, NDim>& len)
+{
+    return true;
+}
+
+template <typename Expr, size_t NDim>
 detail::enable_if_t<is_binary_expression<Expr>::value,bool>
 check_expr_lengths(const Expr& expr, const std::array<idx_type, NDim>& len)
 {
@@ -640,13 +677,6 @@ detail::enable_if_t<is_unary_expression<Expr>::value,bool>
 check_expr_lengths(const Expr& expr, const std::array<idx_type, NDim>& len)
 {
     return check_expr_lengths(expr.expr, len);
-}
-
-template <typename Expr, size_t NDim>
-detail::enable_if_t<std::is_arithmetic<Expr>::value,bool>
-check_expr_lengths(const Expr& expr, const std::array<idx_type, NDim>& len)
-{
-    return true;
 }
 
 /*
@@ -662,6 +692,7 @@ template <typename T, typename... Dims>
 void increment(array_expr<T, Dims...>& expr, const slice_dim& dim)
 {
     expr.data += dim.stride;
+    //printf("increment: %ld\n", dim.stride);
 }
 
 template <typename T, typename... Dims>
@@ -671,6 +702,7 @@ template <typename T, typename... Dims>
 void decrement(array_expr<T, Dims...>& expr, const slice_dim& dim)
 {
     expr.data -= dim.len*dim.stride;
+    //printf("decrement: %ld\n", dim.len*dim.stride);
 }
 
 /*
@@ -681,17 +713,11 @@ void decrement(array_expr<T, Dims...>& expr, const slice_dim& dim)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims))>
-increment(array_expr<T, Dims...>& expr)
-{
-    increment(expr, std::get<Dim>(expr.dims));
-}
+increment(array_expr<T, Dims...>& expr) {}
 
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims))>
-decrement(array_expr<T, Dims...>& expr)
-{
-    decrement(expr, std::get<Dim>(expr.dims));
-}
+decrement(array_expr<T, Dims...>& expr) {}
 
 /*
  * For the remaining sizeof...(Dims) dimensions, subtract NDim-sizeof...(Dims)
@@ -710,6 +736,19 @@ decrement(array_expr<T, Dims...>& expr)
 {
     decrement(expr, std::get<Dim-(NDim-sizeof...(Dims))>(expr.dims));
 }
+
+/*
+ * Lastly, for scalars do nothing since they are implicitly broadcast (this
+ * only happens when assigning directly to a scalar as any other scalars are
+ * absorbed into expression nodes).
+ */
+template <unsigned NDim, unsigned Dim, typename Expr>
+detail::enable_if_t<std::is_arithmetic<Expr>::value>
+increment(const Expr& expr) {}
+
+template <unsigned NDim, unsigned Dim, typename Expr>
+detail::enable_if_t<std::is_arithmetic<Expr>::value>
+decrement(const Expr& expr) {}
 
 /*
  * For binary and unary subexpressions, increment/decrement their children.
@@ -744,19 +783,6 @@ decrement(Expr& expr)
     decrement<NDim, Dim>(expr.expr);
 }
 
-/*
- * Lastly, for scalars do nothing since they are implicitly broadcast (this
- * only happens when assigning directly to a scalar as any other scalars are
- * absorbed into expression nodes).
- */
-template <unsigned NDim, unsigned Dim, typename Expr>
-detail::enable_if_t<std::is_arithmetic<Expr>::value>
-increment(const Expr& expr) {}
-
-template <unsigned NDim, unsigned Dim, typename Expr>
-detail::enable_if_t<std::is_arithmetic<Expr>::value>
-decrement(const Expr& expr) {}
-
 template <unsigned NDim, unsigned Dim>
 struct assign_expr_loop;
 
@@ -764,7 +790,7 @@ template <unsigned NDim>
 struct assign_expr_loop<NDim, NDim>
 {
     template <typename LHS, typename RHS>
-    void operator()(LHS&& lhs, RHS&& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         for (idx_type i = 0;i < len[NDim-1];i++)
         {
@@ -783,13 +809,13 @@ template <unsigned NDim, unsigned Dim>
 struct assign_expr_loop
 {
     template <typename LHS, typename RHS>
-    void operator()(LHS&& lhs, RHS&& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         assign_expr_loop<NDim, Dim+1> next_loop;
 
         for (idx_type i = 0;i < len[Dim-1];i++)
         {
-            next_loop();
+            next_loop(lhs, rhs, len);
 
             increment<NDim, Dim-1>(lhs);
             increment<NDim, Dim-1>(rhs);
@@ -820,6 +846,8 @@ assign_expr(Array&& array_, Expr&& expr_)
 
     auto len = get_array_lengths(array);
     check_expr_lengths(expr, len);
+
+    //printf("expr:\n");
 
     assign_expr_loop<NDim, 1>()(array, expr, len);
 }

@@ -17,10 +17,14 @@ class marray_view;
 template <typename Type, unsigned NDim, typename Allocator=std::allocator<Type>>
 class marray;
 
+template <typename Expr>
+struct is_expression_arg_or_scalar;
+
 }
 
 #include "marray_view.hpp"
 #include "marray_slice.hpp"
+#include "expression.hpp"
 
 namespace MArray
 {
@@ -184,37 +188,17 @@ class marray
             reset();
         }
 
-        template <typename U, typename=detail::enable_if_assignable_t<reference, U>>
-        marray& operator=(const marray_view<U, NDim>& other)
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U, unsigned NIndexed, unsigned NSliced,
-                  typename=detail::enable_if_assignable_t<reference, U>>
-        marray& operator=(const marray_slice<U, NDim+NIndexed, NIndexed, NSliced>& other)
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U, typename UAlloc, typename=detail::enable_if_assignable_t<reference, U>>
-        marray& operator=(const marray<Type, NDim, UAlloc>& other)
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
         marray& operator=(const marray& other)
         {
             assign_expr(*this, other);
             return *this;
         }
 
-        marray& operator=(const Type& value)
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        marray& operator=(const Expression& other)
         {
-            assign_expr(*this, value);
+            assign_expr(*this, other);
             return *this;
         }
 

@@ -74,9 +74,9 @@ class marray_slice
         {
             std::copy_n(parent.dims_.begin(), NSliced-1, dims_.begin());
             dims_.back() = CurDim;
-            std::copy_n(parent.len_.begin(), NSliced-1, slice_len_.begin());
+            std::copy_n(parent.slice_len_.begin(), NSliced-1, slice_len_.begin());
             slice_len_.back() = slice.size();
-            std::copy_n(parent.stride_.begin(), NSliced-1, slice_stride_.begin());
+            std::copy_n(parent.slice_stride_.begin(), NSliced-1, slice_stride_.begin());
             slice_stride_.back() = slice.step()*stride_[CurDim];
         }
 
@@ -86,35 +86,11 @@ class marray_slice
             return *this;
         }
 
-        template <typename U,
-                  typename=detail::enable_if_assignable_t<reference, U>>
-                  const marray_slice& operator=(const marray_view<U, NewNDim>& other) const
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_slice& operator=(const Expression& other) const
         {
             assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U, typename Alloc,
-                  typename=detail::enable_if_assignable_t<reference, U>>
-                  const marray_slice& operator=(const marray<Type, NewNDim, Alloc>& other) const
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U, unsigned NIndexed_, unsigned NSliced_,
-                  typename=detail::enable_if_assignable_t<reference, U>>
-                  const marray_slice& operator=(const marray_slice<Type, NewNDim+NIndexed_, NIndexed_, NSliced_>& other) const
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename U,
-                  typename=detail::enable_if_assignable_t<reference, U>>
-        const marray_slice& operator=(const U& value) const
-        {
-            assign_expr(*this, value);
             return *this;
         }
 
