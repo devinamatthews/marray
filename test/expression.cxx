@@ -85,14 +85,32 @@ TEST(expression, assign)
 
 TEST(expression, bcast)
 {
+    using namespace slice;
+
     double data[3] = {1, 2, 3};
 
-    marray<double,3> v1({2, 2, 3});
+    marray<double,3> v1({3, 2, 3});
     marray_view<double,1> v2({3}, data);
 
     v1 = v2;
-    EXPECT_EQ((array<double,12>{1, 2, 3, 1, 2, 3,
-                                1, 2, 3, 1, 2, 3}), *(array<double,12>*)v1.data());
+    EXPECT_EQ((array<double,18>{1, 2, 3, 1, 2, 3,
+                                1, 2, 3, 1, 2, 3,
+                                1, 2, 3, 1, 2, 3}), *(array<double,18>*)v1.data());
+
+    v1 = 0;
+    EXPECT_EQ((array<double,18>{0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0}), *(array<double,18>*)v1.data());
+
+    v1 = v2[bcast][bcast];
+    EXPECT_EQ((array<double,18>{1, 2, 3, 1, 2, 3,
+                                1, 2, 3, 1, 2, 3,
+                                1, 2, 3, 1, 2, 3}), *(array<double,18>*)v1.data());
+
+    v1 = v2[all][bcast][bcast];
+    EXPECT_EQ((array<double,18>{1, 1, 1, 1, 1, 1,
+                                2, 2, 2, 2, 2, 2,
+                                3, 3, 3, 3, 3, 3}), *(array<double,18>*)v1.data());
 }
 
 TEST(expression, add)
@@ -112,6 +130,12 @@ TEST(expression, add)
 
     v1 = 2.0 + v3;
     EXPECT_EQ((array<double,3>{5, 4, 3}), *(array<double,3>*)v1.data());
+
+    v1 += v2;
+    EXPECT_EQ((array<double,3>{6, 6, 6}), *(array<double,3>*)v1.data());
+
+    v1 += 1;
+    EXPECT_EQ((array<double,3>{7, 7, 7}), *(array<double,3>*)v1.data());
 }
 
 TEST(expression, sub)
@@ -131,6 +155,12 @@ TEST(expression, sub)
 
     v1 = 2.0 - v3;
     EXPECT_EQ((array<double,3>{-1, 0, 1}), *(array<double,3>*)v1.data());
+
+    v1 -= v2;
+    EXPECT_EQ((array<double,3>{-2, -2, -2}), *(array<double,3>*)v1.data());
+
+    v1 -= 1;
+    EXPECT_EQ((array<double,3>{-3, -3, -3}), *(array<double,3>*)v1.data());
 }
 
 TEST(expression, mul)
@@ -150,6 +180,37 @@ TEST(expression, mul)
 
     v1 = 2.0 * v3;
     EXPECT_EQ((array<double,3>{6, 4, 2}), *(array<double,3>*)v1.data());
+
+    v1 *= v2;
+    EXPECT_EQ((array<double,3>{6, 8, 6}), *(array<double,3>*)v1.data());
+
+    v1 *= 2;
+    EXPECT_EQ((array<double,3>{12, 16, 12}), *(array<double,3>*)v1.data());
+}
+
+TEST(expression, div)
+{
+    double data1[3] = {1, 2, 3};
+    double data2[3] = {3, 2, 1};
+
+    marray<double,1> v1({3});
+    marray_view<double,1> v2({3}, data1);
+    marray_view<double,1> v3({3}, data2);
+
+    v1 = v2 / v3;
+    EXPECT_EQ((array<double,3>{1.0/3, 1, 3}), *(array<double,3>*)v1.data());
+
+    v1 = v2 / 1;
+    EXPECT_EQ((array<double,3>{1, 2, 3}), *(array<double,3>*)v1.data());
+
+    v1 = 2.0 / v3;
+    EXPECT_EQ((array<double,3>{2.0/3, 1, 2}), *(array<double,3>*)v1.data());
+
+    v1 /= v2;
+    EXPECT_EQ((array<double,3>{2.0/3, 0.5, 2.0/3}), *(array<double,3>*)v1.data());
+
+    v1 /= 2;
+    EXPECT_EQ((array<double,3>{1.0/3, 0.25, 1.0/3}), *(array<double,3>*)v1.data());
 }
 
 TEST(expression, pow)

@@ -37,9 +37,9 @@ class marray_view
             reset(other);
         }
 
-        template <typename U, unsigned NIndexed, unsigned NSliced,
+        template <typename U, unsigned OldNDim, unsigned NIndexed, typename... Dims,
                   typename=detail::enable_if_convertible_t<U*,pointer>>
-        marray_view(const marray_slice<U, NDim+NIndexed, NIndexed, NSliced>& other)
+        marray_view(const marray_slice<U, OldNDim, NIndexed, Dims...>& other)
         {
             reset(other);
         }
@@ -97,6 +97,38 @@ class marray_view
             return *this;
         }
 
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_view& operator+=(const Expression& other) const
+        {
+            *this = *this + other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_view& operator-=(const Expression& other) const
+        {
+            *this = *this - other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_view& operator*=(const Expression& other) const
+        {
+            *this = *this * other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_view& operator/=(const Expression& other) const
+        {
+            *this = *this / other;
+            return *this;
+        }
+
         void reset()
         {
             data_ = nullptr;
@@ -113,9 +145,9 @@ class marray_view
             stride_ = other.strides();
         }
 
-        template <typename U, unsigned NIndexed, unsigned NSliced>
+        template <typename U, unsigned OldNDim, unsigned NIndexed, typename... Dims>
         detail::enable_if_convertible_t<U*,pointer>
-        reset(const marray_slice<U, NDim+NIndexed, NIndexed, NSliced>& other)
+        reset(const marray_slice<U, OldNDim, NIndexed, Dims...>& other)
         {
             reset(view(other));
         }
@@ -556,7 +588,7 @@ class marray_view
         }
 
         template <unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_slice<Type, NDim, 1, 0>>
+        detail::enable_if_t<N!=1, marray_slice<Type, NDim, 1>>
         operator[](idx_type i) const
         {
             MARRAY_ASSERT(i < len_[0]);
@@ -564,7 +596,7 @@ class marray_view
         }
 
         template <typename I>
-        marray_slice<Type, NDim, 0, 1>
+        marray_slice<Type, NDim, 1, slice_dim>
         operator[](const range_t<I>& x) const
         {
             MARRAY_ASSERT(x.front() <= x.back());
@@ -572,27 +604,50 @@ class marray_view
             return {*this, x};
         }
 
-        marray_slice<Type, NDim, 0, 1>
+        marray_slice<Type, NDim, 1, slice_dim>
         operator[](all_t) const
         {
             return {*this, range(len_[0])};
         }
 
-        template <typename Arg, typename=
-            detail::enable_if_t<NDim==1 && detail::is_index_or_slice<Arg>::value>>
-        auto operator()(Arg&& arg) const ->
-        decltype((*this)[std::forward<Arg>(arg)])
+        marray_slice<Type, NDim, 0, bcast_dim>
+        operator[](bcast_t) const
         {
-            return (*this)[std::forward<Arg>(arg)];
+            return {*this};
+        }
+
+        template <unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        reference operator()(idx_type i) const
+        {
+            return (*this)[i];
+        }
+
+        template <typename Arg, typename=
+            detail::enable_if_t<NDim==1 &&
+                                !std::is_convertible<Arg, idx_type>::value &&
+                                detail::is_index_or_slice<Arg>::value>>
+        auto operator()(Arg&& arg) const ->
+        decltype((*this)[std::forward<Arg>(arg)].view())
+        {
+            return (*this)[std::forward<Arg>(arg)].view();
+        }
+
+        template <typename... Args, typename=
+            detail::enable_if_t<sizeof...(Args)+1 == NDim &&
+                                detail::are_convertible<idx_type, Args...>::value>>
+        reference operator()(idx_type i, Args&&... args) const
+        {
+            return (*this)[i](std::forward<Args>(args)...);
         }
 
         template <typename Arg, typename... Args, typename=
             detail::enable_if_t<sizeof...(Args)+1 == NDim &&
-                                    detail::are_indices_or_slices<Arg, Args...>::value>>
+                                !detail::are_convertible<idx_type, Arg, Args...>::value &&
+                                detail::are_indices_or_slices<Arg, Args...>::value>>
         auto operator()(Arg&& arg, Args&&... args) const ->
-        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...))
+        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view())
         {
-            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...);
+            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view();
         }
 
         void rotate_dim(unsigned dim, idx_type shift)

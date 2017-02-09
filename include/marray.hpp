@@ -8,7 +8,7 @@
 namespace MArray
 {
 
-template <typename Type, unsigned NDim, unsigned NIndexed, unsigned NSliced>
+template <typename Type, unsigned NDim, unsigned NIndexed, typename... Dims>
 class marray_slice;
 
 template <typename Type, unsigned NDim>
@@ -22,9 +22,9 @@ struct is_expression_arg_or_scalar;
 
 }
 
-#include "marray_view.hpp"
-#include "marray_slice.hpp"
 #include "expression.hpp"
+#include "marray_slice.hpp"
+#include "marray_view.hpp"
 
 namespace MArray
 {
@@ -127,9 +127,9 @@ class marray
             reset(other, layout);
         }
 
-        template <typename U, unsigned NIndexed, unsigned NSliced,
+        template <typename U, unsigned OldNDim, unsigned NIndexed, typename... Dims,
                   typename=detail::enable_if_assignable_t<reference, U>>
-        marray(const marray_slice<U, NDim+NIndexed, NIndexed, NSliced>& other, layout layout = layout::DEFAULT)
+        marray(const marray_slice<U, OldNDim, NIndexed, Dims...>& other, layout layout = layout::DEFAULT)
         {
             reset(other, layout);
         }
@@ -202,6 +202,38 @@ class marray
             return *this;
         }
 
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        marray& operator+=(const Expression& other)
+        {
+            *this = *this + other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        marray& operator-=(const Expression& other)
+        {
+            *this = *this - other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        marray& operator*=(const Expression& other)
+        {
+            *this = *this * other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        marray& operator/=(const Expression& other)
+        {
+            *this = *this / other;
+            return *this;
+        }
+
         void reset()
         {
             if (alloc_)
@@ -231,9 +263,9 @@ class marray
             *this = other;
         }
 
-        template <typename U, unsigned NIndexed, unsigned NSliced>
+        template <typename U, unsigned OldNDim, unsigned NIndexed, typename... Dims>
         detail::enable_if_assignable_t<reference, U>
-        reset(const marray_slice<U, NDim+NIndexed, NIndexed, NSliced>& other, layout layout = layout::DEFAULT)
+        reset(const marray_slice<U, OldNDim, NIndexed, Dims...>& other, layout layout = layout::DEFAULT)
         {
             reset(other.view(), layout);
         }
@@ -913,7 +945,7 @@ class marray
         }
 
         template <unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_slice<const Type, NDim, 1, 0>>
+        detail::enable_if_t<N!=1, marray_slice<const Type, NDim, 1>>
         operator[](idx_type i) const
         {
             MARRAY_ASSERT(i < len_[0]);
@@ -921,7 +953,7 @@ class marray
         }
 
         template <unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_slice<Type, NDim, 1, 0>>
+        detail::enable_if_t<N!=1, marray_slice<Type, NDim, 1>>
         operator[](idx_type i)
         {
             MARRAY_ASSERT(i < len_[0]);
@@ -929,7 +961,7 @@ class marray
         }
 
         template <typename I>
-        marray_slice<const Type, NDim, 0, 1>
+        marray_slice<const Type, NDim, 1, slice_dim>
         operator[](const range_t<I>& x) const
         {
             MARRAY_ASSERT(x.front() <= x.back());
@@ -938,7 +970,7 @@ class marray
         }
 
         template <typename I>
-        marray_slice<Type, NDim, 0, 1>
+        marray_slice<Type, NDim, 1, slice_dim>
         operator[](const range_t<I>& x)
         {
             MARRAY_ASSERT(x.front() <= x.back());
@@ -946,50 +978,96 @@ class marray
             return {*this, x};
         }
 
-        marray_slice<const Type, NDim, 0, 1>
+        marray_slice<const Type, NDim, 1, slice_dim>
         operator[](all_t) const
         {
             return {*this, range(len_[0])};
         }
 
-        marray_slice<Type, NDim, 0, 1>
+        marray_slice<Type, NDim, 1, slice_dim>
         operator[](all_t)
         {
             return {*this, range(len_[0])};
         }
 
+        marray_slice<const Type, NDim, 0, bcast_dim>
+        operator[](bcast_t) const
+        {
+            return {*this};
+        }
+
+        marray_slice<Type, NDim, 0, bcast_dim>
+        operator[](bcast_t)
+        {
+            return {*this};
+        }
+
+        template <unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        const_reference operator()(idx_type i) const
+        {
+            return (*this)[i];
+        }
+
+        template <unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        reference operator()(idx_type i)
+        {
+            return (*this)[i];
+        }
+
         template <typename Arg, typename=
-            detail::enable_if_t<NDim==1 && detail::is_index_or_slice<Arg>::value>>
+            detail::enable_if_t<NDim==1 &&
+                                !std::is_convertible<Arg, idx_type>::value &&
+                                detail::is_index_or_slice<Arg>::value>>
         auto operator()(Arg&& arg) const ->
-        decltype((*this)[std::forward<Arg>(arg)])
+        decltype((*this)[std::forward<Arg>(arg)].view())
         {
-            return (*this)[std::forward<Arg>(arg)];
+            return (*this)[std::forward<Arg>(arg)].view();
         }
 
         template <typename Arg, typename=
-            detail::enable_if_t<NDim==1 && detail::is_index_or_slice<Arg>::value>>
+            detail::enable_if_t<NDim==1 &&
+                                !std::is_convertible<Arg, idx_type>::value &&
+                                detail::is_index_or_slice<Arg>::value>>
         auto operator()(Arg&& arg) ->
-        decltype((*this)[std::forward<Arg>(arg)])
+        decltype((*this)[std::forward<Arg>(arg)].view())
         {
-            return (*this)[std::forward<Arg>(arg)];
+            return (*this)[std::forward<Arg>(arg)].view();
+        }
+
+        template <typename... Args, typename=
+            detail::enable_if_t<sizeof...(Args)+1 == NDim &&
+                                detail::are_convertible<idx_type, Args...>::value>>
+        const_reference operator()(idx_type i, Args&&... args) const
+        {
+            return (*this)[i](std::forward<Args>(args)...);
+        }
+
+        template <typename... Args, typename=
+            detail::enable_if_t<sizeof...(Args)+1 == NDim &&
+                                detail::are_convertible<idx_type, Args...>::value>>
+        reference operator()(idx_type i, Args&&... args)
+        {
+            return (*this)[i](std::forward<Args>(args)...);
         }
 
         template <typename Arg, typename... Args, typename=
             detail::enable_if_t<sizeof...(Args)+1 == NDim &&
-                                    detail::are_indices_or_slices<Arg, Args...>::value>>
+                                !detail::are_convertible<idx_type, Arg, Args...>::value &&
+                                detail::are_indices_or_slices<Arg, Args...>::value>>
         auto operator()(Arg&& arg, Args&&... args) const ->
-        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...))
+        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view())
         {
-            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...);
+            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view();
         }
 
         template <typename Arg, typename... Args, typename=
             detail::enable_if_t<sizeof...(Args)+1 == NDim &&
-                                    detail::are_indices_or_slices<Arg, Args...>::value>>
+                                !detail::are_convertible<idx_type, Arg, Args...>::value &&
+                                detail::are_indices_or_slices<Arg, Args...>::value>>
         auto operator()(Arg&& arg, Args&&... args) ->
-        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...))
+        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view())
         {
-            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...);
+            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view();
         }
 
         const_pointer cdata() const

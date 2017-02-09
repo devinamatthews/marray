@@ -12,6 +12,8 @@
 #include <tuple>
 #include <cmath>
 #include <cstddef>
+#include <string>
+#include <functional>
 
 #ifndef MARRAY_DEFAULT_LAYOUT
 #define MARRAY_DEFAULT_LAYOUT ROW_MAJOR

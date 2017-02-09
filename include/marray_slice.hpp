@@ -6,6 +6,60 @@
 namespace MArray
 {
 
+namespace detail
+{
+
+template <typename... Dims>
+struct num_slice_dims;
+
+template <>
+struct num_slice_dims<> : std::integral_constant<unsigned, 0> {};
+
+template <typename... Dims>
+struct num_slice_dims<slice_dim, Dims...>
+: std::integral_constant<unsigned, num_slice_dims<Dims...>::value+1> {};
+
+template <typename... Dims>
+struct num_slice_dims<bcast_dim, Dims...>
+: std::integral_constant<unsigned, num_slice_dims<Dims...>::value> {};
+
+template <typename It1, typename It2>
+void get_slice_dims_helper(It1 len, It2 stride) {}
+
+template <typename It1, typename It2, typename... Dims>
+void get_slice_dims_helper(It1 len, It2 stride,
+                           const slice_dim& dim, const Dims&... dims)
+{
+    *len = dim.len;
+    *stride = dim.stride;
+    get_slice_dims_helper(++len, ++stride, dims...);
+}
+
+template <typename It1, typename It2, typename... Dims>
+void get_slice_dims_helper(It1 len, It2 stride,
+                           const bcast_dim&, const Dims&... dims)
+{
+    get_slice_dims_helper(len, stride, dims...);
+}
+
+template <typename It1, typename It2, typename... Dims, size_t... I>
+void get_slice_dims_helper(It1 len, It2 stride,
+                           const std::tuple<Dims...>& dims,
+                           detail::integer_sequence<size_t, I...>)
+{
+    get_slice_dims_helper(len, stride, std::get<I>(dims)...);
+}
+
+template <typename It1, typename It2, typename... Dims>
+void get_slice_dims(It1 len, It2 stride,
+                    const std::tuple<Dims...>& dims)
+{
+    get_slice_dims_helper(len, stride, dims,
+                          detail::static_range<sizeof...(Dims)>());
+}
+
+}
+
 /*
  * Represents a part of an array, where the first NIndexed-1 out of NDim
  * Dimensions have either been indexed into (i.e. a single value
@@ -15,10 +69,10 @@ namespace MArray
  * NDim-NIndexed+1+NSliced) or further indexed, but may not be used to modify
  * data.
  */
-template <typename Type, unsigned NDim, unsigned NIndexed, unsigned NSliced>
+template <typename Type, unsigned NDim, unsigned NIndexed, typename... Dims>
 class marray_slice
 {
-    template <typename, unsigned, unsigned, unsigned> friend class marray_slice;
+    template <typename, unsigned, unsigned, typename...> friend class marray_slice;
 
     public:
         typedef typename marray_view<Type, NDim>::value_type value_type;
@@ -28,57 +82,53 @@ class marray_slice
         typedef typename marray_view<Type, NDim>::reference reference;
 
     protected:
-        static constexpr unsigned CurDim = NIndexed+NSliced-1;
-        static constexpr unsigned NextDim = NIndexed+NSliced;
-        static constexpr unsigned NewNDim = NDim-NIndexed;
-        static constexpr unsigned DimsLeft = NDim-NIndexed-NSliced;
-        static constexpr bool Const = std::is_const<Type>::value;
-
         const std::array<idx_type, NDim>& len_;
         const std::array<stride_type, NDim>& stride_;
         pointer data_;
-        std::array<unsigned, NSliced> dims_;
-        std::array<idx_type, NSliced> slice_len_;
-        std::array<stride_type, NSliced> slice_stride_;
+        std::tuple<Dims...> dims_;
+
+        static constexpr unsigned DimsLeft = NDim - NIndexed;
+        static constexpr unsigned CurDim = NIndexed-1;
+        static constexpr unsigned NextDim = NIndexed;
+        static constexpr unsigned NSliced = detail::num_slice_dims<Dims...>::value;
+        static constexpr unsigned NewNDim = NSliced + DimsLeft;
 
     public:
         marray_slice(const marray_slice& other) = default;
 
-        template <typename Array,
-                  unsigned N1=NIndexed, unsigned N2=NSliced,
-                  typename=detail::enable_if_t<N1==1 && N2==0>>
+        template <typename Array, typename=decltype(std::declval<Array>().lengths())>
         marray_slice(Array&& array, idx_type i)
         : len_(array.lengths()), stride_(array.strides()),
           data_(array.data() + i*stride_[CurDim]) {}
 
-        template <typename Array, typename I,
-                  unsigned N1=NIndexed, unsigned N2=NSliced,
-                  typename=detail::enable_if_t<N1==0 && N2==1>>
+        template <typename Array, typename I, typename=decltype(std::declval<Array>().lengths())>
         marray_slice(Array&& array, const range_t<I>& slice)
         : len_(array.lengths()), stride_(array.strides()),
           data_(array.data() + slice.front()*stride_[CurDim]),
-          dims_{CurDim}, slice_len_{slice.size()},
-          slice_stride_{slice.step()*stride_[CurDim]} {}
+          dims_(slice_dim{slice.size(), slice.step()*stride_[CurDim]}) {}
 
-        marray_slice(const marray_slice<Type, NDim, NIndexed-1, NSliced>& parent, idx_type i)
+        template <typename Array, typename=decltype(std::declval<Array>().lengths())>
+        marray_slice(Array&& array)
+        : len_(array.lengths()), stride_(array.strides()),
+          data_(array.data()), dims_(bcast_dim{}) {}
+
+        marray_slice(const marray_slice<Type, NDim, NIndexed-1, Dims...>& parent, idx_type i)
         : len_(parent.len_), stride_(parent.stride_),
-          data_(parent.data_ + i*parent.stride_[CurDim]),
-          dims_(parent.dims_), slice_len_(parent.slice_len_),
-          slice_stride_(parent.slice_stride_) {}
+          data_(parent.data_ + i*parent.stride_[CurDim]), dims_(parent.dims_) {}
 
-        template <typename I>
-        marray_slice(const marray_slice<Type, NDim, NIndexed, NSliced-1>& parent,
+        template <typename... OldDims, typename I>
+        marray_slice(const marray_slice<Type, NDim, NIndexed-1, OldDims...>& parent,
                      const range_t<I>& slice)
         : len_(parent.len_), stride_(parent.stride_),
-          data_(parent.data_ + slice.front()*parent.stride_[CurDim])
-        {
-            std::copy_n(parent.dims_.begin(), NSliced-1, dims_.begin());
-            dims_.back() = CurDim;
-            std::copy_n(parent.slice_len_.begin(), NSliced-1, slice_len_.begin());
-            slice_len_.back() = slice.size();
-            std::copy_n(parent.slice_stride_.begin(), NSliced-1, slice_stride_.begin());
-            slice_stride_.back() = slice.step()*stride_[CurDim];
-        }
+          data_(parent.data_ + slice.front()*parent.stride_[CurDim]),
+          dims_(std::tuple_cat(parent.dims_,
+                std::make_tuple(slice_dim{slice.size(), slice.step()*stride_[CurDim]}))) {}
+
+        template <typename... OldDims>
+        marray_slice(const marray_slice<Type, NDim, NIndexed, OldDims...>& parent)
+        : len_(parent.len_), stride_(parent.stride_),
+          data_(parent.data_),
+          dims_(std::tuple_cat(parent.dims_, std::make_tuple(bcast_dim{}))) {}
 
         const marray_slice& operator=(const marray_slice& other) const
         {
@@ -94,39 +144,81 @@ class marray_slice
             return *this;
         }
 
-        template <int N=NewNDim>
-        detail::enable_if_t<N==1, reference>
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_slice& operator+=(const Expression& other) const
+        {
+            *this = *this + other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_slice& operator-=(const Expression& other) const
+        {
+            *this = *this - other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_slice& operator*=(const Expression& other) const
+        {
+            *this = *this * other;
+            return *this;
+        }
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        const marray_slice& operator/=(const Expression& other) const
+        {
+            *this = *this / other;
+            return *this;
+        }
+
+        template <int N=DimsLeft>
+        detail::enable_if_t<N==1 && !sizeof...(Dims), reference>
         operator[](idx_type i) const
         {
-            MARRAY_ASSERT(i >= 0 && i < len_[NextDim]);
+            MARRAY_ASSERT(i >= 0 && i < len_[NDim-1]);
             return data_[i*stride_[NextDim]];
         }
 
-        template <int N=NewNDim>
-        detail::enable_if_t<(N>1), marray_slice<Type, NDim, NIndexed+1, NSliced>>
+        template <int N=DimsLeft>
+        detail::enable_if_t<N!=1 || sizeof...(Dims),
+                            marray_slice<Type, NDim, NIndexed+1, Dims...>>
         operator[](idx_type i) const
         {
+            static_assert(DimsLeft, "No more dimensions to index");
             MARRAY_ASSERT(i >= 0 && i < len_[NextDim]);
             return {*this, i};
         }
 
         template <typename I>
-        marray_slice<Type, NDim, NIndexed, NSliced+1>
+        marray_slice<Type, NDim, NIndexed+1, Dims..., slice_dim>
         operator[](const range_t<I>& x) const
         {
+            static_assert(DimsLeft, "No more dimensions to index");
             MARRAY_ASSERT(x.front() <= x.back());
             MARRAY_ASSERT(x.front() >= 0 && x.back() <= len_[NextDim]);
             return {*this, x};
         }
 
-        marray_slice<Type, NDim, NIndexed, NSliced+1>
+        marray_slice<Type, NDim, NIndexed+1, Dims..., slice_dim>
         operator[](all_t) const
         {
-            return {*this, range(idx_type(), len_[NextDim])};
+            static_assert(DimsLeft, "No more dimensions to index");
+            return {*this, range(idx_type(), len_[NIndexed])};
+        }
+
+        marray_slice<Type, NDim, NIndexed, Dims..., bcast_dim>
+        operator[](bcast_t) const
+        {
+            return {*this};
         }
 
         template <typename Arg, typename=
-            detail::enable_if_t<DimsLeft == 1 &&
+            detail::enable_if_t<DimsLeft==1 &&
                                 detail::is_index_or_slice<Arg>::value>>
         auto operator()(Arg&& arg) const ->
         decltype((*this)[std::forward<Arg>(arg)])
@@ -134,13 +226,13 @@ class marray_slice
             return (*this)[std::forward<Arg>(arg)];
         }
 
-        template <typename Arg1, typename Arg2, typename... Args, typename=
-            detail::enable_if_t<sizeof...(Args) == DimsLeft-2 &&
-                                detail::are_indices_or_slices<Arg1, Arg2, Args...>::value>>
-        auto operator()(Arg1&& arg1, Arg2&& arg2, Args&&... args) const ->
-        decltype((*this)[std::forward<Arg1>(arg1)](std::forward<Arg2>(arg2), std::forward<Args>(args)...))
+        template <typename Arg, typename... Args, typename=
+            detail::enable_if_t<(DimsLeft>1) &&
+                                detail::are_indices_or_slices<Arg, Args...>::value>>
+        auto operator()(Arg&& arg, Args&&... args) const ->
+        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...))
         {
-            return (*this)[std::forward<Arg1>(arg1)](std::forward<Arg2>(arg2), std::forward<Args>(args)...);
+            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...);
         }
 
         const_pointer cdata() const
@@ -153,30 +245,10 @@ class marray_slice
             return data_;
         }
 
-        idx_type slice_length(unsigned dim) const
-        {
-            MARRAY_ASSERT(dim < NSliced);
-            return slice_len_[dim];
-        }
-
         template <unsigned Dim>
-        idx_type slice_length() const
+        auto dim() const -> decltype((std::get<Dim>(dims_)))
         {
-            static_assert(Dim < NSliced, "Dim out of range");
-            return slice_len_[Dim];
-        }
-
-        stride_type slice_stride(unsigned dim) const
-        {
-            MARRAY_ASSERT(dim < NSliced);
-            return slice_stride_[dim];
-        }
-
-        template <unsigned Dim>
-        stride_type slice_stride() const
-        {
-            static_assert(Dim < NDim, "Dim out of range");
-            return slice_stride_[Dim];
+            return std::get<Dim>(dims_);
         }
 
         idx_type base_length(unsigned dim) const
@@ -201,17 +273,19 @@ class marray_slice
         template <unsigned Dim>
         stride_type base_stride() const
         {
-            static_assert(Dim < NSliced, "Dim out of range");
+            static_assert(Dim < NDim, "Dim out of range");
             return stride_[Dim];
         }
 
         marray_view<const Type, NewNDim> cview() const
         {
+            static_assert(NSliced == sizeof...(Dims),
+                          "Only pure slices can be viewed");
+
             std::array<idx_type, NewNDim> len;
             std::array<stride_type, NewNDim> stride;
 
-            std::copy_n(slice_len_.begin(), NSliced, len.begin());
-            std::copy_n(slice_stride_.begin(), NSliced, stride.begin());
+            detail::get_slice_dims(len.begin(), stride.begin(), dims_);
             std::copy_n(len_.begin()+NextDim, DimsLeft, len.begin()+NSliced);
             std::copy_n(stride_.begin()+NextDim, DimsLeft, stride.begin()+NSliced);
 
@@ -220,11 +294,13 @@ class marray_slice
 
         marray_view<Type, NewNDim> view() const
         {
+            static_assert(NSliced == sizeof...(Dims),
+                          "Only pure slices can be viewed");
+
             std::array<idx_type, NewNDim> len;
             std::array<stride_type, NewNDim> stride;
 
-            std::copy_n(slice_len_.begin(), NSliced, len.begin());
-            std::copy_n(slice_stride_.begin(), NSliced, stride.begin());
+            detail::get_slice_dims(len.begin(), stride.begin(), dims_);
             std::copy_n(len_.begin()+NextDim, DimsLeft, len.begin()+NSliced);
             std::copy_n(stride_.begin()+NextDim, DimsLeft, stride.begin()+NSliced);
 

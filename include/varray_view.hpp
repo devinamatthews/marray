@@ -602,8 +602,8 @@ varray_view<T> vary(const marray_view<T, NDim>& other)
     return {len, other.data(), stride};
 }
 
-template <typename T, unsigned NDim, unsigned NIndexed, unsigned NSliced>
-varray_view<T> vary(const marray_slice<T, NDim, NIndexed, NSliced>& other)
+template <typename T, unsigned NDim, unsigned NIndexed, typename... Dims>
+varray_view<T> vary(const marray_slice<T, NDim, NIndexed, Dims...>& other)
 {
     return vary(other.view());
 }
