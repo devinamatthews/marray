@@ -116,6 +116,9 @@ namespace detail
     template <>
     struct is_index_or_slice_helper<all_t> : std::true_type {};
 
+    template <>
+    struct is_index_or_slice_helper<bcast_t> : std::true_type {};
+
     template <typename T>
     struct is_index_or_slice : is_index_or_slice_helper<typename std::decay<T>::type> {};
 

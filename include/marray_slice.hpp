@@ -218,8 +218,7 @@ class marray_slice
         }
 
         template <typename Arg, typename=
-            detail::enable_if_t<DimsLeft==1 &&
-                                detail::is_index_or_slice<Arg>::value>>
+            detail::enable_if_t<detail::is_index_or_slice<Arg>::value>>
         auto operator()(Arg&& arg) const ->
         decltype((*this)[std::forward<Arg>(arg)])
         {
@@ -227,8 +226,8 @@ class marray_slice
         }
 
         template <typename Arg, typename... Args, typename=
-            detail::enable_if_t<(DimsLeft>1) &&
-                                detail::are_indices_or_slices<Arg, Args...>::value>>
+            detail::enable_if_t<sizeof...(Args) &&
+                detail::are_indices_or_slices<Arg, Args...>::value>>
         auto operator()(Arg&& arg, Args&&... args) const ->
         decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...))
         {

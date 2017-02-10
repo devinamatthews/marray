@@ -616,38 +616,21 @@ class marray_view
             return {*this};
         }
 
-        template <unsigned N=NDim, typename=detail::enable_if_t<N==1>>
-        reference operator()(idx_type i) const
-        {
-            return (*this)[i];
-        }
-
         template <typename Arg, typename=
-            detail::enable_if_t<NDim==1 &&
-                                !std::is_convertible<Arg, idx_type>::value &&
-                                detail::is_index_or_slice<Arg>::value>>
+            detail::enable_if_t<detail::is_index_or_slice<Arg>::value>>
         auto operator()(Arg&& arg) const ->
-        decltype((*this)[std::forward<Arg>(arg)].view())
+        decltype((*this)[std::forward<Arg>(arg)])
         {
-            return (*this)[std::forward<Arg>(arg)].view();
-        }
-
-        template <typename... Args, typename=
-            detail::enable_if_t<sizeof...(Args)+1 == NDim &&
-                                detail::are_convertible<idx_type, Args...>::value>>
-        reference operator()(idx_type i, Args&&... args) const
-        {
-            return (*this)[i](std::forward<Args>(args)...);
+            return (*this)[std::forward<Arg>(arg)];
         }
 
         template <typename Arg, typename... Args, typename=
-            detail::enable_if_t<sizeof...(Args)+1 == NDim &&
-                                !detail::are_convertible<idx_type, Arg, Args...>::value &&
-                                detail::are_indices_or_slices<Arg, Args...>::value>>
+            detail::enable_if_t<sizeof...(Args) &&
+                detail::are_indices_or_slices<Arg, Args...>::value>>
         auto operator()(Arg&& arg, Args&&... args) const ->
-        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view())
+        decltype((*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...))
         {
-            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...).view();
+            return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...);
         }
 
         void rotate_dim(unsigned dim, idx_type shift)
