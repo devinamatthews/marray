@@ -866,8 +866,7 @@ template <unsigned NDim>
 struct assign_expr_loop<NDim, NDim>
 {
     template <typename LHS, typename RHS>
-    void  __attribute__((always_inline))
-    operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         for (idx_type i = 0;i < len[NDim-1];i++)
         {
@@ -886,8 +885,7 @@ template <unsigned NDim, unsigned Dim>
 struct assign_expr_loop
 {
     template <typename LHS, typename RHS>
-    void  __attribute__((always_inline))
-    operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         assign_expr_loop<NDim, Dim+1> next_loop;
 
@@ -911,8 +909,7 @@ template <unsigned NDim>
 struct assign_expr_loop_vec_row_major<NDim, NDim>
 {
     template <typename LHS, typename RHS>
-    void  __attribute__((always_inline))
-    operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         for (idx_type i = 0;i < len[NDim-1];i++)
         {
@@ -925,8 +922,7 @@ template <unsigned NDim, unsigned Dim>
 struct assign_expr_loop_vec_row_major
 {
     template <typename LHS, typename RHS>
-    void  __attribute__((always_inline))
-    operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         assign_expr_loop_vec_row_major<NDim, Dim+1> next_loop;
 
@@ -950,8 +946,7 @@ template <unsigned NDim>
 struct assign_expr_loop_vec_col_major<NDim, 0>
 {
     template <typename LHS, typename RHS>
-    void  __attribute__((always_inline))
-    operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         for (idx_type i = 0;i < len[0];i++)
         {
@@ -964,8 +959,7 @@ template <unsigned NDim, unsigned Dim>
 struct assign_expr_loop_vec_col_major
 {
     template <typename LHS, typename RHS>
-    void  __attribute__((always_inline))
-    operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
         assign_expr_loop_vec_col_major<NDim, Dim-1> next_loop;
 
@@ -986,7 +980,6 @@ template <typename Array, typename Expr>
 detail::enable_if_t<(is_array_expression<detail::decay_t<Array>>::value ||
                      is_marray<detail::decay_t<Array>>::value) &&
                     is_expression_arg_or_scalar<detail::decay_t<Expr>>::value>
-__attribute__((always_inline))
 assign_expr(Array&& array_, Expr&& expr_)
 {
     typedef typename expression_type<detail::decay_t<Array>>::type array_type;
