@@ -1,7 +1,10 @@
 #ifndef _MARRAY_EXPRESSION_HPP_
 #define _MARRAY_EXPRESSION_HPP_
 
+#include <x86intrin.h>
+
 #include "utility.hpp"
+#include "vector.hpp"
 
 namespace MArray
 {
@@ -65,6 +68,27 @@ struct array_expr
     result_type eval_at(idx_type, const bcast_dim&) const
     {
         return *data;
+    }
+};
+
+template <typename T>
+struct constant_expr
+{
+    typedef T result_type;
+
+    T data;
+
+    constant_expr(T data) : data(data) {}
+
+    result_type eval() const
+    {
+        return data;
+    }
+
+    template <unsigned NDim, unsigned Dim>
+    result_type eval_at(idx_type) const
+    {
+        return data;
     }
 };
 
@@ -288,6 +312,9 @@ struct is_expression : std::false_type {};
 
 template <typename T, typename... Dims>
 struct is_expression<array_expr<T, Dims...>> : std::true_type {};
+
+template <typename T>
+struct is_expression<constant_expr<T>> : std::true_type {};
 
 template <typename LHS, typename RHS, typename Op>
 struct is_expression<binary_expr<LHS, RHS, Op>> : std::true_type {};
