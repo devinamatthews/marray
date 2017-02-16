@@ -617,6 +617,272 @@ struct vector_traits<int8_t>
 
     __m128i mul(__m128i a, __m128i b)
     {
+        __m128i lo = _mm_and_si128(_mm_mullo_epi16(a, b), _mm_set1_epi16(0xff));
+        __m128i hi = _mm_mullo_epi16(_mm_srli_epi16(a, 8),_mm_srli_epi16(b, 8));
+        return _mm_or_si128(_mm_slli_epi16(hi, 8), lo);
+    }
+
+    __m128i div(__m128i a, __m128i b)
+    {
+        return _mm_set_epi8((int8_t)_mm_extract_epi8(a, 0) /
+                            (int8_t)_mm_extract_epi8(b, 0),
+                            (int8_t)_mm_extract_epi8(a, 1) /
+                            (int8_t)_mm_extract_epi8(b, 1),
+                            (int8_t)_mm_extract_epi8(a, 2) /
+                            (int8_t)_mm_extract_epi8(b, 2),
+                            (int8_t)_mm_extract_epi8(a, 3) /
+                            (int8_t)_mm_extract_epi8(b, 3),
+                            (int8_t)_mm_extract_epi8(a, 4) /
+                            (int8_t)_mm_extract_epi8(b, 4),
+                            (int8_t)_mm_extract_epi8(a, 5) /
+                            (int8_t)_mm_extract_epi8(b, 5),
+                            (int8_t)_mm_extract_epi8(a, 6) /
+                            (int8_t)_mm_extract_epi8(b, 6),
+                            (int8_t)_mm_extract_epi8(a, 7) /
+                            (int8_t)_mm_extract_epi8(b, 7),
+                            (int8_t)_mm_extract_epi8(a, 8) /
+                            (int8_t)_mm_extract_epi8(b, 8),
+                            (int8_t)_mm_extract_epi8(a, 9) /
+                            (int8_t)_mm_extract_epi8(b, 9),
+                            (int8_t)_mm_extract_epi8(a,10) /
+                            (int8_t)_mm_extract_epi8(b,10),
+                            (int8_t)_mm_extract_epi8(a,11) /
+                            (int8_t)_mm_extract_epi8(b,11),
+                            (int8_t)_mm_extract_epi8(a,12) /
+                            (int8_t)_mm_extract_epi8(b,12),
+                            (int8_t)_mm_extract_epi8(a,13) /
+                            (int8_t)_mm_extract_epi8(b,13),
+                            (int8_t)_mm_extract_epi8(a,14) /
+                            (int8_t)_mm_extract_epi8(b,14),
+                            (int8_t)_mm_extract_epi8(a,15) /
+                            (int8_t)_mm_extract_epi8(b,15));
+    }
+
+    __m128i pow(__m128i a, __m128i b)
+    {
+        return _mm_set_epi8((int8_t)std::pow(_mm_extract_epi8(a, 0),
+                                             _mm_extract_epi8(b, 0)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 1),
+                                             _mm_extract_epi8(b, 1)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 2),
+                                             _mm_extract_epi8(b, 2)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 3),
+                                             _mm_extract_epi8(b, 3)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 4),
+                                             _mm_extract_epi8(b, 4)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 5),
+                                             _mm_extract_epi8(b, 5)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 6),
+                                             _mm_extract_epi8(b, 6)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 7),
+                                             _mm_extract_epi8(b, 7)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 8),
+                                             _mm_extract_epi8(b, 8)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 9),
+                                             _mm_extract_epi8(b, 9)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,10),
+                                             _mm_extract_epi8(b,10)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,11),
+                                             _mm_extract_epi8(b,11)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,12),
+                                             _mm_extract_epi8(b,12)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,13),
+                                             _mm_extract_epi8(b,13)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,14),
+                                             _mm_extract_epi8(b,14)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,15),
+                                             _mm_extract_epi8(b,15)));                                                         _mm_extract_epi8(b, 3)));
+    }
+
+    __m128i negate(__m128i a)
+    {
+        return _mm_sign_epi8(a, _mm_set1_epi8(0x80));
+    }
+
+    __m128i exp(__m128i a)
+    {
+        return _mm_set_epi8((int8_t)std::exp(_mm_extract_epi8(a, 0)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 1)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 2)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 3)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 4)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 5)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 6)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 7)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 8)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 9)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,10)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,11)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,12)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,13)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,14)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,15)));
+    }
+
+    __m128i sqrt(__m128i a)
+    {
+        return _mm_set_epi8((int8_t)std::sqrt(_mm_extract_epi8(a, 0)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 1)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 2)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 3)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 4)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 5)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 6)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 7)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 8)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 9)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,10)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,11)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,12)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,13)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,14)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,15)));
+    }
+};
+
+template <>
+struct vector_traits<uint8_t> : vector_traits<int8_t>
+{
+    template <typename T>
+    detail::enable_if_t<std::is_same<T,float>::value, __m128>
+    convert(__m128i v)
+    {
+        return _mm_cvtepi32_ps(_mm_cvtepi8_epi32(v));
+    }
+
+    template <typename T>
+    detail::enable_if_t<std::is_same<T,double>::value, __m128d>
+    convert(__m128i v)
+    {
+        return _mm_cvtepi32_pd(_mm_cvtepi8_epi32(v));
+    }
+
+    template <typename T>
+    detail::enable_if_t<std::is_same<T,std::complex<float>>::value, __m128>
+    convert(__m128i v)
+    {
+        return _mm_unpacklo_ps(_mm_cvtepi32_ps(_mm_cvtepi8_epi32(v)), _mm_setzero_ps());
+    }
+
+    template <typename T>
+    detail::enable_if_t<std::is_same<T,int8_t>::value ||
+                        std::is_same<T,uint8_t>::value, __m128i>
+    convert(__m128i v)
+    {
+        return v;
+    }
+
+    template <typename T>
+    detail::enable_if_t<std::is_same<T,int16_t>::value ||
+                        std::is_same<T,uint16_t>::value, __m128i>
+    convert(__m128i v)
+    {
+        return _mm_cvtepi8_epi16(v);
+    }
+
+    template <typename T>
+    detail::enable_if_t<std::is_same<T,int32_t>::value ||
+                        std::is_same<T,uint32_t>::value, __m128i>
+    convert(__m128i v)
+    {
+        return _mm_cvtepi8_epi32(v);
+    }
+
+    template <typename T>
+    detail::enable_if_t<std::is_same<T,int64_t>::value ||
+                        std::is_same<T,uint64_t>::value, __m128i>
+    convert(__m128i v)
+    {
+        return _mm_cvtepi8_epi64(v);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 16 && !Aligned, __m128i>
+    load(const int8_t* ptr)
+    {
+        return _mm_loadu_si128((__m128i*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 16 && Aligned, __m128i>
+    load(const int8_t* ptr)
+    {
+        return _mm_load_si128((__m128i*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 8, __m128i>
+    load(const int8_t* ptr)
+    {
+        return _mm_set1_epi64x(*(int64_t*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 4, __m128i>
+    load(const int8_t* ptr)
+    {
+        return _mm_set1_epi32(*(int32_t*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 2, __m128i>
+    load(const int8_t* ptr)
+    {
+        return _mm_set1_epi16(*(int16_t*)ptr);
+    }
+
+    __m128i load1(const int8_t* ptr)
+    {
+        return _mm_set1_epi8(*ptr);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 16 && !Aligned>
+    store(__m128i v, int8_t* ptr)
+    {
+        _mm_storeu_si128((__m128i*)ptr, v);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 16 && Aligned>
+    store(__m128i v, int8_t* ptr)
+    {
+        _mm_store_si128((__m128i*)ptr, v);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 8>
+    store(__m128i v, int8_t* ptr)
+    {
+        _mm_storel_epi64((__m128i*)ptr, v);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 4>
+    store(__m128i v, int8_t* ptr)
+    {
+        *(int32_t*)ptr = _mm_extract_epi32(v, 0);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 2>
+    store(__m128i v, int8_t* ptr)
+    {
+        *(int16_t*)ptr = _mm_extract_epi16(v, 0);
+    }
+
+    __m128i add(__m128i a, __m128i b)
+    {
+        return _mm_add_epi8(a, b);
+    }
+
+    __m128i sub(__m128i a, __m128i b)
+    {
+        return _mm_sub_epi8(a, b);
+    }
+
+    __m128i mul(__m128i a, __m128i b)
+    {
         //TODO
     }
 
@@ -658,35 +924,83 @@ struct vector_traits<int8_t>
 
     __m128i pow(__m128i a, __m128i b)
     {
-        return _mm_set_epi32((int32_t)std::pow(_mm_extract_epi32(a, 0),
-                                               _mm_extract_epi32(b, 0)),
-                             (int32_t)std::pow(_mm_extract_epi32(a, 1),
-                                               _mm_extract_epi32(b, 1)),
-                             (int32_t)std::pow(_mm_extract_epi32(a, 2),
-                                               _mm_extract_epi32(b, 2)),
-                             (int32_t)std::pow(_mm_extract_epi32(a, 3),
-                                               _mm_extract_epi32(b, 3)));
+        return _mm_set_epi8((int8_t)std::pow(_mm_extract_epi8(a, 0),
+                                             _mm_extract_epi8(b, 0)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 1),
+                                             _mm_extract_epi8(b, 1)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 2),
+                                             _mm_extract_epi8(b, 2)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 3),
+                                             _mm_extract_epi8(b, 3)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 4),
+                                             _mm_extract_epi8(b, 4)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 5),
+                                             _mm_extract_epi8(b, 5)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 6),
+                                             _mm_extract_epi8(b, 6)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 7),
+                                             _mm_extract_epi8(b, 7)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 8),
+                                             _mm_extract_epi8(b, 8)),
+                            (int8_t)std::pow(_mm_extract_epi8(a, 9),
+                                             _mm_extract_epi8(b, 9)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,10),
+                                             _mm_extract_epi8(b,10)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,11),
+                                             _mm_extract_epi8(b,11)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,12),
+                                             _mm_extract_epi8(b,12)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,13),
+                                             _mm_extract_epi8(b,13)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,14),
+                                             _mm_extract_epi8(b,14)),
+                            (int8_t)std::pow(_mm_extract_epi8(a,15),
+                                             _mm_extract_epi8(b,15)));                                                         _mm_extract_epi8(b, 3)));
     }
 
     __m128i negate(__m128i a)
     {
-        return _mm_sign_epi32(a, _mm_set1_epi32(0x80000000));
+        return _mm_sign_epi8(a, _mm_set1_epi8(0x80));
     }
 
     __m128i exp(__m128i a)
     {
-        return _mm_set_epi32((int32_t)std::exp(_mm_extract_epi32(a, 0)),
-                             (int32_t)std::exp(_mm_extract_epi32(a, 1)),
-                             (int32_t)std::exp(_mm_extract_epi32(a, 2)),
-                             (int32_t)std::exp(_mm_extract_epi32(a, 3)));
+        return _mm_set_epi8((int8_t)std::exp(_mm_extract_epi8(a, 0)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 1)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 2)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 3)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 4)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 5)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 6)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 7)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 8)),
+                            (int8_t)std::exp(_mm_extract_epi8(a, 9)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,10)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,11)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,12)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,13)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,14)),
+                            (int8_t)std::exp(_mm_extract_epi8(a,15)));
     }
 
     __m128i sqrt(__m128i a)
     {
-        return _mm_set_epi32((int32_t)std::sqrt(_mm_extract_epi32(a, 0)),
-                             (int32_t)std::sqrt(_mm_extract_epi32(a, 1)),
-                             (int32_t)std::sqrt(_mm_extract_epi32(a, 2)),
-                             (int32_t)std::sqrt(_mm_extract_epi32(a, 3)));
+        return _mm_set_epi8((int8_t)std::sqrt(_mm_extract_epi8(a, 0)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 1)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 2)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 3)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 4)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 5)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 6)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 7)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 8)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a, 9)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,10)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,11)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,12)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,13)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,14)),
+                            (int8_t)std::sqrt(_mm_extract_epi8(a,15)));
     }
 };
 
