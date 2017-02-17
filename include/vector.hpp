@@ -7,7 +7,7 @@
 namespace MArray
 {
 
-template <typename T>
+template <typename T, typename=void>
 struct vector_traits
 {
     constexpr static unsigned vector_width = 1;
