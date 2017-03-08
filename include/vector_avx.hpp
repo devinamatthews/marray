@@ -52,7 +52,7 @@ struct vector_traits<float>
     {
         __m256i i32 = _mm256_cvtps_epi32(v);
 #ifdef __AVX2__
-        __m256i i16 = _mm256_packs_epi32(i32, i32);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
         return _mm256_packs_epi16(i16, i16);
 #else
         __m128i i32lo = _mm256_castsi256_si128(i32);
@@ -69,7 +69,7 @@ struct vector_traits<float>
     {
         __m256i i32 = _mm256_cvtps_epi32(v);
 #ifdef __AVX2__
-        __m256i i16 = _mm256_packus_epi32(i32, i32);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
         return _mm256_packus_epi16(i16, i16);
 #else
         __m128i i32lo = _mm256_castsi256_si128(i32);
@@ -86,7 +86,7 @@ struct vector_traits<float>
     {
         __m256i i32 = _mm256_cvtps_epi32(v);
 #ifdef __AVX2__
-        return _mm256_packs_epi32(i32, i32);
+        return _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
 #else
         __m128i i32lo = _mm256_castsi256_si128(i32);
         __m128i i32hi = _mm256_extractf128_si256(i32, 1);
@@ -101,7 +101,7 @@ struct vector_traits<float>
     {
         __m256i i32 = _mm256_cvtps_epi32(v);
 #ifdef __AVX2__
-        return _mm256_packus_epi32(i32, i32);
+        return _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
 #else
         __m128i i32lo = _mm256_castsi256_si128(i32);
         __m128i i32hi = _mm256_extractf128_si256(i32, 1);
@@ -480,7 +480,7 @@ struct vector_traits<std::complex<float>>
     {
         __m256 tmp = _mm256_permute_ps(v, _MM_SHUFFLE(2,0,2,0));
 #ifdef __AVX2__
-        return _mm256_permute4x64_pd(tmp, _MM_SHUFFLE(2,0,2,0));
+        return _mm256_castpd_ps(_mm256_permute4x64_pd(_mm256_castps_pd(tmp), _MM_SHUFFLE(2,0,2,0)));
 #else
         __m256 lo = _mm256_permute2f128_ps(tmp, tmp, 0x00);
         __m256 hi = _mm256_permute2f128_ps(tmp, tmp, 0x11);
@@ -1001,8 +1001,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi8_epi16(v)
-                                        : _mm256_cvtepu8_epi16(v);
+        return std::is_signed<U>::value ? _mm256_cvtepi8_epi16(_mm256_castsi256_si128(v))
+                                        : _mm256_cvtepu8_epi16(_mm256_castsi256_si128(v));
 #else
         __m128i lo8 = _mm256_castsi256_si128(v);
         __m128i hi8 = _mm_shuffle_epi32(lo8, _MM_SHUFFLE(1,0,3,2));
@@ -1020,8 +1020,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi8_epi32(v)
-                                        : _mm256_cvtepu8_epi32(v);
+        return std::is_signed<U>::value ? _mm256_cvtepi8_epi32(_mm256_castsi256_si128(v))
+                                        : _mm256_cvtepu8_epi32(_mm256_castsi256_si128(v));
 #else
         __m128i lo16 = std::is_signed<U>::value ? _mm_cvtepi8_epi16(_mm256_castsi256_si128(v))
                                                 : _mm_cvtepu8_epi16(_mm256_castsi256_si128(v));
@@ -1040,8 +1040,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi8_epi64(v)
-                                        : _mm256_cvtepu8_epi64(v);
+        return std::is_signed<U>::value ? _mm256_cvtepi8_epi64(_mm256_castsi256_si128(v))
+                                        : _mm256_cvtepu8_epi64(_mm256_castsi256_si128(v));
 #else
         __m128i lo16 = std::is_signed<U>::value ? _mm_cvtepi8_epi16(_mm256_castsi256_si128(v))
                                                : _mm_cvtepu8_epi16(_mm256_castsi256_si128(v));
@@ -1490,9 +1490,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        __m256i lo = std::is_signed<U>::value ? _mm256_packs_epi16(v, v)
-                                              : _mm256_packus_epi16(v, v);
-        return _mm256_permute2x128_si256(lo, lo, 0x00);
+        return std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi16(v, v), _MM_SHUFFLE(2,0,2,0))
+                                        : _mm256_permute4x64_epi64(_mm256_packus_epi16(v, v), _MM_SHUFFLE(2,0,2,0));
 #else
         __m128i lo16 = _mm256_castsi256_si128(v);
         __m128i hi16 = _mm256_extractf128_si256(v, 1);
@@ -1516,8 +1515,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi16_epi32(v)
-                                        : _mm256_cvtepu16_epi32(v);
+        return std::is_signed<U>::value ? _mm256_cvtepi16_epi32(_mm256_castsi256_si128(v))
+                                        : _mm256_cvtepu16_epi32(_mm256_castsi256_si128(v));
 #else
         __m128i lo16 = _mm256_castsi256_si128(v);
         __m128i hi16 = _mm_shuffle_epi32(lo16, _MM_SHUFFLE(1,0,3,2));
@@ -1535,8 +1534,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi16_epi64(v)
-                                        : _mm256_cvtepu16_epi64(v);
+        return std::is_signed<U>::value ? _mm256_cvtepi16_epi64(_mm256_castsi256_si128(v))
+                                        : _mm256_cvtepu16_epi64(_mm256_castsi256_si128(v));
 #else
         __m128i lo32 = std::is_signed<U>::value ? _mm_cvtepi16_epi32(_mm256_castsi256_si128(v))
                                                 : _mm_cvtepu16_epi32(_mm256_castsi256_si128(v));
@@ -1863,11 +1862,10 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        __m256i i16 = std::is_signed<U>::value ? _mm256_packs_epi32(v, v)
-                                               : _mm256_packus_epi32(v, v);
-        __m256i lo = std::is_signed<U>::value ? _mm256_packs_epi16(i16, i16)
-                                              : _mm256_packus_epi16(i16, i16);
-        return _mm256_permute2x128_si256(lo, lo, 0x00);
+        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(v, v), _MM_SHUFFLE(2,0,2,0))
+                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(v, v), _MM_SHUFFLE(2,0,2,0));
+        return std::is_signed<U>::value ? _mm256_packs_epi16(i16, i16)
+                                        : _mm256_packus_epi16(i16, i16);
 #else
         __m128i lo32 = _mm256_castsi256_si128(v);
         __m128i hi32 = _mm256_extractf128_si256(v, 1);
@@ -1885,9 +1883,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        __m256i lo = std::is_signed<U>::value ? _mm256_packs_epi32(v, v)
-                                              : _mm256_packus_epi32(v, v);
-        return _mm256_permute2x128_si256(lo, lo, 0x00);
+        return std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(v, v), _MM_SHUFFLE(2,0,2,0))
+                                        : _mm256_permute4x64_epi64(_mm256_packus_epi32(v, v), _MM_SHUFFLE(2,0,2,0));
 #else
         __m128i lo32 = _mm256_castsi256_si128(v);
         __m128i hi32 = _mm256_extractf128_si256(v, 1);
@@ -1911,8 +1908,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     convert(__m256i v)
     {
 #ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi32_epi64(v)
-                                        : _mm256_cvtepu32_epi64(v);
+        return std::is_signed<U>::value ? _mm256_cvtepi32_epi64(_mm256_castsi256_si128(v))
+                                        : _mm256_cvtepu32_epi64(_mm256_castsi256_si128(v));
 #else
         __m128i lo32 = _mm256_castsi256_si128(v);
         __m128i hi32 = _mm_shuffle_epi32(lo32, _MM_SHUFFLE(1,0,3,2));
