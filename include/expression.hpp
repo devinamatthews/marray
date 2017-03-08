@@ -27,10 +27,17 @@ struct slice_dim
 namespace MArray
 {
 
+template <typename T>
+struct is_scalar : std::is_arithmetic<T> {};
+
+template <typename T>
+struct is_scalar<std::complex<T>> : std::is_floating_point<T> {};
+
 template <typename T, typename... Dims>
 struct array_expr
 {
     typedef T& result_type;
+    typedef typename vector_traits<T>::vector_type vector_type;
 
     T* data;
     std::tuple<Dims...> dims;
@@ -69,26 +76,37 @@ struct array_expr
     {
         return *data;
     }
-};
 
-template <typename T>
-struct constant_expr
-{
-    typedef T result_type;
-
-    T data;
-
-    constant_expr(T data) : data(data) {}
-
-    result_type eval() const
+    template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
+    detail::enable_if_t<(Dim < NDim-sizeof...(Dims)),vector_type>
+    eval_vec(idx_type) const
     {
-        return data;
+        return vector_traits<T>::load1(data);
     }
 
-    template <unsigned NDim, unsigned Dim>
-    result_type eval_at(idx_type) const
+    template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
+    detail::enable_if_t<(Dim >= NDim-sizeof...(Dims)),vector_type>
+    eval_vec(idx_type i) const
     {
-        return data;
+        return eval_vec<Width,Aligned>(i, std::get<Dim-(NDim-sizeof...(Dims))>(dims));
+    }
+
+    template <unsigned Width, bool Aligned>
+    vector_type eval_vec(idx_type i, const slice_dim&) const
+    {
+        return vector_traits<T>::template load<Width,Aligned>(data+i);
+    }
+
+    template <unsigned Width, bool Aligned>
+    vector_type eval_vec(idx_type, const bcast_dim&) const
+    {
+        return vector_traits<T>::load1(data);
+    }
+
+    template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
+    void store_vec(idx_type i, vector_type v) const
+    {
+        vector_traits<T>::template store<Width,Aligned>(v, data+i);
     }
 };
 
@@ -103,13 +121,13 @@ template <typename Expr, typename=void> struct is_binary_expression;
 template <typename Expr, typename=void> struct expr_result_type;
 
 template <typename Expr>
-struct expr_result_type<Expr, detail::enable_if_t<std::is_arithmetic<Expr>::value>>
+struct expr_result_type<Expr, detail::enable_if_t<is_scalar<detail::decay_t<Expr>>::value>>
 {
     typedef detail::decay_t<Expr> type;
 };
 
 template <typename Expr>
-struct expr_result_type<Expr, detail::enable_if_t<is_expression<Expr>::value>>
+struct expr_result_type<Expr, detail::enable_if_t<is_expression<detail::decay_t<Expr>>::value>>
 {
     typedef typename detail::decay_t<Expr>::result_type type;
 };
@@ -123,8 +141,7 @@ eval(Expr&& expr)
 }
 
 template <typename Expr>
-detail::enable_if_t<std::is_arithmetic<detail::decay_t<Expr>>::value,
-                    typename expr_result_type<detail::decay_t<Expr>>::type>
+detail::enable_if_t<is_scalar<detail::decay_t<Expr>>::value,Expr>
 eval(Expr&& expr)
 {
     return expr;
@@ -139,49 +156,210 @@ eval_at(Expr&& expr, idx_type i)
 }
 
 template <unsigned NDim, unsigned Dim, typename Expr>
-detail::enable_if_t<std::is_arithmetic<detail::decay_t<Expr>>::value,
-                    typename expr_result_type<detail::decay_t<Expr>>::type>
+detail::enable_if_t<is_scalar<detail::decay_t<Expr>>::value,Expr>
 eval_at(Expr&& expr, idx_type i)
 {
     return expr;
 }
 
+template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned, typename Expr>
+detail::enable_if_t<is_expression<detail::decay_t<Expr>>::value,
+                    typename detail::decay_t<Expr>::vector_type>
+eval_vec(Expr&& expr, idx_type i)
+{
+    return expr.template eval_vec<NDim, Dim, Width, Aligned>(i);
+}
+
+template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned, typename Expr>
+detail::enable_if_t<is_scalar<detail::decay_t<Expr>>::value,
+                    typename vector_traits<detail::decay_t<Expr>>::vector_type>
+eval_vec(Expr&& expr, idx_type i)
+{
+    return vector_traits<detail::decay_t<Expr>>::set1(expr);
+}
+
 namespace operators
 {
+
+template <typename T>
+using vector_type = typename vector_traits<T>::vector_type;
+
+template <typename T, typename U, typename=void>
+struct binary_result_type;
+
+template <typename T, typename U>
+struct binary_result_type<T, U,
+    detail::enable_if_t<std::is_floating_point<T>::value &&
+                        std::is_floating_point<U>::value>>
+{
+    typedef typename std::common_type<T, U>::type type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<T, std::complex<U>,
+    detail::enable_if_t<std::is_floating_point<T>::value &&
+                        std::is_floating_point<U>::value>>
+{
+    typedef std::complex<typename std::common_type<T, U>::type> type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<T, U,
+    detail::enable_if_t<std::is_floating_point<T>::value &&
+                        std::is_integral<U>::value>>
+{
+    typedef T type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<std::complex<T>, U,
+    detail::enable_if_t<std::is_floating_point<T>::value &&
+                        std::is_floating_point<U>::value>>
+{
+    typedef std::complex<typename std::common_type<T, U>::type> type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<std::complex<T>, std::complex<U>,
+    detail::enable_if_t<std::is_floating_point<T>::value &&
+                        std::is_floating_point<U>::value>>
+{
+    typedef std::complex<typename std::common_type<T, U>::type> type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<std::complex<T>, U,
+    detail::enable_if_t<std::is_floating_point<T>::value &&
+                        std::is_integral<U>::value>>
+{
+    typedef std::complex<T> type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<T, U,
+    detail::enable_if_t<std::is_integral<T>::value &&
+                        std::is_floating_point<U>::value>>
+{
+    typedef U type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<T, std::complex<U>,
+    detail::enable_if_t<std::is_integral<T>::value &&
+                        std::is_floating_point<U>::value>>
+{
+    typedef std::complex<U> type;
+};
+
+template <typename T, typename U>
+struct binary_result_type<T, U,
+    detail::enable_if_t<std::is_integral<T>::value &&
+                        std::is_integral<U>::value>>
+{
+    typedef typename std::common_type<T,U>::type type;
+};
 
 struct plus
 {
     template <typename T, typename U>
-    auto operator()(const T& a, const U& b) const -> decltype(a+b)
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<is_scalar<T>::value && is_scalar<U>::value,
+                        typename binary_result_type<T, U>::type>
+    {
+        typedef typename binary_result_type<T, U>::type V;
+        return V(a)+V(b);
+    }
+
+    template <typename T, typename U>
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<!is_scalar<T>::value || !is_scalar<U>::value,
+                        decltype(a+b)>
     {
         return a+b;
+    }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a, vector_type<T> b) const
+    {
+        return vector_traits<T>::add(a, b);
     }
 };
 
 struct minus
 {
     template <typename T, typename U>
-    auto operator()(const T& a, const U& b) const -> decltype(a-b)
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<is_scalar<T>::value && is_scalar<U>::value,
+                        typename binary_result_type<T, U>::type>
+    {
+        typedef typename binary_result_type<T, U>::type V;
+        return V(a)-V(b);
+    }
+
+    template <typename T, typename U>
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<!is_scalar<T>::value || !is_scalar<U>::value,
+                        decltype(a-b)>
     {
         return a-b;
+    }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a, vector_type<T> b) const
+    {
+        return vector_traits<T>::sub(a, b);
     }
 };
 
 struct multiplies
 {
     template <typename T, typename U>
-    auto operator()(const T& a, const U& b) const -> decltype(a*b)
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<is_scalar<T>::value && is_scalar<U>::value,
+                        typename binary_result_type<T, U>::type>
+    {
+        typedef typename binary_result_type<T, U>::type V;
+        return V(a)*V(b);
+    }
+
+    template <typename T, typename U>
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<!is_scalar<T>::value || !is_scalar<U>::value,
+                        decltype(a*b)>
     {
         return a*b;
+    }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a, vector_type<T> b) const
+    {
+        return vector_traits<T>::mul(a, b);
     }
 };
 
 struct divides
 {
     template <typename T, typename U>
-    auto operator()(const T& a, const U& b) const -> decltype(a/b)
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<is_scalar<T>::value && is_scalar<U>::value,
+                        typename binary_result_type<T, U>::type>
+    {
+        typedef typename binary_result_type<T, U>::type V;
+        return V(a)/V(b);
+    }
+
+    template <typename T, typename U>
+    auto operator()(const T& a, const U& b) const ->
+    detail::enable_if_t<!is_scalar<T>::value || !is_scalar<U>::value,
+                        decltype(a/b)>
     {
         return a/b;
+    }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a, vector_type<T> b) const
+    {
+        return vector_traits<T>::div(a, b);
     }
 };
 
@@ -192,6 +370,12 @@ struct pow
     {
         return std::pow(a,b);
     }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a, vector_type<T> b) const
+    {
+        return vector_traits<T>::pow(a, b);
+    }
 };
 
 struct negate
@@ -200,6 +384,12 @@ struct negate
     auto operator()(const T& a) const -> decltype(-a)
     {
         return -a;
+    }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a) const
+    {
+        return vector_traits<T>::negate(a);
     }
 };
 
@@ -210,6 +400,12 @@ struct exp
     {
         return std::exp(a);
     }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a) const
+    {
+        return vector_traits<T>::exp(a);
+    }
 };
 
 struct sqrt
@@ -218,6 +414,12 @@ struct sqrt
     auto operator()(const T& a) const -> decltype(std::sqrt(a))
     {
         return std::sqrt(a);
+    }
+
+    template <typename T>
+    vector_type<T> vec(vector_type<T> a) const
+    {
+        return vector_traits<T>::sqrt(a);
     }
 };
 
@@ -228,9 +430,12 @@ struct binary_expr
 {
     typedef LHS first_type;
     typedef RHS second_type;
+    typedef detail::decay_t<typename expr_result_type<LHS>::type> first_result_type;
+    typedef detail::decay_t<typename expr_result_type<RHS>::type> second_result_type;
     typedef decltype(std::declval<Op>()(
-        std::declval<typename expr_result_type<LHS>::type>(),
-        std::declval<typename expr_result_type<RHS>::type>())) result_type;
+        std::declval<first_result_type>(),
+        std::declval<second_result_type>())) result_type;
+    typedef typename vector_traits<result_type>::vector_type vector_type;
 
     LHS first;
     RHS second;
@@ -249,6 +454,16 @@ struct binary_expr
     {
         return op(MArray::eval_at<NDim, Dim>(first, i),
                   MArray::eval_at<NDim, Dim>(second, i));
+    }
+
+    template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
+    vector_type eval_vec(idx_type i) const
+    {
+        return op.template vec<result_type>(
+            vector_traits<first_result_type>::template convert<result_type>(
+                MArray::eval_vec<NDim, Dim, Width, Aligned>(first, i)),
+            vector_traits<second_result_type>::template convert<result_type>(
+                MArray::eval_vec<NDim, Dim, Width, Aligned>(second, i)));
     }
 };
 
@@ -271,8 +486,10 @@ template <typename Expr, typename Op>
 struct unary_expr
 {
     typedef Expr expr_type;
+    typedef detail::decay_t<typename expr_result_type<Expr>::type> input_result_type;
     typedef decltype(std::declval<Op>()(
-        std::declval<typename expr_result_type<Expr>::type>())) result_type;
+        std::declval<input_result_type>())) result_type;
+    typedef typename vector_traits<result_type>::vector_type vector_type;
 
     Expr expr;
     Op op;
@@ -289,6 +506,14 @@ struct unary_expr
     result_type eval_at(idx_type i) const
     {
         return op(MArray::eval_at<NDim, Dim>(expr, i));
+    }
+
+    template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
+    vector_type eval_vec(idx_type i) const
+    {
+        return op.template vec<result_type>(
+            vector_traits<input_result_type>::template convert<result_type>(
+                MArray::eval_vec<NDim, Dim, Width, Aligned>(expr, i)));
     }
 };
 
@@ -312,9 +537,6 @@ struct is_expression : std::false_type {};
 
 template <typename T, typename... Dims>
 struct is_expression<array_expr<T, Dims...>> : std::true_type {};
-
-template <typename T>
-struct is_expression<constant_expr<T>> : std::true_type {};
 
 template <typename LHS, typename RHS, typename Op>
 struct is_expression<binary_expr<LHS, RHS, Op>> : std::true_type {};
@@ -416,10 +638,14 @@ struct expression_type<marray<T, NDim, Alloc>>
 
 template <typename Expr>
 struct expression_type<Expr, detail::enable_if_t<is_expression<typename std::remove_cv<Expr>::type>::value ||
-                                                 std::is_arithmetic<Expr>::value>>
+                                                 is_scalar<Expr>::value>>
 {
     typedef typename std::remove_cv<Expr>::type type;
 };
+
+template <typename T, typename Expr>
+struct converted_scalar_type :
+    std::common_type<T, typename expr_result_type<typename expression_type<Expr>::type>::type> {};
 
 template <typename T, unsigned NDim, unsigned NIndexed, typename... Dims,
           size_t... I, size_t... J>
@@ -488,7 +714,7 @@ make_expression(marray<T, NDim, Alloc>& x)
 
 template <typename Expr>
 detail::enable_if_t<is_expression<detail::decay_t<Expr>>::value ||
-                    std::is_arithmetic<detail::decay_t<Expr>>::value, Expr&&>
+                    is_scalar<detail::decay_t<Expr>>::value, Expr&&>
 make_expression(Expr&& x)
 {
     return std::forward<Expr>(x);
@@ -514,17 +740,11 @@ struct is_expression_arg :
 template <typename Expr>
 struct is_expression_arg_or_scalar :
     std::integral_constant<bool, is_expression_arg<Expr>::value ||
-                                 std::is_arithmetic<Expr>::value> {};
+                                 is_scalar<Expr>::value> {};
 
 template <typename LHS, typename RHS>
-struct are_expression_args :
-    std::integral_constant<bool, is_expression_arg_or_scalar<LHS>::value  &&
-                                 is_expression_arg_or_scalar<RHS>::value &&
-                                 (!std::is_arithmetic<LHS>::value ||
-                                  !std::is_arithmetic<RHS>::value)> {};
-
-template <typename LHS, typename RHS>
-detail::enable_if_t<are_expression_args<LHS,RHS>::value,
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_expression_arg<RHS>::value,
                     add_expr<typename expression_type<const LHS>::type,
                              typename expression_type<const RHS>::type>>
 operator+(const LHS& lhs, const RHS& rhs)
@@ -533,7 +753,30 @@ operator+(const LHS& lhs, const RHS& rhs)
 }
 
 template <typename LHS, typename RHS>
-detail::enable_if_t<are_expression_args<LHS,RHS>::value,
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_scalar<RHS>::value,
+                    add_expr<typename expression_type<const LHS>::type,
+                             typename converted_scalar_type<RHS, LHS>::type>>
+operator+(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<RHS, LHS>::type T;
+    return {make_expression(lhs), (T)rhs};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_scalar<LHS>::value &&
+                    is_expression_arg<RHS>::value,
+                    add_expr<typename converted_scalar_type<LHS, RHS>::type,
+                             typename expression_type<const RHS>::type>>
+operator+(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<LHS, RHS>::type T;
+    return {(T)lhs, make_expression(rhs)};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_expression_arg<RHS>::value,
                     sub_expr<typename expression_type<const LHS>::type,
                              typename expression_type<const RHS>::type>>
 operator-(const LHS& lhs, const RHS& rhs)
@@ -542,7 +785,30 @@ operator-(const LHS& lhs, const RHS& rhs)
 }
 
 template <typename LHS, typename RHS>
-detail::enable_if_t<are_expression_args<LHS,RHS>::value,
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_scalar<RHS>::value,
+                    sub_expr<typename expression_type<const LHS>::type,
+                             typename converted_scalar_type<RHS, LHS>::type>>
+operator-(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<RHS, LHS>::type T;
+    return {make_expression(lhs), (T)rhs};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_scalar<LHS>::value &&
+                    is_expression_arg<RHS>::value,
+                    sub_expr<typename converted_scalar_type<LHS, RHS>::type,
+                             typename expression_type<const RHS>::type>>
+operator-(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<LHS, RHS>::type T;
+    return {(T)lhs, make_expression(rhs)};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_expression_arg<RHS>::value,
                     mul_expr<typename expression_type<const LHS>::type,
                              typename expression_type<const RHS>::type>>
 operator*(const LHS& lhs, const RHS& rhs)
@@ -551,7 +817,30 @@ operator*(const LHS& lhs, const RHS& rhs)
 }
 
 template <typename LHS, typename RHS>
-detail::enable_if_t<are_expression_args<LHS,RHS>::value,
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_scalar<RHS>::value,
+                    mul_expr<typename expression_type<const LHS>::type,
+                             typename converted_scalar_type<RHS, LHS>::type>>
+operator*(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<RHS, LHS>::type T;
+    return {make_expression(lhs), (T)rhs};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_scalar<LHS>::value &&
+                    is_expression_arg<RHS>::value,
+                    mul_expr<typename converted_scalar_type<LHS, RHS>::type,
+                             typename expression_type<const RHS>::type>>
+operator*(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<LHS, RHS>::type T;
+    return {(T)lhs, make_expression(rhs)};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_expression_arg<RHS>::value,
                     div_expr<typename expression_type<const LHS>::type,
                              typename expression_type<const RHS>::type>>
 operator/(const LHS& lhs, const RHS& rhs)
@@ -559,13 +848,58 @@ operator/(const LHS& lhs, const RHS& rhs)
     return {make_expression(lhs), make_expression(rhs)};
 }
 
-template <typename Base, typename Exponent>
-detail::enable_if_t<are_expression_args<Base,Exponent>::value,
-                    pow_expr<typename expression_type<const Base>::type,
-                             typename expression_type<const Exponent>::type>>
-pow(const Base& base, const Exponent& exponent)
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_scalar<RHS>::value,
+                    div_expr<typename expression_type<const LHS>::type,
+                             typename converted_scalar_type<RHS, LHS>::type>>
+operator/(const LHS& lhs, const RHS& rhs)
 {
-    return {make_expression(base), make_expression(exponent)};
+    typedef typename converted_scalar_type<RHS, LHS>::type T;
+    return {make_expression(lhs), (T)rhs};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_scalar<LHS>::value &&
+                    is_expression_arg<RHS>::value,
+                    div_expr<typename converted_scalar_type<LHS, RHS>::type,
+                             typename expression_type<const RHS>::type>>
+operator/(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<LHS, RHS>::type T;
+    return {(T)lhs, make_expression(rhs)};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_expression_arg<RHS>::value,
+                    pow_expr<typename expression_type<const LHS>::type,
+                             typename expression_type<const RHS>::type>>
+pow(const LHS& lhs, const RHS& rhs)
+{
+    return {make_expression(lhs), make_expression(rhs)};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_expression_arg<LHS>::value &&
+                    is_scalar<RHS>::value,
+                    pow_expr<typename expression_type<const LHS>::type,
+                             typename converted_scalar_type<RHS, LHS>::type>>
+pow(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<RHS, LHS>::type T;
+    return {make_expression(lhs), (T)rhs};
+}
+
+template <typename LHS, typename RHS>
+detail::enable_if_t<is_scalar<LHS>::value &&
+                    is_expression_arg<RHS>::value,
+                    pow_expr<typename converted_scalar_type<LHS, RHS>::type,
+                             typename expression_type<const RHS>::type>>
+pow(const LHS& lhs, const RHS& rhs)
+{
+    typedef typename converted_scalar_type<LHS, RHS>::type T;
+    return {(T)lhs, make_expression(rhs)};
 }
 
 template <typename Expr>
@@ -599,7 +933,7 @@ struct expr_dimension<array_expr<T, Dims...>>
     : std::integral_constant<unsigned, sizeof...(Dims)> {};
 
 template <typename Expr>
-struct expr_dimension<Expr, detail::enable_if_t<std::is_arithmetic<Expr>::value>>
+struct expr_dimension<Expr, detail::enable_if_t<is_scalar<Expr>::value>>
     : std::integral_constant<unsigned, 0> {};
 
 template <typename Expr>
@@ -676,7 +1010,7 @@ bool check_expr_lengths(const array_expr<T, Dims...>& array,
 }
 
 template <typename Expr, size_t NDim>
-detail::enable_if_t<std::is_arithmetic<Expr>::value,bool>
+detail::enable_if_t<is_scalar<Expr>::value,bool>
 check_expr_lengths(const Expr& expr, const std::array<idx_type, NDim>& len)
 {
     return true;
@@ -701,12 +1035,12 @@ check_expr_lengths(const Expr& expr, const std::array<idx_type, NDim>& len)
  * Return true if the dimension is vectorizable (stride-1).
  * Broadcast dimensions are trivially vectorizable.
  */
-inline bool is_vectorizable(const bcast_dim& dim)
+inline bool is_contiguous(const bcast_dim& dim)
 {
     return true;
 }
 
-inline bool is_vectorizable(const slice_dim& dim)
+inline bool is_contiguous(const slice_dim& dim)
 {
     return dim.stride == 1;
 }
@@ -719,7 +1053,7 @@ inline bool is_vectorizable(const slice_dim& dim)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims)), bool>
-is_vectorizable(array_expr<T, Dims...>& expr)
+is_contiguous(array_expr<T, Dims...>& expr)
 {
     return true;
 }
@@ -730,31 +1064,66 @@ is_vectorizable(array_expr<T, Dims...>& expr)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim >= NDim-sizeof...(Dims)), bool>
-is_vectorizable(array_expr<T, Dims...>& expr)
+is_contiguous(array_expr<T, Dims...>& expr)
 {
-    return is_vectorizable(std::get<Dim-(NDim-sizeof...(Dims))>(expr.dims));
+    return is_contiguous(std::get<Dim-(NDim-sizeof...(Dims))>(expr.dims));
 }
 
 template <unsigned NDim, unsigned Dim, typename Expr>
-detail::enable_if_t<std::is_arithmetic<Expr>::value, bool>
-is_vectorizable(const Expr& expr)
+detail::enable_if_t<is_scalar<Expr>::value, bool>
+is_contiguous(const Expr& expr)
 {
     return true;
 }
 
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_binary_expression<Expr>::value, bool>
-is_vectorizable(Expr& expr)
+is_contiguous(Expr& expr)
 {
-    return is_vectorizable<NDim, Dim>(expr.first) &&
-           is_vectorizable<NDim, Dim>(expr.second);
+    return is_contiguous<NDim, Dim>(expr.first) &&
+           is_contiguous<NDim, Dim>(expr.second);
 }
 
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_unary_expression<Expr>::value, bool>
-is_vectorizable(Expr& expr)
+is_contiguous(Expr& expr)
 {
-    return is_vectorizable<NDim, Dim>(expr.expr);
+    return is_contiguous<NDim, Dim>(expr.expr);
+}
+
+constexpr unsigned min_width(unsigned a, unsigned b)
+{
+    return (b < a ? b : a);
+}
+
+template <typename T, typename... Dims>
+constexpr unsigned vector_width(array_expr<T, Dims...>& expr)
+{
+    return vector_traits<T>::vector_width;
+}
+
+template <typename Expr>
+constexpr detail::enable_if_t<is_scalar<Expr>::value, unsigned>
+vector_width(const Expr& expr)
+{
+    return vector_traits<Expr>::vector_width;
+}
+
+template <typename Expr>
+constexpr detail::enable_if_t<is_binary_expression<Expr>::value, unsigned>
+vector_width(Expr& expr)
+{
+    return min_width(min_width(vector_width(expr.first),
+                               vector_width(expr.second)),
+        vector_traits<typename expr_result_type<Expr>::type>::vector_width);
+}
+
+template <typename Expr>
+constexpr detail::enable_if_t<is_unary_expression<Expr>::value, unsigned>
+vector_width(Expr& expr)
+{
+    return min_width(vector_width(expr.expr),
+        vector_traits<typename expr_result_type<Expr>::type>::vector_width);
 }
 
 /*
@@ -819,11 +1188,11 @@ decrement(array_expr<T, Dims...>& expr)
  * absorbed into expression nodes).
  */
 template <unsigned NDim, unsigned Dim, typename Expr>
-detail::enable_if_t<std::is_arithmetic<Expr>::value>
+detail::enable_if_t<is_scalar<Expr>::value>
 increment(const Expr& expr) {}
 
 template <unsigned NDim, unsigned Dim, typename Expr>
-detail::enable_if_t<std::is_arithmetic<Expr>::value>
+detail::enable_if_t<is_scalar<Expr>::value>
 decrement(const Expr& expr) {}
 
 /*
@@ -859,6 +1228,34 @@ decrement(Expr& expr)
     decrement<NDim, Dim>(expr.expr);
 }
 
+template <typename T, typename U>
+struct assign_expr_value
+{
+    void operator()(T& lhs, const U& rhs) const
+    {
+        lhs = rhs;
+    }
+};
+
+template <typename T, typename U>
+struct assign_expr_value<T, std::complex<U>>
+{
+    void operator()(T& lhs, const std::complex<U>& rhs) const
+    {
+        lhs = rhs.real();
+    }
+};
+
+template <typename T, typename U>
+struct assign_expr_value<std::complex<T>, std::complex<U>>
+{
+    void operator()(std::complex<T>& lhs, const std::complex<U>& rhs) const
+    {
+        lhs.real(rhs.real());
+        lhs.imag(rhs.imag());
+    }
+};
+
 template <unsigned NDim, unsigned Dim=1>
 struct assign_expr_loop;
 
@@ -868,9 +1265,12 @@ struct assign_expr_loop<NDim, NDim>
     template <typename LHS, typename RHS>
     void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
+        assign_expr_value<detail::decay_t<typename expr_result_type<LHS>::type>,
+                          detail::decay_t<typename expr_result_type<RHS>::type>> assign;
+
         for (idx_type i = 0;i < len[NDim-1];i++)
         {
-            eval(lhs) = eval(rhs);
+            assign(eval(lhs), eval(rhs));
 
             increment<NDim, NDim-1>(lhs);
             increment<NDim, NDim-1>(rhs);
@@ -902,6 +1302,69 @@ struct assign_expr_loop
     }
 };
 
+template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
+struct assign_expr_inner_loop_vec
+{
+    template <typename LHS, typename RHS>
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    {
+        typedef detail::decay_t<typename expr_result_type<LHS>::type> T;
+        typedef detail::decay_t<typename expr_result_type<RHS>::type> U;
+
+        assign_expr_value<T,U> assign;
+
+        idx_type misalignment = ((intptr_t)lhs.data %
+                                 vector_traits<T>::alignment) / sizeof(T);
+
+        idx_type peel = Aligned ? 0 :
+                        (vector_traits<T>::vector_width - misalignment) %
+                        vector_traits<T>::vector_width;
+
+        // Number of elements in the final incomplete vector
+        idx_type remainder = (len[Dim]-peel) %
+                             vector_traits<T>::vector_width;
+
+        // Number of vectors or partial vectors (if Width is less than
+        // the natural vector width for the output type)
+        idx_type nvector = (len[Dim]-peel-remainder) / Width;
+
+        idx_type i = 0;
+
+        for (idx_type j = 0;j < peel;j++, i++)
+        {
+            assign(eval_at<NDim, Dim>(lhs, i), eval_at<NDim, Dim>(rhs, i));
+        }
+
+        for (idx_type j = 0;j < nvector;j++, i += Width)
+        {
+            lhs.template store_vec<NDim, Dim, Width, true>(i,
+                vector_traits<U>::template convert<T>(
+                    eval_vec<NDim, Dim, Width, Aligned>(rhs, i)));
+        }
+
+        for (idx_type j = 0;j < remainder;j++, i++)
+        {
+            assign(eval_at<NDim, Dim>(lhs, i), eval_at<NDim, Dim>(rhs, i));
+        }
+    }
+};
+
+template <unsigned NDim, unsigned Dim, bool Aligned>
+struct assign_expr_inner_loop_vec<NDim, Dim, 1, Aligned>
+{
+    template <typename LHS, typename RHS>
+    void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
+    {
+        assign_expr_value<detail::decay_t<typename expr_result_type<LHS>::type>,
+                          detail::decay_t<typename expr_result_type<RHS>::type>> assign;
+
+        for (idx_type i = 0;i < len[Dim];i++)
+        {
+            assign(eval_at<NDim, Dim>(lhs, i), eval_at<NDim, Dim>(rhs, i));
+        }
+    }
+};
+
 template <unsigned NDim, unsigned Dim=1>
 struct assign_expr_loop_vec_row_major;
 
@@ -911,10 +1374,11 @@ struct assign_expr_loop_vec_row_major<NDim, NDim>
     template <typename LHS, typename RHS>
     void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
-        for (idx_type i = 0;i < len[NDim-1];i++)
-        {
-            eval_at<NDim, NDim-1>(lhs, i) = eval_at<NDim, NDim-1>(rhs, i);
-        }
+        constexpr unsigned Width = min_width(vector_width(lhs),
+                                             vector_width(rhs));
+        constexpr bool Aligned = false;
+
+        assign_expr_inner_loop_vec<NDim, NDim-1, Width, Aligned>()(lhs, rhs, len);
     }
 };
 
@@ -948,10 +1412,11 @@ struct assign_expr_loop_vec_col_major<NDim, 0>
     template <typename LHS, typename RHS>
     void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
-        for (idx_type i = 0;i < len[0];i++)
-        {
-            eval_at<NDim, 0>(lhs, i) = eval_at<NDim, 0>(rhs, i);
-        }
+        constexpr unsigned Width = min_width(vector_width(lhs),
+                                             vector_width(rhs));
+        constexpr bool Aligned = false;
+
+        assign_expr_inner_loop_vec<NDim, 0, Width, Aligned>()(lhs, rhs, len);
     }
 };
 
@@ -997,13 +1462,13 @@ assign_expr(Array&& array_, Expr&& expr_)
     auto len = get_array_lengths(array);
     MARRAY_ASSERT(check_expr_lengths(expr, len));
 
-    if (is_vectorizable<NDim, NDim-1>(array) &&
-        is_vectorizable<NDim, NDim-1>(expr))
+    if (is_contiguous<NDim, NDim-1>(array) &&
+        is_contiguous<NDim, NDim-1>(expr))
     {
         assign_expr_loop_vec_row_major<NDim>()(array, expr, len);
     }
-    else if (is_vectorizable<NDim, 0>(array) &&
-             is_vectorizable<NDim, 0>(expr))
+    else if (is_contiguous<NDim, 0>(array) &&
+             is_contiguous<NDim, 0>(expr))
     {
         assign_expr_loop_vec_col_major<NDim>()(array, expr, len);
     }

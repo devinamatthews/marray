@@ -1,8 +1,303 @@
 #include "gtest/gtest.h"
 #include "expression.hpp"
 
+#include <typeinfo>
+
 using namespace std;
 using namespace MArray;
+
+template <typename... T> struct types;
+
+typedef types<float,double,std::complex<float>,std::complex<double>> float_types;
+typedef types<int8_t,int16_t,int32_t,int64_t> int_types;
+typedef types<uint8_t,uint16_t,uint32_t,uint64_t> uint_types;
+
+template <typename T, typename U>
+struct concat_types;
+
+template <typename... T, typename... U>
+struct concat_types<types<T...>, types<U...>>
+{
+    typedef types<T..., U...> type;
+};
+
+template <typename T, typename U>
+struct product_types;
+
+template <typename... U>
+struct product_types<types<>, types<U...>>
+{
+    typedef types<> type;
+};
+
+template <typename T, typename... TT, typename... U>
+struct product_types<types<T, TT...>, types<U...>>
+{
+    typedef typename concat_types<types<std::pair<T,U>...>,
+        typename product_types<types<TT...>,
+                               types<U...>>::type>::type type;
+};
+
+typedef typename concat_types<float_types,
+    typename concat_types<int_types,uint_types>::type>::type all_types;
+
+template <typename T>
+struct to_testing_types;
+
+template <typename... T>
+struct to_testing_types<types<T...>>
+{
+    typedef testing::Types<T...> type;
+};
+
+template <typename T, typename U>
+using pair_types = typename to_testing_types<
+    typename product_types<T, U>::type>::type;
+
+typedef pair_types<all_types, all_types> pair_types_all;
+typedef pair_types<float_types, float_types> pair_types_ff;
+typedef pair_types<float_types, float_types> pair_types_fi;
+typedef pair_types<float_types, float_types> pair_types_fu;
+typedef pair_types<float_types, float_types> pair_types_ii;
+typedef pair_types<float_types, float_types> pair_types_iu;
+typedef pair_types<float_types, float_types> pair_types_uu;
+
+#define VECTOR_INITIALIZER { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15, \
+                            16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31, \
+                            32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47, \
+                            48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63}
+
+template <class T> struct expression_vector : testing::Test {};
+
+TYPED_TEST_CASE(expression_vector, pair_types_all);
+
+//typedef pair_types<types<double>, types<std::complex<double>>> tmp_types;
+//TYPED_TEST_CASE(expression_vector, tmp_types);
+
+TYPED_TEST(expression_vector, vector_assign)
+{
+    typedef typename TypeParam::first_type T;
+    typedef typename TypeParam::second_type U;
+
+    T data1[64] = VECTOR_INITIALIZER;
+    U data2[64] = {0};
+
+    marray_view<T,1> a({64}, data1);
+    marray_view<U,1> b({64}, data2);
+
+    b = a;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(i), a[i]);
+        EXPECT_EQ(U(i), b[i]);
+    }
+}
+
+TYPED_TEST(expression_vector, vector_set)
+{
+    typedef typename TypeParam::first_type T;
+    typedef typename TypeParam::second_type U;
+
+    U data2[64] = {0};
+
+    marray_view<U,1> b({64}, data2);
+
+    b = T(3);
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(U(3), b[i]);
+    }
+}
+
+TYPED_TEST(expression_vector, vector_add)
+{
+    typedef typename TypeParam::first_type T;
+    typedef typename TypeParam::second_type U;
+    typedef decltype(std::declval<operators::plus>()(std::declval<T>(),
+                                                     std::declval<U>())) V;
+
+    T data1[64] = VECTOR_INITIALIZER;
+    U data2[64] = {0};
+
+    marray_view<T,1> a({64}, data1);
+    marray_view<U,1> b({64}, data2);
+
+    b = a+a;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(i), a[i]);
+        EXPECT_EQ(U(2*i), b[i]);
+    }
+
+    T data3[64] = VECTOR_INITIALIZER;
+    U data4[64] = VECTOR_INITIALIZER;
+
+    marray_view<T,1> c({64}, data3);
+    marray_view<U,1> d({64}, data4);
+    marray<V,1> e({64});
+
+    e = c+d;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(i), c[i]);
+        EXPECT_EQ(U(i), d[i]);
+        EXPECT_EQ(V(2*i), e[i]);
+    }
+}
+
+TYPED_TEST(expression_vector, vector_sub)
+{
+    typedef typename TypeParam::first_type T;
+    typedef typename TypeParam::second_type U;
+    typedef decltype(std::declval<operators::minus>()(std::declval<T>(),
+                                                      std::declval<U>())) V;
+
+    T data1[64] = VECTOR_INITIALIZER;
+    U data2[64] = {0};
+
+    marray_view<T,1> a({64}, data1);
+    marray_view<U,1> b({64}, data2);
+
+    b = a-a;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(i), a[i]);
+        EXPECT_EQ(U(0), b[i]);
+    }
+
+    T data3[64] = VECTOR_INITIALIZER;
+    U data4[64] = VECTOR_INITIALIZER;
+
+    marray_view<T,1> c({64}, data3);
+    marray_view<U,1> d({64}, data4);
+    marray<V,1> e({64});
+
+    e = c-d;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(i), c[i]);
+        EXPECT_EQ(U(i), d[i]);
+        EXPECT_EQ(V(0), e[i]);
+    }
+}
+
+TYPED_TEST(expression_vector, vector_mul)
+{
+    typedef typename TypeParam::first_type T;
+    typedef typename TypeParam::second_type U;
+    typedef decltype(std::declval<operators::multiplies>()(std::declval<T>(),
+                                                           std::declval<U>())) V;
+
+    // avoid overflow in floating -> integral since it is undefined and
+    // in integral*integral because signed overflow is undefined
+    T data1[64] = { 0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7};
+    U data2[64] = {0};
+
+    marray_view<T,1> a({64}, data1);
+    marray_view<U,1> b({64}, data2);
+
+    b = a*a;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(i%8), a[i]);
+        EXPECT_EQ(U((i%8)*(i%8)), b[i]);
+    }
+
+    T data3[64] = { 0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7};
+    U data4[64] = { 0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7, \
+                    0, 1, 2, 3, 4, 5, 6, 7};
+
+    marray_view<T,1> c({64}, data3);
+    marray_view<U,1> d({64}, data4);
+    marray<V,1> e({64});
+
+    e = c*d;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(i%8), c[i]);
+        EXPECT_EQ(U(i%8), d[i]);
+        EXPECT_EQ(V((i%8)*(i%8)), e[i]);
+    }
+}
+
+TYPED_TEST(expression_vector, vector_div)
+{
+    typedef typename TypeParam::first_type T;
+    typedef typename TypeParam::second_type U;
+    typedef decltype(std::declval<operators::divides>()(std::declval<T>(),
+                                                        std::declval<U>())) V;
+
+    T data1[64] = VECTOR_INITIALIZER;
+    U data2[64] = {0};
+
+    marray_view<T,1> a({64}, data1);
+    marray_view<U,1> b({64}, data2);
+    a[0] = T(1);
+
+    b = a/a;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(std::max(1,i)), a[i]);
+        EXPECT_EQ(U(1), b[i]);
+    }
+
+    T data3[64] = VECTOR_INITIALIZER;
+    U data4[64] = VECTOR_INITIALIZER;
+
+    marray_view<T,1> c({64}, data3);
+    marray_view<U,1> d({64}, data4);
+    marray<V,1> e({64});
+    c[0] = T(1);
+    d[0] = U(1);
+
+    e = c/d;
+
+    for (int i = 0;i < 64;i++)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(T(std::max(1,i)), c[i]);
+        EXPECT_EQ(U(std::max(1,i)), d[i]);
+        EXPECT_EQ(V(1), e[i]);
+    }
+}
 
 TEST(expression, assign)
 {

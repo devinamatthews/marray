@@ -4,6 +4,31 @@
 #include <x86intrin.h>
 #include "vector.hpp"
 
+/*
+ * AVX512F implementation, no BW or DQ (but with optional ER)
+ */
+
+// in DQ and not F for some reason
+#ifdef _mm512_extractf32x8_ps
+#undef _mm512_extractf32x8_ps
+#endif
+#define _mm512_extractf32x8_ps(a, imm8) \
+    _mm512_castpd_ps(_mm512_extractf64x4_pd(_mm512_castps_pd(a), imm8))
+
+// in DQ and not F for some reason
+#ifdef _mm512_insertf32x8_ps
+#undef _mm512_insertf32x8_ps
+#endif
+#define _mm512_insertf32x8(a, b, imm8) \
+    _mm512_castpd_ps(_mm512_insertf64x4(_mm512_castps_pd(a), _mm256_castps_pd(b), imm8))
+
+// in DQ and not F for some reason
+#ifdef _mm512_broadcast_f32x8
+#undef _mm512_broadcast_f32x8
+#endif
+#define _mm512_broadcast_f32x8(a) \
+    _mm512_castpd_ps(_mm512_broadcast_f64x4(_mm512_castps_pd(a)))
+
 namespace MArray
 {
 
@@ -31,18 +56,26 @@ struct vector_traits<float>
     detail::enable_if_t<std::is_same<T,std::complex<float>>::value, __m512>
     convert(__m512 v)
     {
-        __m128 lo = _mm512_extractf128_ps(v, 0);
-        __m512 dup = _mm512_insertf128_ps(_mm512_shuffle_ps(v, v, _MM_SHUFFLE(1,0,1,0)),
-                                          _mm_shuffle_ps(lo, lo, _MM_SHUFFLE(3,2,3,2)), 1);
+        // (15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+        __m512 tmp = _mm512_shuffle_f32x4(v, v, _MM_SHUFFLE(1,1,0,0));
+        // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
+        __m512 dup = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(tmp), _MM_SHUFFLE(1,1,0,0)));
+        // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
         return _mm512_unpacklo_ps(dup, _mm512_setzero_ps());
+        // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T>
     detail::enable_if_t<std::is_same<T,std::complex<double>>::value, __m512d>
     convert(__m512 v)
     {
-        __m512d dup = _mm512_cvtps_pd(_mm512_shuffle_ps(v, v, _MM_SHUFFLE(1,1,0,0)));
+        // (15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+        __m512 tmp = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(v), _MM_SHUFFLE(1,1,0,0)));
+        // (11,10,11,10, 9, 8, 9, 8, 3, 2, 3, 2, 1, 0, 1, 0)
+        __m512d dup = _mm512_cvtps_pd(_mm512_permute_ps(tmp, _MM_SHUFFLE(1,1,0,0)));
+        // ( 3, 3, 2, 2, 1, 1, 0, 0)
         return _mm512_unpacklo_pd(dup, _mm512_setzero_pd());
+        // ( -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T>
@@ -51,16 +84,11 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         __m512i i32 = _mm512_cvtps_epi32(v);
-#ifdef __AVX2__
-        __m512i i16 = _mm512_packs_epi32(i32, i32);
-        return _mm512_packs_epi16(i16, i16);
-#else
-        __m128i i32lo = _mm512_castsi512_si128(i32);
-        __m128i i32hi = _mm512_extractf128_si512(i32, 1);
-        __m128i i16 = _mm_packs_epi32(i32lo, i32hi);
-        __m128i i8 = _mm_packs_epi16(i16, i16);
-        return _mm512_insertf128_si512(_mm512_castsi128_si512(i8), i8, 1);
-#endif
+        __m256i i32lo = _mm512_castsi512_si256(i32);
+        __m256i i32hi = _mm512_extracti64x4_epi64(i32, 1);
+        __m256i i16 = _mm256_packs_epi32(i32lo, i32hi);
+        __m256i i8 = _mm256_packs_epi16(i16, i16);
+        return _mm512_broadcast_i64x4(i8);
     }
 
     template <typename T>
@@ -69,14 +97,10 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         __m512i i32 = _mm512_cvtps_epi32(v);
-#ifdef __AVX2__
-        return _mm512_packs_epi32(i32, i32);
-#else
-        __m128i i32lo = _mm512_castsi512_si128(i32);
-        __m128i i32hi = _mm512_extractf128_si512(i32, 1);
-        __m128i i16 = _mm_packs_epi32(i32lo, i32hi);
-        return _mm512_insertf128_si512(_mm512_castsi128_si512(i16), i16, 1);
-#endif
+        __m256i i32lo = _mm512_castsi512_si256(i32);
+        __m256i i32hi = _mm512_extracti64x4_epi64(i32, 1);
+        __m256i i16 = _mm256_packs_epi32(i32lo, i32hi);
+        return _mm512_broadcast_i64x4(i16);
     }
 
     template <typename T>
@@ -92,55 +116,96 @@ struct vector_traits<float>
                         std::is_same<T,uint64_t>::value, __m512i>
     convert(__m512 v)
     {
-        return _mm512_setr_epi64x((int64_t)v[0], (int64_t)v[1],
-                                  (int64_t)v[2], (int64_t)v[3]);
+        return _mm512_setr_epi64((int64_t)v[0], (int64_t)v[1],
+                                 (int64_t)v[2], (int64_t)v[3],
+                                 (int64_t)v[4], (int64_t)v[5],
+                                 (int64_t)v[6], (int64_t)v[7]);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 8 && !Aligned, __m512>
+    detail::enable_if_t<Width == 16 && !Aligned, __m512>
     load(const float* ptr)
     {
         return _mm512_loadu_ps(ptr);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 8 && Aligned, __m512>
+    detail::enable_if_t<Width == 16 && Aligned, __m512>
     load(const float* ptr)
     {
         return _mm512_load_ps(ptr);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 4, __m512>
+    detail::enable_if_t<Width == 8 && !Aligned, __m512>
     load(const float* ptr)
     {
-        return _mm512_broadcast_ps((__m128*)ptr);
+        __m256 lo = _mm256_loadu_ps(ptr);
+        return _mm512_broadcast_f32x8(lo);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 8 && Aligned, __m512>
+    load(const float* ptr)
+    {
+        __m256 lo = _mm256_load_ps(ptr);
+        return _mm512_broadcast_f32x8(lo);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 4 && !Aligned, __m512>
+    load(const float* ptr)
+    {
+        __m128 lo = _mm_loadu_ps(ptr);
+        return _mm512_broadcast_f32x4(lo);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 4 && Aligned, __m512>
+    load(const float* ptr)
+    {
+        __m128 lo = _mm_load_ps(ptr);
+        return _mm512_broadcast_f32x4(lo);
     }
 
     template <unsigned Width, bool Aligned>
     detail::enable_if_t<Width == 2, __m512>
     load(const float* ptr)
     {
-        return _mm512_castpd_ps(_mm512_broadcast_sd((double*)ptr));
+        return _mm512_castpd_ps(_mm512_set1_pd(*(double*)ptr));
     }
 
     __m512 load1(const float* ptr)
     {
-        return _mm512_broadcast_ss(ptr);
+        return _mm512_set1_ps(*ptr);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 8 && !Aligned>
+    detail::enable_if_t<Width == 16 && !Aligned>
     store(__m512 v, float* ptr)
     {
         _mm512_storeu_ps(ptr, v);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 8 && Aligned>
+    detail::enable_if_t<Width == 16 && Aligned>
     store(__m512 v, float* ptr)
     {
         _mm512_store_ps(ptr, v);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 8 && !Aligned>
+    store(__m512 v, float* ptr)
+    {
+        _mm256_storeu_ps(ptr, _mm512_castps512_ps256(v));
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 8 && Aligned>
+    store(__m512 v, float* ptr)
+    {
+        _mm256_store_ps(ptr, _mm512_castps512_ps256(v));
     }
 
     template <unsigned Width, bool Aligned>
@@ -186,14 +251,22 @@ struct vector_traits<float>
 
     __m512 pow(__m512 a, __m512 b)
     {
-        return _mm512_setr_ps(std::pow((float)a[0], (float)b[0]),
-                              std::pow((float)a[1], (float)b[1]),
-                              std::pow((float)a[2], (float)b[2]),
-                              std::pow((float)a[3], (float)b[3]),
-                              std::pow((float)a[4], (float)b[4]),
-                              std::pow((float)a[5], (float)b[5]),
-                              std::pow((float)a[6], (float)b[6]),
-                              std::pow((float)a[7], (float)b[7]));
+        return _mm512_setr_ps(std::pow((float)a[ 0], (float)b[ 0]),
+                              std::pow((float)a[ 1], (float)b[ 1]),
+                              std::pow((float)a[ 2], (float)b[ 2]),
+                              std::pow((float)a[ 3], (float)b[ 3]),
+                              std::pow((float)a[ 4], (float)b[ 4]),
+                              std::pow((float)a[ 5], (float)b[ 5]),
+                              std::pow((float)a[ 6], (float)b[ 6]),
+                              std::pow((float)a[ 7], (float)b[ 7]),
+                              std::pow((float)a[ 8], (float)b[ 8]),
+                              std::pow((float)a[ 9], (float)b[ 9]),
+                              std::pow((float)a[10], (float)b[10]),
+                              std::pow((float)a[11], (float)b[11]),
+                              std::pow((float)a[12], (float)b[12]),
+                              std::pow((float)a[13], (float)b[13]),
+                              std::pow((float)a[14], (float)b[14]),
+                              std::pow((float)a[15], (float)b[15]));
     }
 
     __m512 negate(__m512 a)
@@ -203,14 +276,22 @@ struct vector_traits<float>
 
     __m512 exp(__m512 a)
     {
-        return _mm512_setr_ps(std::exp((float)a[0]),
-                              std::exp((float)a[1]),
-                              std::exp((float)a[2]),
-                              std::exp((float)a[3]),
-                              std::exp((float)a[4]),
-                              std::exp((float)a[5]),
-                              std::exp((float)a[6]),
-                              std::exp((float)a[7]));
+        return _mm512_setr_ps(std::exp((float)a[ 0]),
+                              std::exp((float)a[ 1]),
+                              std::exp((float)a[ 2]),
+                              std::exp((float)a[ 3]),
+                              std::exp((float)a[ 4]),
+                              std::exp((float)a[ 5]),
+                              std::exp((float)a[ 6]),
+                              std::exp((float)a[ 7]),
+                              std::exp((float)a[ 8]),
+                              std::exp((float)a[ 9]),
+                              std::exp((float)a[10]),
+                              std::exp((float)a[11]),
+                              std::exp((float)a[12]),
+                              std::exp((float)a[13]),
+                              std::exp((float)a[14]),
+                              std::exp((float)a[15]));
     }
 
     __m512 sqrt(__m512 a)
@@ -222,15 +303,15 @@ struct vector_traits<float>
 template <>
 struct vector_traits<double>
 {
-    constexpr static unsigned vector_width = 4;
+    constexpr static unsigned vector_width = 8;
     constexpr static size_t alignment = 64;
 
     template <typename T>
     detail::enable_if_t<std::is_same<T,float>::value, __m512>
     convert(__m512d v)
     {
-        __m512 lo = _mm512_cvtpd_ps(v);
-        return _mm512_permute2f128_ps(lo, lo, 0x00);
+        __m256 lo = _mm512_cvtpd_ps(v);
+        return _mm512_broadcast_f32x8(lo);
     }
 
     template <typename T>
@@ -244,20 +325,30 @@ struct vector_traits<double>
     detail::enable_if_t<std::is_same<T,std::complex<float>>::value, __m512>
     convert(__m512d v)
     {
-        __m512 sp = _mm512_cvtpd_ps(v);
-        __m128 lo = _mm512_extractf128_ps(sp, 0);
-        __m512 dup = _mm512_insertf128_ps(_mm512_shuffle_ps(sp, sp, _MM_SHUFFLE(1,0,1,0)),
-                                          _mm_shuffle_ps(lo, lo, _MM_SHUFFLE(3,2,3,2)), 1);
+        // (15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+        __m256 tmp = _mm512_cvtpd_ps(v);
+        // ( 7, 6, 5, 4, 3, 2, 1, 0)
+        __m256 lo = _mm256_permute4x64_pd(tmp, _MM_SHUFFLE(1,1,0,0));
+        // ( 3, 2, 3, 2, 1, 0, 1 ,0)
+        __m256 hi = _mm256_permute4x64_pd(tmp, _MM_SHUFFLE(3,3,2,2));
+        // ( 7, 6, 7, 6, 5, 4, 5 ,4)
+        __m512 dup = _mm512_insertf32x8(_mm512_castps256_ps512(lo), hi, 1);
+        // ( 7, 6, 7, 6, 5, 4, 5 ,4, 3, 2, 3, 2, 1, 0, 1, 0)
         return _mm512_unpacklo_ps(dup, _mm512_setzero_ps());
+        // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T>
     detail::enable_if_t<std::is_same<T,std::complex<double>>::value, __m512d>
     convert(__m512d v)
     {
-        __m512d lo = _mm512_permute2f128_pd(v, v, 0x00);
-        __m512d dup = _mm512_shuffle_pd(lo, lo, 0xc);
+        // ( 7, 6, 5, 4, 3, 2, 1, 0)
+        __m512d tmp = _mm512_shuffle_f64x2(v, v, _MM_SHUFFLE(1,1,0,0));
+        // ( 3, 2, 3, 2, 1, 0, 1, 0)
+        __m512d dup = _mm512_permutex_pd(tmp, _MM_SHUFFLE(1,1,0,0));
+        // ( 3, 3, 2, 2, 1, 1, 0, 0)
         return _mm512_unpacklo_ps(dup, _mm512_setzero_ps());
+        // ( -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T>
@@ -265,19 +356,10 @@ struct vector_traits<double>
                         std::is_same<T,uint8_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m512i i32 = _mm512_cvtpd_epi32(v);
-#ifdef __AVX2__
-        i32 = _mm512_permute2x128_si512(i32, i32, 0x0);
-        __m512i i16 = _mm512_packs_epi32(i32, i32);
-        return _mm512_packs_epi16(i16, i16);
-#else
-        i32 = _mm512_permute2f128_si512(i32, i32, 0x0);
-        __m128i i32lo = _mm512_castsi512_si128(i32);
-        __m128i i32hi = _mm512_extractf128_si512(i32, 1);
-        __m128i i16 = _mm_packs_epi32(i32lo, i32hi);
-        __m128i i8 = _mm_packs_epi16(i16, i16);
-        return _mm512_insertf128_si512(_mm512_castsi128_si512(i8), i8, 1);
-#endif
+        __m256i i32 = _mm512_cvtpd_epi32(v);
+        __m256i i16 = _mm256_packs_epi32(i32, i32);
+        __m256i i8 = _mm256_packs_epi16(i16, i16);
+        return _mm512_broadcast_i64x4(i8);
     }
 
     template <typename T>
@@ -285,17 +367,9 @@ struct vector_traits<double>
                         std::is_same<T,uint16_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m512i i32 = _mm512_cvtpd_epi32(v);
-#ifdef __AVX2__
-        i32 = _mm512_permute2x128_si512(i32, i32, 0x0);
-        return _mm512_packs_epi32(i32, i32);
-#else
-        i32 = _mm512_permute2f128_si512(i32, i32, 0x0);
-        __m128i i32lo = _mm512_castsi512_si128(i32);
-        __m128i i32hi = _mm512_extractf128_si512(i32, 1);
-        __m128i i16 = _mm_packs_epi32(i32lo, i32hi);
-        return _mm512_insertf128_si512(_mm512_castsi128_si512(i16), i16, 1);
-#endif
+        __m256i i32 = _mm512_cvtpd_epi32(v);
+        __m256i i16 = _mm256_packs_epi32(i32, i32);
+        return _mm512_broadcast_i64x4(i16);
     }
 
     template <typename T>
@@ -303,7 +377,8 @@ struct vector_traits<double>
                         std::is_same<T,uint32_t>::value, __m512i>
     convert(__m512d v)
     {
-        return _mm512_cvtpd_epi32(v);
+        __m256i i32 = _mm512_cvtpd_epi32(v);
+        return _mm512_broadcast_i64x4(i32);
     }
 
     template <typename T>
@@ -311,52 +386,100 @@ struct vector_traits<double>
                         std::is_same<T,uint64_t>::value, __m512i>
     convert(__m512d v)
     {
-        return _mm512_setr_epi64x((int64_t)v[0], (int64_t)v[1],
-                                  (int64_t)v[2], (int64_t)v[3]);
+        return _mm512_setr_epi64((int64_t)v[0], (int64_t)v[1],
+                                 (int64_t)v[2], (int64_t)v[3],
+                                 (int64_t)v[4], (int64_t)v[5],
+                                 (int64_t)v[6], (int64_t)v[7]);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 4 && !Aligned, __m512d>
+    detail::enable_if_t<Width == 8 && !Aligned, __m512d>
     load(const double* ptr)
     {
         return _mm512_loadu_pd(ptr);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 4 && Aligned, __m512d>
+    detail::enable_if_t<Width == 8 && Aligned, __m512d>
     load(const double* ptr)
     {
         return _mm512_load_pd(ptr);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 2, __m512d>
+    detail::enable_if_t<Width == 4 && !Aligned, __m512d>
     load(const double* ptr)
     {
-        return _mm512_broadcast_pd((__m128d*)ptr);
+        __m256d lo = _mm256_loadu_pd(ptr);
+        return _mm512_broadcast_f64x4(lo);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 4 && Aligned, __m512d>
+    load(const double* ptr)
+    {
+        __m256d lo = _mm256_load_pd(ptr);
+        return _mm512_broadcast_f64x4(lo);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 2 && !Aligned, __m512d>
+    load(const double* ptr)
+    {
+        __m128d lo = _mm_loadu_pd(ptr);
+        return _mm512_broadcast_f64x2(lo);
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 2 && Aligned, __m512d>
+    load(const double* ptr)
+    {
+        __m128d lo = _mm_load_pd(ptr);
+        return _mm512_broadcast_f64x2(lo);
     }
 
     __m512d load1(const double* ptr)
     {
-        return _mm512_broadcast_sd(ptr);
+        return _mm512_set1_pd(*ptr);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 4 && !Aligned>
+    detail::enable_if_t<Width == 8 && !Aligned>
     store(__m512d v, double* ptr)
     {
         _mm512_storeu_pd(ptr, v);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 4 && Aligned>
+    detail::enable_if_t<Width == 8 && Aligned>
     store(__m512d v, double* ptr)
     {
         _mm512_store_pd(ptr, v);
     }
 
     template <unsigned Width, bool Aligned>
-    detail::enable_if_t<Width == 2>
+    detail::enable_if_t<Width == 4 && !Aligned>
+    store(__m512d v, double* ptr)
+    {
+        _mm256_storeu_pd(ptr, _mm512_castpd512_pd256(v));
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 4 && Aligned>
+    store(__m512d v, double* ptr)
+    {
+        _mm256_store_pd(ptr, _mm512_castpd512_pd256(v));
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 2 && !Aligned>
+    store(__m512d v, double* ptr)
+    {
+        _mm_storeu_pd(ptr, _mm512_castpd512_pd128(v));
+    }
+
+    template <unsigned Width, bool Aligned>
+    detail::enable_if_t<Width == 2 && Aligned>
     store(__m512d v, double* ptr)
     {
         _mm_store_pd(ptr, _mm512_castpd512_pd128(v));
@@ -387,7 +510,11 @@ struct vector_traits<double>
         return _mm512_setr_pd(std::pow((double)a[0], (double)b[0]),
                               std::pow((double)a[1], (double)b[1]),
                               std::pow((double)a[2], (double)b[2]),
-                              std::pow((double)a[3], (double)b[3]));
+                              std::pow((double)a[3], (double)b[3]),
+                              std::pow((double)a[4], (double)b[4]),
+                              std::pow((double)a[5], (double)b[5]),
+                              std::pow((double)a[6], (double)b[6]),
+                              std::pow((double)a[7], (double)b[7]));
     }
 
     __m512d negate(__m512d a)
@@ -400,7 +527,11 @@ struct vector_traits<double>
         return _mm512_setr_pd(std::exp((double)a[0]),
                               std::exp((double)a[1]),
                               std::exp((double)a[2]),
-                              std::exp((double)a[3]));
+                              std::exp((double)a[3]),
+                              std::exp((double)a[4]),
+                              std::exp((double)a[5]),
+                              std::exp((double)a[6]),
+                              std::exp((double)a[7]));
     }
 
     __m512d sqrt(__m512d a)
@@ -412,13 +543,14 @@ struct vector_traits<double>
 template <>
 struct vector_traits<std::complex<float>>
 {
-    constexpr static unsigned vector_width = 4;
+    constexpr static unsigned vector_width = 8;
     constexpr static size_t alignment = 64;
 
     template <typename T>
     detail::enable_if_t<std::is_same<T,float>::value, __m512>
     convert(__m512 v)
     {
+        //TODO
         __m512 tmp = _mm512_shuffle_ps(v, v, _MM_SHUFFLE(2,0,2,0));
 #ifdef __AVX2__
         return _mm512_permute4x64_pd(tmp, _MM_SHUFFLE(2,0,2,0));

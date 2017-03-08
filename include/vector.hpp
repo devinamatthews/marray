@@ -4,6 +4,11 @@
 #include <complex>
 #include "utility.hpp"
 
+#if __GNUC__ >= 6
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#endif
+
 namespace MArray
 {
 
@@ -11,6 +16,8 @@ template <typename T, typename=void>
 struct vector_traits
 {
     constexpr static unsigned vector_width = 1;
+    constexpr static unsigned alignment = 1;
+    typedef T vector_type;
 };
 
 }
@@ -27,6 +34,10 @@ struct vector_traits
 
 #include "vector_sse41.hpp"
 
+#endif
+
+#if __GNUC__ >= 6
+#pragma GCC diagnostic pop
 #endif
 
 #endif
