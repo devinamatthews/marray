@@ -132,8 +132,8 @@ struct vector_traits<float>
                         std::is_same<T,uint64_t>::value, __m256i>
     convert(__m256 v)
     {
-        return _mm256_setr_epi64x((int64_t)v[0], (int64_t)v[1],
-                                  (int64_t)v[2], (int64_t)v[3]);
+        return _mm256_setr_epi64x((T)v[0], (T)v[1],
+                                  (T)v[2], (T)v[3]);
     }
 
     template <unsigned Width, bool Aligned> static
@@ -364,8 +364,8 @@ struct vector_traits<double>
                         std::is_same<T,uint64_t>::value, __m256i>
     convert(__m256d v)
     {
-        return _mm256_setr_epi64x((int64_t)v[0], (int64_t)v[1],
-                                  (int64_t)v[2], (int64_t)v[3]);
+        return _mm256_setr_epi64x((T)v[0], (T)v[1],
+                                  (T)v[2], (T)v[3]);
     }
 
     template <unsigned Width, bool Aligned> static
@@ -414,7 +414,14 @@ struct vector_traits<double>
     }
 
     template <unsigned Width, bool Aligned> static
-    detail::enable_if_t<Width == 2>
+    detail::enable_if_t<Width == 2 && !Aligned>
+    store(__m256d v, double* ptr)
+    {
+        _mm_storeu_pd(ptr, _mm256_castpd256_pd128(v));
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 2 && Aligned>
     store(__m256d v, double* ptr)
     {
         _mm_store_pd(ptr, _mm256_castpd256_pd128(v));
@@ -569,8 +576,8 @@ struct vector_traits<std::complex<float>>
                         std::is_same<T,uint64_t>::value, __m256i>
     convert(__m256 v)
     {
-        return _mm256_setr_epi64x((int64_t)v[0], (int64_t)v[2],
-                                  (int64_t)v[4], (int64_t)v[6]);
+        return _mm256_setr_epi64x((T)v[0], (T)v[2],
+                                  (T)v[4], (T)v[6]);
     }
 
     template <unsigned Width, bool Aligned> static
@@ -831,8 +838,8 @@ struct vector_traits<std::complex<double>>
                         std::is_same<T,uint64_t>::value, __m256i>
     convert(__m256d v)
     {
-        return _mm256_setr_epi64x((int64_t)v[0], (int64_t)v[2],
-                                  (int64_t)v[0], (int64_t)v[2]);
+        return _mm256_setr_epi64x((T)v[0], (T)v[2],
+                                  (T)v[0], (T)v[2]);
     }
 
     template <unsigned Width, bool Aligned> static
