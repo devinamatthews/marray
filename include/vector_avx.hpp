@@ -1630,10 +1630,17 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     }
 
     template <unsigned Width, bool Aligned> static
-    detail::enable_if_t<Width == 8>
+    detail::enable_if_t<Width == 8 && !Aligned>
     store(__m256i v, U* ptr)
     {
         _mm_storeu_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 8 && Aligned>
+    store(__m256i v, U* ptr)
+    {
+        _mm_store_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
     }
 
     template <unsigned Width, bool Aligned> static
@@ -1996,10 +2003,17 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     }
 
     template <unsigned Width, bool Aligned> static
-    detail::enable_if_t<Width == 4>
+    detail::enable_if_t<Width == 4 && !Aligned>
     store(__m256i v, U* ptr)
     {
         _mm_storeu_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 4 && Aligned>
+    store(__m256i v, U* ptr)
+    {
+        _mm_store_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
     }
 
     template <unsigned Width, bool Aligned> static
@@ -2178,8 +2192,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
     detail::enable_if_t<std::is_same<T,std::complex<double>>::value, __m256d>
     convert(__m256i v)
     {
-        float a = (U)_mm256_extract_epi64(v, 0);
-        float b = (U)_mm256_extract_epi64(v, 1);
+        double a = (U)_mm256_extract_epi64(v, 0);
+        double b = (U)_mm256_extract_epi64(v, 1);
         return _mm256_setr_pd(a, 0, b, 0);
     }
 

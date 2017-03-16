@@ -1762,18 +1762,26 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     detail::enable_if_t<std::is_same<T,std::complex<float>>::value, __m512>
     convert(__m512i v)
     {
-        __m128i tmp = _mm_shuffle_epi32(_mm256_castsi256_si128(v), _MM_SHUFFLE(3,1,2,0));
-        __m128i dup = _mm_shufflehi_epi16(_mm_shufflelo_epi16(tmp, _MM_SHUFFLE(1,0,1,0)),
-                                                                   _MM_SHUFFLE(1,0,1,0));
-        return _mm256_unpacklo_ps(convert<float>(_mm256_castsi128_si256(dup)), _mm256_setzero_ps());
+        // (...,15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+        __m256i tmp1 = _mm256_permute4x64_epi64(_mm512_castsi512_si256(v), _MM_SHUFFLE(1,1,0,0));
+        // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
+        __m256i tmp2 = _mm256_shuffle_epi32(tmp1, _MM_SHUFFLE(1,1,0,0));
+        // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
+        return _mm512_unpacklo_ps(convert<float>(_mm512_castsi256_si512(tmp2)), _mm512_setzero_ps());
+        // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,std::complex<double>>::value, __m512d>
     convert(__m512i v)
     {
-        __m128i dup = _mm_shufflelo_epi16(_mm256_castsi256_si128(v), _MM_SHUFFLE(1,1,0,0));
-        return _mm256_unpacklo_pd(convert<double>(_mm256_castsi128_si256(dup)), _mm256_setzero_pd());
+        // (..., 7, 6, 5, 4, 3, 2, 1, 0)
+        __m128i tmp1 = _mm_shuffle_epi32(_mm512_castsi512_si128(tmp1), _MM_SHUFFLE(1,1,0,0));
+        // ( 3, 2, 3, 2, 1, 0, 1, 0)
+        __m256i tmp2 = _mm256_shuffle_epi32(_mm256_cvtepi16_epi32(tmp1), _MM_SHUFFLE(1,1,0,0));
+        // ( 3, 3, 2, 2, 1, 1, 0, 0)
+        return _mm512_unpacklo_pd(_mm512_cvtepi32_pd(tmp2), _mm512_setzero_pd());
+        // ( -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T> static
@@ -1781,16 +1789,12 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
                         std::is_same<T,uint8_t>::value, __m512i>
     convert(__m512i v)
     {
-#ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi16(v, v), _MM_SHUFFLE(2,0,2,0))
-                                        : _mm256_permute4x64_epi64(_mm256_packus_epi16(v, v), _MM_SHUFFLE(2,0,2,0));
-#else
-        __m128i lo16 = _mm256_castsi256_si128(v);
-        __m128i hi16 = _mm256_extractf128_si256(v, 1);
-        __m128i lo = std::is_signed<U>::value ? _mm_packs_epi16(lo16, hi16)
-                                              : _mm_packus_epi16(lo16, hi16);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(lo), lo, 1);
-#endif
+        __m256i lo16 = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi16 = _mm512_extracti64x4_epi64(v, 1);
+        __m256i tmp = std::is_signed<U>::value ? _mm256_packs_epi16(lo16, hi16)
+                                              : _mm256_packus_epi16(lo16, hi16);
+        __m512i lo = _mm512_castsi256_si512(_mm256_permute4x64_epi64(tmp, _MM_SHUFFLE(3,1,2,0)));
+        return _mm512_shuffle_i64x2(lo, lo, _MM_SHUFFLE(1,0,1,0));
     }
 
     template <typename T> static
@@ -1806,18 +1810,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
                         std::is_same<T,uint32_t>::value, __m512i>
     convert(__m512i v)
     {
-#ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi16_epi32(_mm256_castsi256_si128(v))
-                                        : _mm256_cvtepu16_epi32(_mm256_castsi256_si128(v));
-#else
-        __m128i lo16 = _mm256_castsi256_si128(v);
-        __m128i hi16 = _mm_shuffle_epi32(lo16, _MM_SHUFFLE(1,0,3,2));
-        __m128i lo32 = std::is_signed<U>::value ? _mm_cvtepi16_epi32(lo16)
-                                                : _mm_cvtepu16_epi32(lo16);
-        __m128i hi32 = std::is_signed<U>::value ? _mm_cvtepi16_epi32(hi16)
-                                                : _mm_cvtepu16_epi32(hi16);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(lo32), hi32, 1);
-#endif
+        return std::is_signed<U>::value ? _mm512_cvtepi16_epi32(_mm512_castsi512_si256(v))
+                                        : _mm512_cvtepu16_epi32(_mm512_castsi512_si256(v));
     }
 
     template <typename T> static
@@ -1825,107 +1819,123 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
                         std::is_same<T,uint64_t>::value, __m512i>
     convert(__m512i v)
     {
-#ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi16_epi64(_mm256_castsi256_si128(v))
-                                        : _mm256_cvtepu16_epi64(_mm256_castsi256_si128(v));
-#else
-        __m128i lo32 = std::is_signed<U>::value ? _mm_cvtepi16_epi32(_mm256_castsi256_si128(v))
-                                                : _mm_cvtepu16_epi32(_mm256_castsi256_si128(v));
-        __m128i hi32 = _mm_shuffle_epi32(lo32, _MM_SHUFFLE(1,0,3,2));
-        __m128i lo64 =  std::is_signed<U>::value ? _mm_cvtepi32_epi64(lo32)
-                                                 : _mm_cvtepu32_epi64(lo32);
-        __m128i hi64 =  std::is_signed<U>::value ? _mm_cvtepi32_epi64(hi32)
-                                                 : _mm_cvtepu32_epi64(hi32);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(lo64), hi64, 1);
-#endif
+        return std::is_signed<U>::value ? _mm512_cvtepi16_epi64(_mm512_castsi512_si128(v))
+                                        : _mm512_cvtepu16_epi64(_mm512_castsi512_si128(v));
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 32 && !Aligned, __m512i>
+    load(const U* ptr)
+    {
+        return _mm512_loadu_si512((__m512i*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 32 && Aligned, __m512i>
+    load(const U* ptr)
+    {
+        return _mm512_load_si512((__m512i*)ptr);
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 16 && !Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_loadu_si256((__m512i*)ptr);
+        return _mm512_broadcast_i64x4(_mm256_loadu_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 16 && Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_load_si256((__m512i*)ptr);
+        return _mm512_broadcast_i64x4(_mm256_load_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 8 && !Aligned, __m512i>
     load(const U* ptr)
     {
-#ifdef __AVX2__
-        return _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i*)ptr));
-#else
-        return _mm256_castps_si256(_mm256_broadcast_ps((__m128*)ptr));
-#endif
+        return _mm512_broadcast_i32x4(_mm_loadu_si128((__m128i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 8 && Aligned, __m512i>
     load(const U* ptr)
     {
-#ifdef __AVX2__
-        return _mm256_broadcastsi128_si256(_mm_load_si128((__m128i*)ptr));
-#else
-        return _mm256_castps_si256(_mm256_broadcast_ps((__m128*)ptr));
-#endif
+        return _mm512_broadcast_i32x4(_mm_load_si128((__m128i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4, __m512i>
     load(const U* ptr)
     {
-        return _mm256_set1_epi64x(*(int64_t*)ptr);
+        return _mm512_set1_epi64(*(int64_t*)ptr);
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2, __m512i>
     load(const U* ptr)
     {
-        return _mm256_set1_epi32(*(int32_t*)ptr);
+        return _mm512_set1_epi32(*(int32_t*)ptr);
     }
 
     static __m512i load1(const U* ptr)
     {
-        return _mm256_set1_epi16(*ptr);
+        return _mm512_set1_epi16(*ptr);
     }
 
     static __m512i set1(U val)
     {
-        return _mm256_set1_epi16(val);
+        return _mm512_set1_epi16(val);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 32 && !Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm512_storeu_si512((__m512i*)ptr, v);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 32 && Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm512_store_si512((__m512i*)ptr, v);
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 16 && !Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_storeu_si256((__m512i*)ptr, v);
+        _mm256_storeu_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 16 && Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_store_si256((__m512i*)ptr, v);
+        _mm256_store_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
-    detail::enable_if_t<Width == 8>
+    detail::enable_if_t<Width == 8 && !Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm_storeu_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
+        _mm_storeu_si128((__m128i*)ptr, _mm512_castsi512_si128(v));
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 8 && Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm_store_si128((__m128i*)ptr, _mm512_castsi512_si128(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4>
     store(__m512i v, U* ptr)
     {
-        _mm_storel_epi64((__m128i*)ptr, _mm256_castsi256_si128(v));
+        _mm_storel_epi64((__m128i*)ptr, _mm512_castsi512_si128(v));
     }
 
     template <unsigned Width, bool Aligned> static
@@ -1937,172 +1947,204 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
 
     static __m512i add(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_add_epi16(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_add_epi16(a0, b0);
-        __m128i ab1 = _mm_add_epi16(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i ab0 = _mm256_add_epi16(a0, b0);
+        __m256i ab1 = _mm256_add_epi16(a1, b1);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(ab0), ab1, 1);
     }
 
     static __m512i sub(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_sub_epi16(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_sub_epi16(a0, b0);
-        __m128i ab1 = _mm_sub_epi16(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i ab0 = _mm256_sub_epi16(a0, b0);
+        __m256i ab1 = _mm256_sub_epi16(a1, b1);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(ab0), ab1, 1);
     }
 
     static __m512i mul(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_mullo_epi16(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_mullo_epi16(a0, b0);
-        __m128i ab1 = _mm_mullo_epi16(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i ab0 = _mm256_mullo_epi16(a0, b0);
+        __m256i ab1 = _mm256_mullo_epi16(a1, b1);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(ab0), ab1, 1);
     }
 
     static __m512i div(__m512i a, __m512i b)
     {
-        return _mm256_setr_epi16((U)_mm256_extract_epi16(a, 0) /
-                                 (U)_mm256_extract_epi16(b, 0),
-                                 (U)_mm256_extract_epi16(a, 1) /
-                                 (U)_mm256_extract_epi16(b, 1),
-                                 (U)_mm256_extract_epi16(a, 2) /
-                                 (U)_mm256_extract_epi16(b, 2),
-                                 (U)_mm256_extract_epi16(a, 3) /
-                                 (U)_mm256_extract_epi16(b, 3),
-                                 (U)_mm256_extract_epi16(a, 4) /
-                                 (U)_mm256_extract_epi16(b, 4),
-                                 (U)_mm256_extract_epi16(a, 5) /
-                                 (U)_mm256_extract_epi16(b, 5),
-                                 (U)_mm256_extract_epi16(a, 6) /
-                                 (U)_mm256_extract_epi16(b, 6),
-                                 (U)_mm256_extract_epi16(a, 7) /
-                                 (U)_mm256_extract_epi16(b, 7),
-                                 (U)_mm256_extract_epi16(a, 8) /
-                                 (U)_mm256_extract_epi16(b, 8),
-                                 (U)_mm256_extract_epi16(a, 9) /
-                                 (U)_mm256_extract_epi16(b, 9),
-                                 (U)_mm256_extract_epi16(a,10) /
-                                 (U)_mm256_extract_epi16(b,10),
-                                 (U)_mm256_extract_epi16(a,11) /
-                                 (U)_mm256_extract_epi16(b,11),
-                                 (U)_mm256_extract_epi16(a,12) /
-                                 (U)_mm256_extract_epi16(b,12),
-                                 (U)_mm256_extract_epi16(a,13) /
-                                 (U)_mm256_extract_epi16(b,13),
-                                 (U)_mm256_extract_epi16(a,14) /
-                                 (U)_mm256_extract_epi16(b,14),
-                                 (U)_mm256_extract_epi16(a,15) /
-                                 (U)_mm256_extract_epi16(b,15));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i c0 = _mm256_setr_epi16((U)_mm256_extract_epi16(a0, 0) / (U)_mm256_extract_epi16(b0, 0),
+                                       (U)_mm256_extract_epi16(a0, 1) / (U)_mm256_extract_epi16(b0, 1),
+                                       (U)_mm256_extract_epi16(a0, 2) / (U)_mm256_extract_epi16(b0, 2),
+                                       (U)_mm256_extract_epi16(a0, 3) / (U)_mm256_extract_epi16(b0, 3),
+                                       (U)_mm256_extract_epi16(a0, 4) / (U)_mm256_extract_epi16(b0, 4),
+                                       (U)_mm256_extract_epi16(a0, 5) / (U)_mm256_extract_epi16(b0, 5),
+                                       (U)_mm256_extract_epi16(a0, 6) / (U)_mm256_extract_epi16(b0, 6),
+                                       (U)_mm256_extract_epi16(a0, 7) / (U)_mm256_extract_epi16(b0, 7),
+                                       (U)_mm256_extract_epi16(a0, 8) / (U)_mm256_extract_epi16(b0, 8),
+                                       (U)_mm256_extract_epi16(a0, 9) / (U)_mm256_extract_epi16(b0, 9),
+                                       (U)_mm256_extract_epi16(a0,10) / (U)_mm256_extract_epi16(b0,10),
+                                       (U)_mm256_extract_epi16(a0,11) / (U)_mm256_extract_epi16(b0,11),
+                                       (U)_mm256_extract_epi16(a0,12) / (U)_mm256_extract_epi16(b0,12),
+                                       (U)_mm256_extract_epi16(a0,13) / (U)_mm256_extract_epi16(b0,13),
+                                       (U)_mm256_extract_epi16(a0,14) / (U)_mm256_extract_epi16(b0,14),
+                                       (U)_mm256_extract_epi16(a0,15) / (U)_mm256_extract_epi16(b0,15));
+        __m256i c1 = _mm256_setr_epi16((U)_mm256_extract_epi16(a1, 0) / (U)_mm256_extract_epi16(b1, 0),
+                                       (U)_mm256_extract_epi16(a1, 1) / (U)_mm256_extract_epi16(b1, 1),
+                                       (U)_mm256_extract_epi16(a1, 2) / (U)_mm256_extract_epi16(b1, 2),
+                                       (U)_mm256_extract_epi16(a1, 3) / (U)_mm256_extract_epi16(b1, 3),
+                                       (U)_mm256_extract_epi16(a1, 4) / (U)_mm256_extract_epi16(b1, 4),
+                                       (U)_mm256_extract_epi16(a1, 5) / (U)_mm256_extract_epi16(b1, 5),
+                                       (U)_mm256_extract_epi16(a1, 6) / (U)_mm256_extract_epi16(b1, 6),
+                                       (U)_mm256_extract_epi16(a1, 7) / (U)_mm256_extract_epi16(b1, 7),
+                                       (U)_mm256_extract_epi16(a1, 8) / (U)_mm256_extract_epi16(b1, 8),
+                                       (U)_mm256_extract_epi16(a1, 9) / (U)_mm256_extract_epi16(b1, 9),
+                                       (U)_mm256_extract_epi16(a1,10) / (U)_mm256_extract_epi16(b1,10),
+                                       (U)_mm256_extract_epi16(a1,11) / (U)_mm256_extract_epi16(b1,11),
+                                       (U)_mm256_extract_epi16(a1,12) / (U)_mm256_extract_epi16(b1,12),
+                                       (U)_mm256_extract_epi16(a1,13) / (U)_mm256_extract_epi16(b1,13),
+                                       (U)_mm256_extract_epi16(a1,14) / (U)_mm256_extract_epi16(b1,14),
+                                       (U)_mm256_extract_epi16(a1,15) / (U)_mm256_extract_epi16(b1,15));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(c0), c1, 1);
     }
 
     static __m512i pow(__m512i a, __m512i b)
     {
-        return _mm256_setr_epi16((U)std::pow((U)_mm256_extract_epi16(a, 0),
-                                             (U)_mm256_extract_epi16(b, 0)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 1),
-                                             (U)_mm256_extract_epi16(b, 1)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 2),
-                                             (U)_mm256_extract_epi16(b, 2)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 3),
-                                             (U)_mm256_extract_epi16(b, 3)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 4),
-                                             (U)_mm256_extract_epi16(b, 4)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 5),
-                                             (U)_mm256_extract_epi16(b, 5)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 6),
-                                             (U)_mm256_extract_epi16(b, 6)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 7),
-                                             (U)_mm256_extract_epi16(b, 7)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 8),
-                                             (U)_mm256_extract_epi16(b, 8)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a, 9),
-                                             (U)_mm256_extract_epi16(b, 9)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a,10),
-                                             (U)_mm256_extract_epi16(b,10)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a,11),
-                                             (U)_mm256_extract_epi16(b,11)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a,12),
-                                             (U)_mm256_extract_epi16(b,12)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a,13),
-                                             (U)_mm256_extract_epi16(b,13)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a,14),
-                                             (U)_mm256_extract_epi16(b,14)),
-                                 (U)std::pow((U)_mm256_extract_epi16(a,15),
-                                             (U)_mm256_extract_epi16(b,15)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i c0 = _mm256_setr_epi16((U)std::pow((U)_mm256_extract_epi16(a0, 0), (U)_mm256_extract_epi16(b0, 0)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 1), (U)_mm256_extract_epi16(b0, 1)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 2), (U)_mm256_extract_epi16(b0, 2)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 3), (U)_mm256_extract_epi16(b0, 3)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 4), (U)_mm256_extract_epi16(b0, 4)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 5), (U)_mm256_extract_epi16(b0, 5)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 6), (U)_mm256_extract_epi16(b0, 6)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 7), (U)_mm256_extract_epi16(b0, 7)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 8), (U)_mm256_extract_epi16(b0, 8)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0, 9), (U)_mm256_extract_epi16(b0, 9)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0,10), (U)_mm256_extract_epi16(b0,10)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0,11), (U)_mm256_extract_epi16(b0,11)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0,12), (U)_mm256_extract_epi16(b0,12)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0,13), (U)_mm256_extract_epi16(b0,13)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0,14), (U)_mm256_extract_epi16(b0,14)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a0,15), (U)_mm256_extract_epi16(b0,15)));
+        __m256i c1 = _mm256_setr_epi16((U)std::pow((U)_mm256_extract_epi16(a1, 0), (U)_mm256_extract_epi16(b1, 0)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 1), (U)_mm256_extract_epi16(b1, 1)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 2), (U)_mm256_extract_epi16(b1, 2)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 3), (U)_mm256_extract_epi16(b1, 3)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 4), (U)_mm256_extract_epi16(b1, 4)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 5), (U)_mm256_extract_epi16(b1, 5)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 6), (U)_mm256_extract_epi16(b1, 6)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 7), (U)_mm256_extract_epi16(b1, 7)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 8), (U)_mm256_extract_epi16(b1, 8)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1, 9), (U)_mm256_extract_epi16(b1, 9)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1,10), (U)_mm256_extract_epi16(b1,10)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1,11), (U)_mm256_extract_epi16(b1,11)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1,12), (U)_mm256_extract_epi16(b1,12)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1,13), (U)_mm256_extract_epi16(b1,13)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1,14), (U)_mm256_extract_epi16(b1,14)),
+                                       (U)std::pow((U)_mm256_extract_epi16(a1,15), (U)_mm256_extract_epi16(b1,15)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(c0), c1, 1);
     }
 
     static __m512i negate(__m512i a)
     {
-#ifdef __AVX2__
-        return _mm256_sub_epi16(_mm256_setzero_si256(), a);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i na0 = _mm_sub_epi16(_mm_setzero_si128(), a0);
-        __m128i na1 = _mm_sub_epi16(_mm_setzero_si128(), a1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(na0), na1, 1);
-#endif
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i na0 = _mm256_sub_epi16(_mm256_setzero_si256(), a0);
+        __m256i na1 = _mm256_sub_epi16(_mm256_setzero_si256(), a1);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(na0), na1, 1);
     }
 
     static __m512i exp(__m512i a)
     {
-        return _mm256_setr_epi16((U)std::exp((U)_mm256_extract_epi16(a, 0)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 1)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 2)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 3)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 4)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 5)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 6)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 7)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 8)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a, 9)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a,10)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a,11)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a,12)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a,13)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a,14)),
-                                 (U)std::exp((U)_mm256_extract_epi16(a,15)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm256_setr_epi16((U)std::exp((U)_mm256_extract_epi16(a0, 0)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 1)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 2)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 3)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 4)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 5)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 6)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 7)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 8)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0, 9)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0,10)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0,11)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0,12)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0,13)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0,14)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a0,15)));
+        __m256i b1 = _mm256_setr_epi16((U)std::exp((U)_mm256_extract_epi16(a1, 0)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 1)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 2)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 3)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 4)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 5)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 6)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 7)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 8)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1, 9)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1,10)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1,11)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1,12)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1,13)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1,14)),
+                                       (U)std::exp((U)_mm256_extract_epi16(a1,15)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(b0), b1, 1);
     }
 
     static __m512i sqrt(__m512i a)
     {
-        return _mm256_setr_epi16((U)std::sqrt((U)_mm256_extract_epi16(a, 0)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 1)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 2)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 3)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 4)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 5)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 6)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 7)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 8)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a, 9)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a,10)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a,11)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a,12)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a,13)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a,14)),
-                                 (U)std::sqrt((U)_mm256_extract_epi16(a,15)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm256_setr_epi16((U)std::sqrt((U)_mm256_extract_epi16(a0, 0)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 1)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 2)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 3)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 4)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 5)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 6)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 7)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 8)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0, 9)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0,10)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0,11)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0,12)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0,13)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0,14)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a0,15)));
+        __m256i b1 = _mm256_setr_epi16((U)std::sqrt((U)_mm256_extract_epi16(a1, 0)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 1)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 2)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 3)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 4)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 5)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 6)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 7)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 8)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1, 9)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1,10)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1,11)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1,12)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1,13)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1,14)),
+                                       (U)std::sqrt((U)_mm256_extract_epi16(a1,15)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(b0), b1, 1);
     }
 };
 
@@ -2111,41 +2153,48 @@ template <typename U>
 struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
                                             std::is_same<U,uint32_t>::value>>
 {
-    constexpr static unsigned vector_width = 8;
-    constexpr static size_t alignment = 32;
+    constexpr static unsigned vector_width = 16;
+    constexpr static size_t alignment = 64;
     typedef __m512i vector_type;
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,float>::value, __m512>
     convert(__m512i v)
     {
-        return _mm256_cvtepi32_ps(v);
+        return _mm512_cvtepi32_ps(v);
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,double>::value, __m512d>
     convert(__m512i v)
     {
-        return _mm256_cvtepi32_pd(_mm256_castsi256_si128(v));
+        return _mm512_cvtepi32_pd(_mm512_castsi512_si256(v));
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,std::complex<float>>::value, __m512>
     convert(__m512i v)
     {
-        __m512 sp = convert<float>(v);
-        __m128 lo = _mm256_extractf128_ps(sp, 0);
-        __m512 dup = _mm256_insertf128_ps(_mm256_permute_ps(sp, _MM_SHUFFLE(1,0,1,0)),
-                                          _mm_shuffle_ps(lo, lo, _MM_SHUFFLE(3,2,3,2)), 1);
-        return _mm256_unpacklo_ps(dup, _mm256_setzero_ps());
+        // (15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+        __m512i tmp1 = _mm512_shuffle_i32x4(v, v, _MM_SHUFFLE(1,1,0,0));
+        // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
+        __m512i tmp2 = _mm512_permutex_epi64(tmp1, _MM_SHUFFLE(1,1,0,0));
+        // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
+        return _mm512_unpacklo_ps(convert<float>(tmp2), _mm512_setzero_ps());
+        // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,std::complex<double>>::value, __m512d>
     convert(__m512i v)
     {
-        __m128i dup = _mm_shuffle_epi32(_mm256_castsi256_si128(v), _MM_SHUFFLE(1,1,0,0));
-        return _mm256_unpacklo_pd(_mm256_cvtepi32_pd(dup), _mm256_setzero_pd());
+        // (..., 7, 6, 5, 4, 3, 2, 1, 0)
+        __m512i tmp1 = _mm512_permutex_epi64(v, _MM_SHUFFLE(1,1,0,0));
+        // ( 3, 2, 3, 2, 1, 0, 1, 0)
+        __m512i tmp2 = _mm512_shuffle_epi32(tmp1, _MM_SHUFFLE(1,1,0,0));
+        // ( 3, 3, 2, 2, 1, 1, 0, 0)
+        return _mm512_unpacklo_pd(convert<double>(tmp2), _mm512_setzero_pd());
+        // ( -, 3, -, 2, -, 1, -, 0)
     }
 
     template <typename T> static
@@ -2153,20 +2202,13 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
                         std::is_same<T,uint8_t>::value, __m512i>
     convert(__m512i v)
     {
-#ifdef __AVX2__
-        __m512i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(v, v), _MM_SHUFFLE(2,0,2,0))
-                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(v, v), _MM_SHUFFLE(2,0,2,0));
-        return std::is_signed<U>::value ? _mm256_packs_epi16(i16, i16)
-                                        : _mm256_packus_epi16(i16, i16);
-#else
-        __m128i lo32 = _mm256_castsi256_si128(v);
-        __m128i hi32 = _mm256_extractf128_si256(v, 1);
-        __m128i i16 = std::is_signed<U>::value ? _mm_packs_epi32(lo32, hi32)
-                                               : _mm_packus_epi32(lo32, hi32);
-        __m128i lo = std::is_signed<U>::value ? _mm_packs_epi16(i16, i16)
-                                              : _mm_packus_epi16(i16, i16);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(lo), lo, 1);
-#endif
+        __m256i lo32 = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi32 = _mm512_extracti64x4_epi64(v, 1);
+        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0))
+                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0));
+        __m256i lo = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi16(i16, i16), _MM_SHUFFLE(2,0,2,0))
+                                              : _mm256_permute4x64_epi64(_mm256_packus_epi16(i16, i16), _MM_SHUFFLE(2,0,2,0));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo), lo, 1);
     }
 
     template <typename T> static
@@ -2174,16 +2216,11 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
                         std::is_same<T,uint16_t>::value, __m512i>
     convert(__m512i v)
     {
-#ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(v, v), _MM_SHUFFLE(2,0,2,0))
-                                        : _mm256_permute4x64_epi64(_mm256_packus_epi32(v, v), _MM_SHUFFLE(2,0,2,0));
-#else
-        __m128i lo32 = _mm256_castsi256_si128(v);
-        __m128i hi32 = _mm256_extractf128_si256(v, 1);
-        __m128i lo = std::is_signed<U>::value ? _mm_packs_epi32(lo32, hi32)
-                                              : _mm_packus_epi32(lo32, hi32);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(lo), lo, 1);
-#endif
+        __m256i lo32 = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi32 = _mm512_extracti64x4_epi64(v, 1);
+        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0))
+                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
     template <typename T> static
@@ -2199,221 +2236,232 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
                         std::is_same<T,uint64_t>::value, __m512i>
     convert(__m512i v)
     {
-#ifdef __AVX2__
-        return std::is_signed<U>::value ? _mm256_cvtepi32_epi64(_mm256_castsi256_si128(v))
-                                        : _mm256_cvtepu32_epi64(_mm256_castsi256_si128(v));
-#else
-        __m128i lo32 = _mm256_castsi256_si128(v);
-        __m128i hi32 = _mm_shuffle_epi32(lo32, _MM_SHUFFLE(1,0,3,2));
-        __m128i lo64 =  std::is_signed<U>::value ? _mm_cvtepi32_epi64(lo32)
-                                                 : _mm_cvtepu32_epi64(lo32);
-        __m128i hi64 =  std::is_signed<U>::value ? _mm_cvtepi32_epi64(hi32)
-                                                 : _mm_cvtepu32_epi64(hi32);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(lo64), hi64, 1);
-#endif
+        return std::is_signed<U>::value ? _mm512_cvtepi32_epi64(_mm512_castsi512_si256(v))
+                                        : _mm512_cvtepu32_epi64(_mm512_castsi512_si256(v));
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 16 && !Aligned, __m512i>
+    load(const U* ptr)
+    {
+        return _mm512_loadu_si512((__m512i*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 16 && Aligned, __m512i>
+    load(const U* ptr)
+    {
+        return _mm512_load_si512((__m512i*)ptr);
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 8 && !Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_loadu_si256((__m512i*)ptr);
+        return _mm512_broadcast_i64x4(_mm256_loadu_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 8 && Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_load_si256((__m512i*)ptr);
+        return _mm512_broadcast_i64x4(_mm256_load_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4 && !Aligned, __m512i>
     load(const U* ptr)
     {
-#ifdef __AVX2__
-        return _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i*)ptr));
-#else
-        return _mm256_castps_si256(_mm256_broadcast_ps((__m128*)ptr));
-#endif
+        return _mm512_broadcast_i32x4(_mm_loadu_si128((__m128i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4 && Aligned, __m512i>
     load(const U* ptr)
     {
-#ifdef __AVX2__
-        return _mm256_broadcastsi128_si256(_mm_load_si128((__m128i*)ptr));
-#else
-        return _mm256_castps_si256(_mm256_broadcast_ps((__m128*)ptr));
-#endif
+        return _mm512_broadcast_i32x4(_mm_load_si128((__m128i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2, __m512i>
     load(const U* ptr)
     {
-        return _mm256_set1_epi64x(*(int64_t*)ptr);
+        return _mm512_set1_epi64(*(int64_t*)ptr);
     }
 
     static __m512i load1(const U* ptr)
     {
-        return _mm256_set1_epi32(*ptr);
+        return _mm512_set1_epi32(*ptr);
     }
 
     static __m512i set1(U val)
     {
-        return _mm256_set1_epi32(val);
+        return _mm512_set1_epi32(val);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 16 && !Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm512_storeu_si512((__m512i*)ptr, v);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 16 && Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm512_store_si512((__m512i*)ptr, v);
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 8 && !Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_storeu_si256((__m512i*)ptr, v);
+        _mm256_storeu_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 8 && Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_store_si256((__m512i*)ptr, v);
+        _mm256_store_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
-    detail::enable_if_t<Width == 4>
+    detail::enable_if_t<Width == 4 && !Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm_storeu_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
+        _mm_storeu_si128((__m128i*)ptr, _mm512_castsi512_si128(v));
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 4 && Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm_store_si128((__m128i*)ptr, _mm512_castsi512_si128(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2>
     store(__m512i v, U* ptr)
     {
-        _mm_storel_epi64((__m128i*)ptr, _mm256_castsi256_si128(v));
+        _mm_storel_epi64((__m128i*)ptr, _mm512_castsi512_si128(v));
     }
 
     static __m512i add(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_add_epi32(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_add_epi32(a0, b0);
-        __m128i ab1 = _mm_add_epi32(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        return _mm512_add_epi32(a, b);
     }
 
     static __m512i sub(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_sub_epi32(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_sub_epi32(a0, b0);
-        __m128i ab1 = _mm_sub_epi32(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        return _mm512_sub_epi32(a, b);
     }
 
     static __m512i mul(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_mullo_epi32(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_mullo_epi32(a0, b0);
-        __m128i ab1 = _mm_mullo_epi32(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        return _mm512_mullo_epi32(a, b);
     }
 
     static __m512i div(__m512i a, __m512i b)
     {
-        return _mm256_setr_epi32((U)_mm256_extract_epi32(a, 0) /
-                                 (U)_mm256_extract_epi32(b, 0),
-                                 (U)_mm256_extract_epi32(a, 1) /
-                                 (U)_mm256_extract_epi32(b, 1),
-                                 (U)_mm256_extract_epi32(a, 2) /
-                                 (U)_mm256_extract_epi32(b, 2),
-                                 (U)_mm256_extract_epi32(a, 3) /
-                                 (U)_mm256_extract_epi32(b, 3),
-                                 (U)_mm256_extract_epi32(a, 4) /
-                                 (U)_mm256_extract_epi32(b, 4),
-                                 (U)_mm256_extract_epi32(a, 5) /
-                                 (U)_mm256_extract_epi32(b, 5),
-                                 (U)_mm256_extract_epi32(a, 6) /
-                                 (U)_mm256_extract_epi32(b, 6),
-                                 (U)_mm256_extract_epi32(a, 7) /
-                                 (U)_mm256_extract_epi32(b, 7));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i c0 = _mm256_setr_epi32((U)_mm256_extract_epi32(a0, 0) / (U)_mm256_extract_epi32(b0, 0),
+                                       (U)_mm256_extract_epi32(a0, 1) / (U)_mm256_extract_epi32(b0, 1),
+                                       (U)_mm256_extract_epi32(a0, 2) / (U)_mm256_extract_epi32(b0, 2),
+                                       (U)_mm256_extract_epi32(a0, 3) / (U)_mm256_extract_epi32(b0, 3),
+                                       (U)_mm256_extract_epi32(a0, 4) / (U)_mm256_extract_epi32(b0, 4),
+                                       (U)_mm256_extract_epi32(a0, 5) / (U)_mm256_extract_epi32(b0, 5),
+                                       (U)_mm256_extract_epi32(a0, 6) / (U)_mm256_extract_epi32(b0, 6),
+                                       (U)_mm256_extract_epi32(a0, 7) / (U)_mm256_extract_epi32(b0, 7));
+        __m256i c1 = _mm256_setr_epi32((U)_mm256_extract_epi32(a1, 0) / (U)_mm256_extract_epi32(b1, 0),
+                                       (U)_mm256_extract_epi32(a1, 1) / (U)_mm256_extract_epi32(b1, 1),
+                                       (U)_mm256_extract_epi32(a1, 2) / (U)_mm256_extract_epi32(b1, 2),
+                                       (U)_mm256_extract_epi32(a1, 3) / (U)_mm256_extract_epi32(b1, 3),
+                                       (U)_mm256_extract_epi32(a1, 4) / (U)_mm256_extract_epi32(b1, 4),
+                                       (U)_mm256_extract_epi32(a1, 5) / (U)_mm256_extract_epi32(b1, 5),
+                                       (U)_mm256_extract_epi32(a1, 6) / (U)_mm256_extract_epi32(b1, 6),
+                                       (U)_mm256_extract_epi32(a1, 7) / (U)_mm256_extract_epi32(b1, 7));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(c0), c1, 1);
     }
 
     static __m512i pow(__m512i a, __m512i b)
     {
-        return _mm256_setr_epi32((U)std::pow((U)_mm256_extract_epi32(a, 0),
-                                             (U)_mm256_extract_epi32(b, 0)),
-                                 (U)std::pow((U)_mm256_extract_epi32(a, 1),
-                                             (U)_mm256_extract_epi32(b, 1)),
-                                 (U)std::pow((U)_mm256_extract_epi32(a, 2),
-                                             (U)_mm256_extract_epi32(b, 2)),
-                                 (U)std::pow((U)_mm256_extract_epi32(a, 3),
-                                             (U)_mm256_extract_epi32(b, 3)),
-                                 (U)std::pow((U)_mm256_extract_epi32(a, 4),
-                                             (U)_mm256_extract_epi32(b, 4)),
-                                 (U)std::pow((U)_mm256_extract_epi32(a, 5),
-                                             (U)_mm256_extract_epi32(b, 5)),
-                                 (U)std::pow((U)_mm256_extract_epi32(a, 6),
-                                             (U)_mm256_extract_epi32(b, 6)),
-                                 (U)std::pow((U)_mm256_extract_epi32(a, 7),
-                                             (U)_mm256_extract_epi32(b, 7)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i c0 = _mm256_setr_epi32((U)std::pow((U)_mm256_extract_epi32(a0, 0), (U)_mm256_extract_epi32(b0, 0)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a0, 1), (U)_mm256_extract_epi32(b0, 1)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a0, 2), (U)_mm256_extract_epi32(b0, 2)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a0, 3), (U)_mm256_extract_epi32(b0, 3)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a0, 4), (U)_mm256_extract_epi32(b0, 4)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a0, 5), (U)_mm256_extract_epi32(b0, 5)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a0, 6), (U)_mm256_extract_epi32(b0, 6)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a0, 7), (U)_mm256_extract_epi32(b0, 7)));
+        __m256i c1 = _mm256_setr_epi32((U)std::pow((U)_mm256_extract_epi32(a1, 0), (U)_mm256_extract_epi32(b1, 0)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a1, 1), (U)_mm256_extract_epi32(b1, 1)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a1, 2), (U)_mm256_extract_epi32(b1, 2)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a1, 3), (U)_mm256_extract_epi32(b1, 3)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a1, 4), (U)_mm256_extract_epi32(b1, 4)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a1, 5), (U)_mm256_extract_epi32(b1, 5)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a1, 6), (U)_mm256_extract_epi32(b1, 6)),
+                                       (U)std::pow((U)_mm256_extract_epi32(a1, 7), (U)_mm256_extract_epi32(b1, 7)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(c0), c1, 1);
     }
 
     static __m512i negate(__m512i a)
     {
-#ifdef __AVX2__
-        return _mm256_sub_epi32(_mm256_setzero_si256(), a);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i na0 = _mm_sub_epi32(_mm_setzero_si128(), a0);
-        __m128i na1 = _mm_sub_epi32(_mm_setzero_si128(), a1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(na0), na1, 1);
-#endif
+        return _mm512_sub_epi32(_mm512_setzero_si512(), a);
     }
 
     static __m512i exp(__m512i a)
     {
-        return _mm256_setr_epi32((U)std::exp((U)_mm256_extract_epi32(a, 0)),
-                                 (U)std::exp((U)_mm256_extract_epi32(a, 1)),
-                                 (U)std::exp((U)_mm256_extract_epi32(a, 2)),
-                                 (U)std::exp((U)_mm256_extract_epi32(a, 3)),
-                                 (U)std::exp((U)_mm256_extract_epi32(a, 4)),
-                                 (U)std::exp((U)_mm256_extract_epi32(a, 5)),
-                                 (U)std::exp((U)_mm256_extract_epi32(a, 6)),
-                                 (U)std::exp((U)_mm256_extract_epi32(a, 7)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm256_setr_epi32((U)std::exp((U)_mm256_extract_epi32(a0, 0)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a0, 1)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a0, 2)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a0, 3)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a0, 4)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a0, 5)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a0, 6)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a0, 7)));
+        __m256i b1 = _mm256_setr_epi32((U)std::exp((U)_mm256_extract_epi32(a1, 0)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a1, 1)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a1, 2)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a1, 3)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a1, 4)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a1, 5)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a1, 6)),
+                                       (U)std::exp((U)_mm256_extract_epi32(a1, 7)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(b0), b1, 1);
     }
 
     static __m512i sqrt(__m512i a)
     {
-        return _mm256_setr_epi32((U)std::sqrt((U)_mm256_extract_epi32(a, 0)),
-                                 (U)std::sqrt((U)_mm256_extract_epi32(a, 1)),
-                                 (U)std::sqrt((U)_mm256_extract_epi32(a, 2)),
-                                 (U)std::sqrt((U)_mm256_extract_epi32(a, 3)),
-                                 (U)std::sqrt((U)_mm256_extract_epi32(a, 4)),
-                                 (U)std::sqrt((U)_mm256_extract_epi32(a, 5)),
-                                 (U)std::sqrt((U)_mm256_extract_epi32(a, 6)),
-                                 (U)std::sqrt((U)_mm256_extract_epi32(a, 7)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm256_setr_epi32((U)std::sqrt((U)_mm256_extract_epi32(a0, 0)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a0, 1)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a0, 2)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a0, 3)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a0, 4)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a0, 5)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a0, 6)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a0, 7)));
+        __m256i b1 = _mm256_setr_epi32((U)std::sqrt((U)_mm256_extract_epi32(a1, 0)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a1, 1)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a1, 2)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a1, 3)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a1, 4)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a1, 5)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a1, 6)),
+                                       (U)std::sqrt((U)_mm256_extract_epi32(a1, 7)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(b0), b1, 1);
     }
 };
 
@@ -2422,50 +2470,73 @@ template <typename U>
 struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
                                             std::is_same<U,uint64_t>::value>>
 {
-    constexpr static unsigned vector_width = 4;
-    constexpr static size_t alignment = 32;
+    constexpr static unsigned vector_width = 8;
+    constexpr static size_t alignment = 64;
     typedef __m512i vector_type;
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,float>::value, __m512>
     convert(__m512i v)
     {
-        float a = (U)_mm256_extract_epi64(v, 0);
-        float b = (U)_mm256_extract_epi64(v, 1);
-        float c = (U)_mm256_extract_epi64(v, 2);
-        float d = (U)_mm256_extract_epi64(v, 3);
-        return _mm256_setr_ps(a, b, c, d, a, b, c, d);
+        __m256i lo = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi = _mm512_extracti64x4_epi64(v, 1);
+        float a = (U)_mm256_extract_epi64(lo, 0);
+        float b = (U)_mm256_extract_epi64(lo, 1);
+        float c = (U)_mm256_extract_epi64(lo, 2);
+        float d = (U)_mm256_extract_epi64(lo, 3);
+        float e = (U)_mm256_extract_epi64(hi, 0);
+        float f = (U)_mm256_extract_epi64(hi, 1);
+        float g = (U)_mm256_extract_epi64(hi, 2);
+        float h = (U)_mm256_extract_epi64(hi, 3);
+        return _mm512_setr_ps(a, b, c, d, e, f, g, h,
+                              a, b, c, d, e, f, g, h);
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,double>::value, __m512d>
     convert(__m512i v)
     {
-        double a = (U)_mm256_extract_epi64(v, 0);
-        double b = (U)_mm256_extract_epi64(v, 1);
-        double c = (U)_mm256_extract_epi64(v, 2);
-        double d = (U)_mm256_extract_epi64(v, 3);
-        return _mm256_setr_pd(a, b, c, d);
+        __m256i lo = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi = _mm512_extracti64x4_epi64(v, 1);
+        double a = (U)_mm256_extract_epi64(lo, 0);
+        double b = (U)_mm256_extract_epi64(lo, 1);
+        double c = (U)_mm256_extract_epi64(lo, 2);
+        double d = (U)_mm256_extract_epi64(lo, 3);
+        double e = (U)_mm256_extract_epi64(hi, 0);
+        double f = (U)_mm256_extract_epi64(hi, 1);
+        double g = (U)_mm256_extract_epi64(hi, 2);
+        double h = (U)_mm256_extract_epi64(hi, 3);
+        return _mm512_setr_pd(a, b, c, d, e, f, g, h);
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,std::complex<float>>::value, __m512>
     convert(__m512i v)
     {
-        float a = (U)_mm256_extract_epi64(v, 0);
-        float b = (U)_mm256_extract_epi64(v, 1);
-        float c = (U)_mm256_extract_epi64(v, 2);
-        float d = (U)_mm256_extract_epi64(v, 3);
-        return _mm256_setr_ps(a, 0, b, 0, c, 0, d, 0);
+        __m256i lo = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi = _mm512_extracti64x4_epi64(v, 1);
+        float a = (U)_mm256_extract_epi64(lo, 0);
+        float b = (U)_mm256_extract_epi64(lo, 1);
+        float c = (U)_mm256_extract_epi64(lo, 2);
+        float d = (U)_mm256_extract_epi64(lo, 3);
+        float e = (U)_mm256_extract_epi64(hi, 0);
+        float f = (U)_mm256_extract_epi64(hi, 1);
+        float g = (U)_mm256_extract_epi64(hi, 2);
+        float h = (U)_mm256_extract_epi64(hi, 3);
+        return _mm512_setr_ps(a, 0, b, 0, c, 0, d, 0,
+                              e, 0, f, 0, g, 0, h, 0);
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,std::complex<double>>::value, __m512d>
     convert(__m512i v)
     {
-        float a = (U)_mm256_extract_epi64(v, 0);
-        float b = (U)_mm256_extract_epi64(v, 1);
-        return _mm256_setr_pd(a, 0, b, 0);
+        __m256i lo = _mm512_extracti64x4_epi64(v, 0);
+        double a = (U)_mm256_extract_epi64(lo, 0);
+        double b = (U)_mm256_extract_epi64(lo, 1);
+        double c = (U)_mm256_extract_epi64(lo, 2);
+        double d = (U)_mm256_extract_epi64(lo, 3);
+        return _mm512_setr_pd(a, 0, b, 0, c, 0, d, 0);
     }
 
     template <typename T> static
@@ -2473,12 +2544,25 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
                         std::is_same<T,uint8_t>::value, __m512i>
     convert(__m512i v)
     {
-        T a = (U)_mm256_extract_epi64(v, 0);
-        T b = (U)_mm256_extract_epi64(v, 1);
-        T c = (U)_mm256_extract_epi64(v, 2);
-        T d = (U)_mm256_extract_epi64(v, 3);
-        return _mm256_setr_epi8(a, b, c, d, a, b, c, d, a, b, c, d, a, b, c, d,
-                                a, b, c, d, a, b, c, d, a, b, c, d, a, b, c, d);
+        __m256i lo = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi = _mm512_extracti64x4_epi64(v, 1);
+        T a = (U)_mm256_extract_epi64(lo, 0);
+        T b = (U)_mm256_extract_epi64(lo, 1);
+        T c = (U)_mm256_extract_epi64(lo, 2);
+        T d = (U)_mm256_extract_epi64(lo, 3);
+        T e = (U)_mm256_extract_epi64(hi, 0);
+        T f = (U)_mm256_extract_epi64(hi, 1);
+        T g = (U)_mm256_extract_epi64(hi, 2);
+        T h = (U)_mm256_extract_epi64(hi, 3);
+        __m256i lo8 = _mm256_setr_epi8(a, b, c, d, a, b, c, d,
+                                       a, b, c, d, a, b, c, d,
+                                       a, b, c, d, a, b, c, d,
+                                       a, b, c, d, a, b, c, d);
+        __m256i hi8 = _mm256_setr_epi8(e, f, g, h, e, f, g, h,
+                                       e, f, g, h, e, f, g, h,
+                                       e, f, g, h, e, f, g, h,
+                                       e, f, g, h, e, f, g, h);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo8), hi8, 1);
     }
 
     template <typename T> static
@@ -2486,11 +2570,21 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
                         std::is_same<T,uint16_t>::value, __m512i>
     convert(__m512i v)
     {
-        T a = (U)_mm256_extract_epi64(v, 0);
-        T b = (U)_mm256_extract_epi64(v, 1);
-        T c = (U)_mm256_extract_epi64(v, 2);
-        T d = (U)_mm256_extract_epi64(v, 3);
-        return _mm256_setr_epi16(a, b, c, d, a, b, c, d, a, b, c, d, a, b, c, d);
+        __m256i lo = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi = _mm512_extracti64x4_epi64(v, 1);
+        T a = (U)_mm256_extract_epi64(lo, 0);
+        T b = (U)_mm256_extract_epi64(lo, 1);
+        T c = (U)_mm256_extract_epi64(lo, 2);
+        T d = (U)_mm256_extract_epi64(lo, 3);
+        T e = (U)_mm256_extract_epi64(hi, 0);
+        T f = (U)_mm256_extract_epi64(hi, 1);
+        T g = (U)_mm256_extract_epi64(hi, 2);
+        T h = (U)_mm256_extract_epi64(hi, 3);
+        __m256i lo16 = _mm256_setr_epi16(a, b, c, d, a, b, c, d,
+                                         a, b, c, d, a, b, c, d);
+        __m256i hi16 = _mm256_setr_epi16(e, f, g, h, e, f, g, h,
+                                         e, f, g, h, e, f, g, h);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo16), hi16, 1);
     }
 
     template <typename T> static
@@ -2498,11 +2592,19 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
                         std::is_same<T,uint32_t>::value, __m512i>
     convert(__m512i v)
     {
-        T a = (U)_mm256_extract_epi64(v, 0);
-        T b = (U)_mm256_extract_epi64(v, 1);
-        T c = (U)_mm256_extract_epi64(v, 2);
-        T d = (U)_mm256_extract_epi64(v, 3);
-        return _mm256_setr_epi32(a, b, c, d, a, b, c, d);
+        __m256i lo = _mm512_extracti64x4_epi64(v, 0);
+        __m256i hi = _mm512_extracti64x4_epi64(v, 1);
+        T a = (U)_mm256_extract_epi64(lo, 0);
+        T b = (U)_mm256_extract_epi64(lo, 1);
+        T c = (U)_mm256_extract_epi64(lo, 2);
+        T d = (U)_mm256_extract_epi64(lo, 3);
+        T e = (U)_mm256_extract_epi64(hi, 0);
+        T f = (U)_mm256_extract_epi64(hi, 1);
+        T g = (U)_mm256_extract_epi64(hi, 2);
+        T h = (U)_mm256_extract_epi64(hi, 3);
+        __m256i lo32 = _mm256_setr_epi32(a, b, c, d, a, b, c, d);
+        __m256i hi32 = _mm256_setr_epi32(e, f, g, h, e, f, g, h);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo32), hi32, 1);
     }
 
     template <typename T> static
@@ -2514,39 +2616,45 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
     }
 
     template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 8 && !Aligned, __m512i>
+    load(const U* ptr)
+    {
+        return _mm512_loadu_si512((__m512i*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 8 && Aligned, __m512i>
+    load(const U* ptr)
+    {
+        return _mm512_load_si512((__m512i*)ptr);
+    }
+
+    template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4 && !Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_loadu_si256((__m512i*)ptr);
+        return _mm512_broadcast_i64x4(_mm256_loadu_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4 && Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_load_si256((__m512i*)ptr);
+        return _mm512_broadcast_i64x4(_mm256_load_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2 && !Aligned, __m512i>
     load(const U* ptr)
     {
-#ifdef __AVX2__
-        return _mm256_broadcastsi128_si256(_mm_loadu_si128((__m128i*)ptr));
-#else
-        return _mm256_castps_si256(_mm256_broadcast_ps((__m128*)ptr));
-#endif
+        return _mm512_broadcast_i32x4(_mm_loadu_si128((__m128i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2 && Aligned, __m512i>
     load(const U* ptr)
     {
-#ifdef __AVX2__
-        return _mm256_broadcastsi128_si256(_mm_load_si128((__m128i*)ptr));
-#else
-        return _mm256_castps_si256(_mm256_broadcast_ps((__m128*)ptr));
-#endif
+        return _mm512_broadcast_i32x4(_mm_load_si128((__m128i*)ptr));
     }
 
     static __m512i load1(const U* ptr)
