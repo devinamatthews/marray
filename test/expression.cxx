@@ -64,8 +64,12 @@ typedef pair_types<float_types, float_types> pair_types_uu;
 
 #define VECTOR_INITIALIZER { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15, \
                             16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31, \
-                            32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47, \
-                            48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63}
+                             0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15, \
+                            16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31, \
+                             0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15, \
+                            16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31, \
+                             0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15, \
+                            16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31}
 
 template <class T> struct expression_vector : testing::Test {};
 
@@ -79,19 +83,19 @@ TYPED_TEST(expression_vector, vector_assign)
     typedef typename TypeParam::first_type T;
     typedef typename TypeParam::second_type U;
 
-    T data1[64] = VECTOR_INITIALIZER;
-    U data2[64] = {0};
+    T data1[128] = VECTOR_INITIALIZER;
+    U data2[128] = {0};
 
-    marray_view<T,1> a({64}, data1);
-    marray_view<U,1> b({64}, data2);
+    marray_view<T,1> a({128}, data1);
+    marray_view<U,1> b({128}, data2);
 
     b = a;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(T(i), a[i]);
-        EXPECT_EQ(U(i), b[i]);
+        EXPECT_EQ(T(i%32), a[i]);
+        EXPECT_EQ(U(i%32), b[i]);
     }
 }
 
@@ -100,13 +104,13 @@ TYPED_TEST(expression_vector, vector_set)
     typedef typename TypeParam::first_type T;
     typedef typename TypeParam::second_type U;
 
-    U data2[64] = {0};
+    U data2[128] = {0};
 
-    marray_view<U,1> b({64}, data2);
+    marray_view<U,1> b({128}, data2);
 
     b = T(3);
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
         EXPECT_EQ(U(3), b[i]);
@@ -120,36 +124,36 @@ TYPED_TEST(expression_vector, vector_add)
     typedef decltype(std::declval<operators::plus>()(std::declval<T>(),
                                                      std::declval<U>())) V;
 
-    T data1[64] = VECTOR_INITIALIZER;
-    U data2[64] = {0};
+    T data1[128] = VECTOR_INITIALIZER;
+    U data2[128] = {0};
 
-    marray_view<T,1> a({64}, data1);
-    marray_view<U,1> b({64}, data2);
+    marray_view<T,1> a({128}, data1);
+    marray_view<U,1> b({128}, data2);
 
     b = a+a;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(T(i), a[i]);
-        EXPECT_EQ(U(2*i), b[i]);
+        EXPECT_EQ(T(i%32), a[i]);
+        EXPECT_EQ(U(2*(i%32)), b[i]);
     }
 
-    T data3[64] = VECTOR_INITIALIZER;
-    U data4[64] = VECTOR_INITIALIZER;
+    T data3[128] = VECTOR_INITIALIZER;
+    U data4[128] = VECTOR_INITIALIZER;
 
-    marray_view<T,1> c({64}, data3);
-    marray_view<U,1> d({64}, data4);
-    marray<V,1> e({64});
+    marray_view<T,1> c({128}, data3);
+    marray_view<U,1> d({128}, data4);
+    marray<V,1> e({128});
 
     e = c+d;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(T(i), c[i]);
-        EXPECT_EQ(U(i), d[i]);
-        EXPECT_EQ(V(2*i), e[i]);
+        EXPECT_EQ(T(i%32), c[i]);
+        EXPECT_EQ(U(i%32), d[i]);
+        EXPECT_EQ(V(2*(i%32)), e[i]);
     }
 }
 
@@ -160,35 +164,35 @@ TYPED_TEST(expression_vector, vector_sub)
     typedef decltype(std::declval<operators::minus>()(std::declval<T>(),
                                                       std::declval<U>())) V;
 
-    T data1[64] = VECTOR_INITIALIZER;
-    U data2[64] = {0};
+    T data1[128] = VECTOR_INITIALIZER;
+    U data2[128] = {0};
 
-    marray_view<T,1> a({64}, data1);
-    marray_view<U,1> b({64}, data2);
+    marray_view<T,1> a({128}, data1);
+    marray_view<U,1> b({128}, data2);
 
     b = a-a;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(T(i), a[i]);
+        EXPECT_EQ(T(i%32), a[i]);
         EXPECT_EQ(U(0), b[i]);
     }
 
-    T data3[64] = VECTOR_INITIALIZER;
-    U data4[64] = VECTOR_INITIALIZER;
+    T data3[128] = VECTOR_INITIALIZER;
+    U data4[128] = VECTOR_INITIALIZER;
 
-    marray_view<T,1> c({64}, data3);
-    marray_view<U,1> d({64}, data4);
-    marray<V,1> e({64});
+    marray_view<T,1> c({128}, data3);
+    marray_view<U,1> d({128}, data4);
+    marray<V,1> e({128});
 
     e = c-d;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(T(i), c[i]);
-        EXPECT_EQ(U(i), d[i]);
+        EXPECT_EQ(T(i%32), c[i]);
+        EXPECT_EQ(U(i%32), d[i]);
         EXPECT_EQ(V(0), e[i]);
     }
 }
@@ -202,52 +206,76 @@ TYPED_TEST(expression_vector, vector_mul)
 
     // avoid overflow in floating -> integral since it is undefined and
     // in integral*integral because signed overflow is undefined
-    T data1[64] = { 0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7};
-    U data2[64] = {0};
+    T data1[128] = { 0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7};
+    U data2[128] = {0};
 
-    marray_view<T,1> a({64}, data1);
-    marray_view<U,1> b({64}, data2);
+    marray_view<T,1> a({128}, data1);
+    marray_view<U,1> b({128}, data2);
 
     b = a*a;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
         EXPECT_EQ(T(i%8), a[i]);
         EXPECT_EQ(U((i%8)*(i%8)), b[i]);
     }
 
-    T data3[64] = { 0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7};
-    U data4[64] = { 0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7, \
-                    0, 1, 2, 3, 4, 5, 6, 7};
+    T data3[128] = { 0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7};
+    U data4[128] = { 0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7, \
+                     0, 1, 2, 3, 4, 5, 6, 7};
 
-    marray_view<T,1> c({64}, data3);
-    marray_view<U,1> d({64}, data4);
-    marray<V,1> e({64});
+    marray_view<T,1> c({128}, data3);
+    marray_view<U,1> d({128}, data4);
+    marray<V,1> e({128});
 
     e = c*d;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
         EXPECT_EQ(T(i%8), c[i]);
@@ -263,38 +291,47 @@ TYPED_TEST(expression_vector, vector_div)
     typedef decltype(std::declval<operators::divides>()(std::declval<T>(),
                                                         std::declval<U>())) V;
 
-    T data1[64] = VECTOR_INITIALIZER;
-    U data2[64] = {0};
+    T data1[128] = VECTOR_INITIALIZER;
+    U data2[128] = {0};
 
-    marray_view<T,1> a({64}, data1);
-    marray_view<U,1> b({64}, data2);
-    a[0] = T(1);
+    marray_view<T,1> a({128}, data1);
+    marray_view<U,1> b({128}, data2);
+    a[ 0] = T(1);
+    a[32] = T(1);
+    a[64] = T(1);
+    a[96] = T(1);
 
     b = a/a;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(T(std::max(1,i)), a[i]);
+        EXPECT_EQ(T(std::max(1,i%32)), a[i]);
         EXPECT_EQ(U(1), b[i]);
     }
 
-    T data3[64] = VECTOR_INITIALIZER;
-    U data4[64] = VECTOR_INITIALIZER;
+    T data3[128] = VECTOR_INITIALIZER;
+    U data4[128] = VECTOR_INITIALIZER;
 
-    marray_view<T,1> c({64}, data3);
-    marray_view<U,1> d({64}, data4);
-    marray<V,1> e({64});
-    c[0] = T(1);
-    d[0] = U(1);
+    marray_view<T,1> c({128}, data3);
+    marray_view<U,1> d({128}, data4);
+    marray<V,1> e({128});
+    c[ 0] = T(1);
+    c[32] = T(1);
+    c[64] = T(1);
+    c[96] = T(1);
+    d[ 0] = U(1);
+    d[32] = U(1);
+    d[64] = U(1);
+    d[96] = U(1);
 
     e = c/d;
 
-    for (int i = 0;i < 64;i++)
+    for (int i = 0;i < 128;i++)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(T(std::max(1,i)), c[i]);
-        EXPECT_EQ(U(std::max(1,i)), d[i]);
+        EXPECT_EQ(T(std::max(1,i%32)), c[i]);
+        EXPECT_EQ(U(std::max(1,i%32)), d[i]);
         EXPECT_EQ(V(1), e[i]);
     }
 }

@@ -33,9 +33,9 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         // (15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-        __m512 tmp1 = _mm512_shuffle_f32x4(v, v, _MM_SHUFFLE(1,1,0,0));
+        __m512 tmp1 = _mm512_shuffle_f32x4(v, v, _MM_PERM_BBAA);
         // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
-        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(v), _MM_SHUFFLE(1,1,0,0)));
+        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(tmp1), _MM_PERM_BBAA));
         // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
         return _mm512_unpacklo_ps(tmp2, _mm512_setzero_ps());
         // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
@@ -46,9 +46,9 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         // (15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-        __m512 tmp1 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(v), _MM_SHUFFLE(1,1,0,0)));
+        __m512 tmp1 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(v), _MM_PERM_BBAA));
         // (11,10,11,10, 9, 8, 9, 8, 3, 2, 3, 2, 1, 0, 1, 0)
-        __m512d tmp2 = _mm512_cvtps_pd(_mm512_castps512_ps256(_mm512_permute_ps(tmp1, _MM_SHUFFLE(1,1,0,0))));
+        __m512d tmp2 = _mm512_cvtps_pd(_mm512_castps512_ps256(_mm512_permute_ps(tmp1, _MM_PERM_BBAA)));
         // ( 3, 3, 2, 2, 1, 1, 0, 0)
         return _mm512_unpacklo_pd(tmp2, _mm512_setzero_pd());
         // ( -, 3, -, 2, -, 1, -, 0)
@@ -59,7 +59,7 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_CACA);
         __m256i i8 = _mm256_packs_epi16(i16, i16);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
@@ -69,7 +69,7 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_CACA);
         __m256i i8 = _mm256_packus_epi16(i16, i16);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
@@ -79,7 +79,7 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_CACA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -88,7 +88,7 @@ struct vector_traits<float>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0));
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_CACA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -274,7 +274,8 @@ struct vector_traits<float>
 
     static __m512 negate(__m512 a)
     {
-        return _mm512_xor_ps(a, _mm512_set1_ps(-0.0f));
+        return _mm512_castsi512_ps(_mm512_xor_si512(_mm512_castps_si512(a),
+                                                    _mm512_castps_si512(_mm512_set1_ps(-0.0f))));
     }
 
     static __m512 exp(__m512 a)
@@ -315,7 +316,7 @@ struct vector_traits<double>
     convert(__m512d v)
     {
         __m512 lo = _mm512_castps256_ps512(_mm512_cvtpd_ps(v));
-        return _mm512_shuffle_f32x4(lo, lo, _MM_SHUFFLE(1,0,1,0));
+        return _mm512_shuffle_f32x4(lo, lo, _MM_PERM_BABA);
     }
 
     template <typename T> static
@@ -331,9 +332,9 @@ struct vector_traits<double>
     {
         // ( 7, 6, 5, 4, 3, 2, 1, 0)
         __m512 sp = _mm512_castps256_ps512(_mm512_cvtpd_ps(v));
-        __m512 tmp1 = _mm512_shuffle_f32x4(sp, sp, _MM_SHUFFLE(1,1,0,0));
+        __m512 tmp1 = _mm512_shuffle_f32x4(sp, sp, _MM_PERM_BBAA);
         // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
-        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(v), _MM_SHUFFLE(1,1,0,0)));
+        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(tmp1), _MM_PERM_BBAA));
         // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
         return _mm512_unpacklo_ps(tmp2, _mm512_setzero_ps());
         // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
@@ -344,7 +345,7 @@ struct vector_traits<double>
     convert(__m512d v)
     {
         // ( 7, 6, 5, 4, 3, 2, 1, 0)
-        __m512d tmp1 = _mm512_shuffle_f64x2(v, v, _MM_SHUFFLE(1,1,0,0));
+        __m512d tmp1 = _mm512_shuffle_f64x2(v, v, _MM_PERM_BBAA);
         // ( 3, 2, 3, 2, 1, 0, 1, 0)
         return _mm512_shuffle_pd(tmp1, _mm512_setzero_pd(), 0xcc);
         // ( -, 3, -, 2, -, 1, -, 0)
@@ -549,7 +550,8 @@ struct vector_traits<double>
 
     static __m512d negate(__m512d a)
     {
-        return _mm512_xor_pd(a, _mm512_set1_pd(-0.0));
+        return _mm512_castsi512_pd(_mm512_xor_si512(_mm512_castpd_si512(a),
+                                                    _mm512_castpd_si512(_mm512_set1_pd(-0.0))));
     }
 
     static __m512d exp(__m512d a)
@@ -582,11 +584,11 @@ struct vector_traits<std::complex<float>>
     convert(__m512 v)
     {
         // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
-        __m512 tmp1 = _mm512_permute_ps(v, _MM_SHUFFLE(2,0,2,0));
+        __m512 tmp1 = _mm512_permute_ps(v, _MM_PERM_CACA);
         // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
-        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(tmp1), _MM_SHUFFLE(2,0,2,0)));
+        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(tmp1), _MM_PERM_CACA));
         // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
-        return _mm512_shuffle_f32x4(tmp2, tmp2, _MM_SHUFFLE(2,0,2,0));
+        return _mm512_shuffle_f32x4(tmp2, tmp2, _MM_PERM_CACA);
         // ( 7, 6, 5, 4, 3, 2, 1, 0, 7, 6, 5, 4, 3, 2, 1, 0)
     }
 
@@ -618,7 +620,7 @@ struct vector_traits<std::complex<float>>
         __m128i i32 = _mm_cvtps_epi32(_mm512_castps512_ps128(convert<float>(v)));
         __m128i i16 = _mm_packs_epi32(i32, i32);
         __m512i i8 = _mm512_castsi128_si512(_mm_packs_epi16(i16, i16));
-        return _mm512_shuffle_i32x4(i8, i8, _MM_SHUFFLE(0,0,0,0));
+        return _mm512_shuffle_i32x4(i8, i8, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -628,7 +630,7 @@ struct vector_traits<std::complex<float>>
         __m128i i32 = _mm_cvtps_epi32(_mm512_castps512_ps128(convert<float>(v)));
         __m128i i16 = _mm_packus_epi32(i32, i32);
         __m512i i8 = _mm512_castsi128_si512(_mm_packus_epi16(i16, i16));
-        return _mm512_shuffle_i32x4(i8, i8, _MM_SHUFFLE(0,0,0,0));
+        return _mm512_shuffle_i32x4(i8, i8, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -636,8 +638,8 @@ struct vector_traits<std::complex<float>>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(convert<float>(v)));
-        __m512i i16 = _mm512_castsi256_si512(_mm256_shuffle_epi32(_mm256_packs_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0)));
-        return _mm512_shuffle_i32x4(i16, i16, _MM_SHUFFLE(0,0,0,0));
+        __m512i i16 = _mm512_castsi256_si512(_mm256_shuffle_epi32(_mm256_packs_epi32(i32, i32), _MM_PERM_CACA));
+        return _mm512_shuffle_i32x4(i16, i16, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -645,8 +647,8 @@ struct vector_traits<std::complex<float>>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(convert<float>(v)));
-        __m512i i16 = _mm512_castsi256_si512(_mm256_shuffle_epi32(_mm256_packus_epi32(i32, i32), _MM_SHUFFLE(2,0,2,0)));
-        return _mm512_shuffle_i32x4(i16, i16, _MM_SHUFFLE(0,0,0,0));
+        __m512i i16 = _mm512_castsi256_si512(_mm256_shuffle_epi32(_mm256_packus_epi32(i32, i32), _MM_PERM_CACA));
+        return _mm512_shuffle_i32x4(i16, i16, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -787,7 +789,7 @@ struct vector_traits<std::complex<float>>
 
     static __m512 mul(__m512 a, __m512 b)
     {
-        __m512 ashuf = _mm512_permute_ps(a, _MM_SHUFFLE(2,3,0,1));
+        __m512 ashuf = _mm512_permute_ps(a, _MM_PERM_CDAB);
         __m512 breal = _mm512_moveldup_ps(b);
         __m512 bimag = _mm512_movehdup_ps(b);
         __m512 tmp = _mm512_mul_ps(ashuf, bimag); // tmp = (ai0*bi0, ar0*bi0, ai1*bi1, ar1*bi1)
@@ -797,16 +799,16 @@ struct vector_traits<std::complex<float>>
     static __m512 div(__m512 a, __m512 b)
     {
         __m512 bsqr = _mm512_mul_ps(b, b);
-        bsqr = _mm512_add_ps(bsqr, _mm512_permute_ps(bsqr, _MM_SHUFFLE(2,3,0,1)));
+        bsqr = _mm512_add_ps(bsqr, _mm512_permute_ps(bsqr, _MM_PERM_CDAB));
         // bsqr = (|b0|^2, |b0|^2, |b1|^2, |b1|^2)
 
-        __m512 ashuf = _mm512_permute_ps(a, _MM_SHUFFLE(2,3,0,1));
+        __m512 ashuf = _mm512_permute_ps(a, _MM_PERM_CDAB);
         __m512 breal = _mm512_moveldup_ps(b);
         __m512 bimag = _mm512_movehdup_ps(b);
         __m512 tmp = _mm512_mul_ps(ashuf, bimag);          // tmp = (ai0*bi0, ar0*bi0, ai1*bi1, ar1*bi1)
-        __m512 abconj = _mm256_fmsubadd_ps(a, breal, tmp); //       (ar0*br0, ai0*br0, ar1*br1, ai1*br1)
+        __m512 abconj = _mm512_fmsubadd_ps(a, breal, tmp); //       (ar0*br0, ai0*br0, ar1*br1, ai1*br1)
 
-        return _mm256_div_ps(abconj, bsqr);
+        return _mm512_div_ps(abconj, bsqr);
     }
 
     static __m512 pow(__m512 a, __m512 b)
@@ -847,7 +849,8 @@ struct vector_traits<std::complex<float>>
 
     static __m512 negate(__m512 a)
     {
-        return _mm256_xor_ps(a, _mm256_set1_ps(-0.0f));
+        return _mm512_castsi512_ps(_mm512_xor_si512(_mm512_castps_si512(a),
+                                                    _mm512_castps_si512(_mm512_set1_ps(-0.0f))));
     }
 
     static __m512 exp(__m512 a)
@@ -921,7 +924,7 @@ struct vector_traits<std::complex<double>>
         // ( -, 3, -, 2, -, 1, -, 0)
         __m512 lo = _mm512_castps256_ps512(_mm512_cvtpd_ps(convert<double>(v)));
         // ( -, -, -, -, -, -, -, -, 3, 2, 1, 0, 3, 2, 1, 0)
-        return _mm512_shuffle_f32x4(lo, lo, _MM_SHUFFLE(0,0,0,0));
+        return _mm512_shuffle_f32x4(lo, lo, _MM_PERM_AAAA);
         // ( 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0)
     }
 
@@ -930,9 +933,9 @@ struct vector_traits<std::complex<double>>
     convert(__m512d v)
     {
         // ( -, 3, -, 2, -, 1, -, 0)
-        __m512d tmp = _mm512_permutex_pd(v, _MM_SHUFFLE(2,0,2,0));
+        __m512d tmp = _mm512_permutex_pd(v, _MM_PERM_CACA);
         // ( 3, 2, 3, 2, 1, 0, 1, 0)
-        return _mm512_shuffle_f64x2(tmp, _MM_SHUFFLE(2,0,2,0));
+        return _mm512_shuffle_f64x2(tmp, tmp, _MM_PERM_CACA);
         // ( 3, 2, 1, 0, 3, 2, 1, 0)
     }
 
@@ -943,7 +946,7 @@ struct vector_traits<std::complex<double>>
         // ( -, 3, -, 2, -, 1, -, 0)
         __m512 lo = _mm512_castps256_ps512(_mm512_cvtpd_ps(v));
         // ( -, -, -, -, -, -, -, -, -, 3, -, 2, -, 1, -, 0)
-        return _mm512_shuffle_f32x4(lo, lo, _MM_SHUFFLE(1,0,1,0));
+        return _mm512_shuffle_f32x4(lo, lo, _MM_PERM_BABA);
         // ( -, 3, -, 2, -, 1, -, 0, -, 3, -, 2, -, 1, -, 0)
     }
 
@@ -959,9 +962,9 @@ struct vector_traits<std::complex<double>>
     convert(__m512d v)
     {
         __m128i i32 = _mm256_cvtpd_epi32(_mm512_castpd512_pd256(convert<double>(v)));
-        __m128i i16 = _mm_packus_epi32(i32, i32);
-        __m128i i8 = _mm_packus_epi16(i16, i16);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(i8), i8, 1);
+        __m128i i16 = _mm_packs_epi32(i32, i32);
+        __m512i i8 = _mm512_castsi128_si512(_mm_packs_epi16(i16, i16));
+        return _mm512_shuffle_i32x4(i8, i8, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -970,8 +973,8 @@ struct vector_traits<std::complex<double>>
     {
         __m128i i32 = _mm256_cvtpd_epi32(_mm512_castpd512_pd256(convert<double>(v)));
         __m128i i16 = _mm_packus_epi32(i32, i32);
-        __m128i i8 = _mm_packus_epi16(i16, i16);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(i8), i8, 1);
+        __m512i i8 = _mm512_castsi128_si512(_mm_packus_epi16(i16, i16));
+        return _mm512_shuffle_i32x4(i8, i8, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -979,8 +982,8 @@ struct vector_traits<std::complex<double>>
     convert(__m512d v)
     {
         __m128i i32 = _mm256_cvtpd_epi32(_mm512_castpd512_pd256(convert<double>(v)));
-        __m128i i16 = _mm_packs_epi32(i32, i32);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(i16), i16, 1);
+        __m512i i16 = _mm512_castsi128_si512(_mm_packs_epi32(i32, i32));
+        return _mm512_shuffle_i32x4(i16, i16, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -988,8 +991,8 @@ struct vector_traits<std::complex<double>>
     convert(__m512d v)
     {
         __m128i i32 = _mm256_cvtpd_epi32(_mm512_castpd512_pd256(convert<double>(v)));
-        __m128i i16 = _mm_packus_epi32(i32, i32);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(i16), i16, 1);
+        __m512i i16 = _mm512_castsi128_si512(_mm_packus_epi32(i32, i32));
+        return _mm512_shuffle_i32x4(i16, i16, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -997,7 +1000,7 @@ struct vector_traits<std::complex<double>>
     convert(__m512d v)
     {
         __m512i lo = _mm512_castsi256_si512(_mm512_cvtpd_epi32(convert<double>(v)));
-        return _mm512_shuffle_i32x4(lo, lo, _MM_SHUFFLE(0,0,0,0));
+        return _mm512_shuffle_i32x4(lo, lo, _MM_PERM_AAAA);
     }
 
     template <typename T> static
@@ -1107,8 +1110,8 @@ struct vector_traits<std::complex<double>>
         __m512d ashuf = _mm512_shuffle_pd(a, a, 0x55);
         __m512d breal = _mm512_shuffle_pd(b, b, 0x00);
         __m512d bimag = _mm512_shuffle_pd(b, b, 0xff);
-        __m512d tmp = _mm256_mul_pd(ashuf, bimag); // tmp = (ai0*bi0, ar0*bi0, ai1*bi1, ar1*bi1)
-        return _mm256_fmaddsub_pd(a, breal, tmp);  //       (ar0*br0, ai0*br0, ar1*br1, ai1*br1)
+        __m512d tmp = _mm512_mul_pd(ashuf, bimag); // tmp = (ai0*bi0, ar0*bi0, ai1*bi1, ar1*bi1)
+        return _mm512_fmaddsub_pd(a, breal, tmp);  //       (ar0*br0, ai0*br0, ar1*br1, ai1*br1)
     }
 
     static __m512d div(__m512d a, __m512d b)
@@ -1121,9 +1124,9 @@ struct vector_traits<std::complex<double>>
         __m512d breal = _mm512_shuffle_pd(b, b, 0x00);
         __m512d bimag = _mm512_shuffle_pd(b, b, 0xff);
         __m512d tmp = _mm512_mul_pd(ashuf, bimag);          // tmp = (ai0*bi0, ar0*bi0, ai1*bi1, ar1*bi1)
-        __m512d abconj = _mm256_fmsubadd_pd(a, breal, tmp); //       (ar0*br0, ai0*br0, ar1*br1, ai1*br1)
+        __m512d abconj = _mm512_fmsubadd_pd(a, breal, tmp); //       (ar0*br0, ai0*br0, ar1*br1, ai1*br1)
 
-        return _mm256_div_pd(abconj, bsqr);
+        return _mm512_div_pd(abconj, bsqr);
     }
 
     static __m512d pow(__m512d a, __m512d b)
@@ -1148,7 +1151,8 @@ struct vector_traits<std::complex<double>>
 
     static __m512d negate(__m512d a)
     {
-        return _mm256_xor_pd(a, _mm256_set1_pd(-0.0));
+        return _mm512_castsi512_pd(_mm512_xor_si512(_mm512_castpd_si512(a),
+                                                    _mm512_castpd_si512(_mm512_set1_pd(-0.0))));
     }
 
     static __m512d exp(__m512d a)
@@ -1212,9 +1216,9 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     {
         // (...,15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
         __m128i mask = _mm_set_epi8(7,6,7,6,5,4,5,4,3,2,3,2,1,0,1,0);
-        __m128i dup = _mm_shuffle_epi8(_mm256_castsi256_si128(v), mask);
+        __m128i dup = _mm_shuffle_epi8(_mm512_castsi512_si128(v), mask);
         // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
-        return _mm512_unpacklo_ps(convert<float>(_mm512_castsi128_si512(dup)), _mm256_setzero_ps());
+        return _mm512_unpacklo_ps(convert<float>(_mm512_castsi128_si512(dup)), _mm512_setzero_ps());
         // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
     }
 
@@ -1224,7 +1228,7 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     {
         // (...,15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
         __m128i mask = _mm_set_epi8(3,3,2,2,1,1,0,0,3,3,2,2,1,1,0,0);
-        __m128i dup = _mm_shuffle_epi8(_mm256_castsi256_si128(v), mask);
+        __m128i dup = _mm_shuffle_epi8(_mm512_castsi512_si128(v), mask);
         // ( 3, 3, 2, 2, 1, 1, 0, 0, 3, 3, 2, 2, 1, 1, 0, 0)
         return _mm512_unpacklo_pd(convert<double>(_mm512_castsi128_si512(dup)), _mm512_setzero_pd());
         // ( -, 3, -, 2, -, 1, -, 0)
@@ -1243,8 +1247,13 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
                         std::is_same<T,uint16_t>::value, __m512i>
     convert(__m512i v)
     {
-        return std::is_signed<U>::value ? _mm512_cvtepi8_epi16(_mm512_castsi512_si256(v))
-                                        : _mm512_cvtepu8_epi16(_mm512_castsi512_si256(v));
+        __m128i lo8 = _mm512_extracti32x4_epi32(v, 0);
+        __m128i hi8 = _mm512_extracti32x4_epi32(v, 1);
+        __m256i lo16 = std::is_signed<U>::value ? _mm256_cvtepi8_epi16(lo8)
+                                                : _mm256_cvtepu8_epi16(lo8);
+        __m256i hi16 = std::is_signed<U>::value ? _mm256_cvtepi8_epi16(hi8)
+                                                : _mm256_cvtepu8_epi16(hi8);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo16), hi16, 1);
     }
 
     template <typename T> static
@@ -1283,14 +1292,14 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     detail::enable_if_t<Width == 32 && !Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_broadcast_i64x4(_mm256_loadu_si256((__m256i*)ptr));
+        return _mm512_broadcast_i64x4(_mm256_loadu_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 32 && Aligned, __m512i>
     load(const U* ptr)
     {
-        return _mm256_broadcast_i64x4(_mm256_load_si256((__m256i*)ptr));
+        return _mm512_broadcast_i64x4(_mm256_load_si256((__m256i*)ptr));
     }
 
     template <unsigned Width, bool Aligned> static
@@ -1356,14 +1365,14 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     detail::enable_if_t<Width == 32 && !Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_storeu_si256((__m128i*)ptr, _mm512_castsi512_si256(v));
+        _mm256_storeu_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 32 && Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_store_si256((__m128i*)ptr, _mm512_castsi512_si256(v));
+        _mm256_store_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
@@ -1763,9 +1772,9 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     convert(__m512i v)
     {
         // (...,15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-        __m256i tmp1 = _mm256_permute4x64_epi64(_mm512_castsi512_si256(v), _MM_SHUFFLE(1,1,0,0));
+        __m256i tmp1 = _mm256_permute4x64_epi64(_mm512_castsi512_si256(v), _MM_PERM_BBAA);
         // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
-        __m256i tmp2 = _mm256_shuffle_epi32(tmp1, _MM_SHUFFLE(1,1,0,0));
+        __m256i tmp2 = _mm256_shuffle_epi32(tmp1, _MM_PERM_BBAA);
         // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
         return _mm512_unpacklo_ps(convert<float>(_mm512_castsi256_si512(tmp2)), _mm512_setzero_ps());
         // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
@@ -1776,9 +1785,9 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     convert(__m512i v)
     {
         // (..., 7, 6, 5, 4, 3, 2, 1, 0)
-        __m128i tmp1 = _mm_shuffle_epi32(_mm512_castsi512_si128(tmp1), _MM_SHUFFLE(1,1,0,0));
+        __m128i tmp1 = _mm_shuffle_epi32(_mm512_castsi512_si128(v), _MM_PERM_BBAA);
         // ( 3, 2, 3, 2, 1, 0, 1, 0)
-        __m256i tmp2 = _mm256_shuffle_epi32(_mm256_cvtepi16_epi32(tmp1), _MM_SHUFFLE(1,1,0,0));
+        __m256i tmp2 = _mm256_shuffle_epi32(_mm256_cvtepi16_epi32(tmp1), _MM_PERM_BBAA);
         // ( 3, 3, 2, 2, 1, 1, 0, 0)
         return _mm512_unpacklo_pd(_mm512_cvtepi32_pd(tmp2), _mm512_setzero_pd());
         // ( -, 3, -, 2, -, 1, -, 0)
@@ -1793,8 +1802,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
         __m256i hi16 = _mm512_extracti64x4_epi64(v, 1);
         __m256i tmp = std::is_signed<U>::value ? _mm256_packs_epi16(lo16, hi16)
                                               : _mm256_packus_epi16(lo16, hi16);
-        __m512i lo = _mm512_castsi256_si512(_mm256_permute4x64_epi64(tmp, _MM_SHUFFLE(3,1,2,0)));
-        return _mm512_shuffle_i64x2(lo, lo, _MM_SHUFFLE(1,0,1,0));
+        __m512i lo = _mm512_castsi256_si512(_mm256_permute4x64_epi64(tmp, _MM_PERM_DBCA));
+        return _mm512_shuffle_i64x2(lo, lo, _MM_PERM_BABA);
     }
 
     template <typename T> static
@@ -1942,7 +1951,7 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     detail::enable_if_t<Width == 2>
     store(__m512i v, U* ptr)
     {
-        *(int32_t*)ptr = _mm256_extract_epi32(v, 0);
+        *(int32_t*)ptr = _mm256_extract_epi32(_mm512_castsi512_si256(v), 0);
     }
 
     static __m512i add(__m512i a, __m512i b)
@@ -2176,9 +2185,9 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     convert(__m512i v)
     {
         // (15,14,13,12,11,10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-        __m512i tmp1 = _mm512_shuffle_i32x4(v, v, _MM_SHUFFLE(1,1,0,0));
+        __m512i tmp1 = _mm512_shuffle_i32x4(v, v, _MM_PERM_BBAA);
         // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
-        __m512i tmp2 = _mm512_permutex_epi64(tmp1, _MM_SHUFFLE(1,1,0,0));
+        __m512i tmp2 = _mm512_permutex_epi64(tmp1, _MM_PERM_BBAA);
         // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
         return _mm512_unpacklo_ps(convert<float>(tmp2), _mm512_setzero_ps());
         // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
@@ -2189,9 +2198,9 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     convert(__m512i v)
     {
         // (..., 7, 6, 5, 4, 3, 2, 1, 0)
-        __m512i tmp1 = _mm512_permutex_epi64(v, _MM_SHUFFLE(1,1,0,0));
+        __m512i tmp1 = _mm512_permutex_epi64(v, _MM_PERM_BBAA);
         // ( 3, 2, 3, 2, 1, 0, 1, 0)
-        __m512i tmp2 = _mm512_shuffle_epi32(tmp1, _MM_SHUFFLE(1,1,0,0));
+        __m512i tmp2 = _mm512_shuffle_epi32(tmp1, _MM_PERM_BBAA);
         // ( 3, 3, 2, 2, 1, 1, 0, 0)
         return _mm512_unpacklo_pd(convert<double>(tmp2), _mm512_setzero_pd());
         // ( -, 3, -, 2, -, 1, -, 0)
@@ -2204,10 +2213,10 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     {
         __m256i lo32 = _mm512_extracti64x4_epi64(v, 0);
         __m256i hi32 = _mm512_extracti64x4_epi64(v, 1);
-        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0))
-                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0));
-        __m256i lo = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi16(i16, i16), _MM_SHUFFLE(2,0,2,0))
-                                              : _mm256_permute4x64_epi64(_mm256_packus_epi16(i16, i16), _MM_SHUFFLE(2,0,2,0));
+        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_PERM_CACA)
+                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_PERM_CACA);
+        __m256i lo = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi16(i16, i16), _MM_PERM_CACA)
+                                              : _mm256_permute4x64_epi64(_mm256_packus_epi16(i16, i16), _MM_PERM_CACA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(lo), lo, 1);
     }
 
@@ -2218,8 +2227,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     {
         __m256i lo32 = _mm512_extracti64x4_epi64(v, 0);
         __m256i hi32 = _mm512_extracti64x4_epi64(v, 1);
-        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0))
-                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_SHUFFLE(2,0,2,0));
+        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_PERM_CACA)
+                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_PERM_CACA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -2659,135 +2668,150 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
 
     static __m512i load1(const U* ptr)
     {
-        return _mm256_set1_epi64x(*ptr);
+        return _mm512_set1_epi64(*ptr);
     }
 
     static __m512i set1(U val)
     {
-        return _mm256_set1_epi64x(val);
+        return _mm512_set1_epi64(val);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 8 && !Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm512_storeu_si512((__m512i*)ptr, v);
+    }
+
+    template <unsigned Width, bool Aligned> static
+    detail::enable_if_t<Width == 8 && Aligned>
+    store(__m512i v, U* ptr)
+    {
+        _mm512_store_si512((__m512i*)ptr, v);
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4 && !Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_storeu_si256((__m512i*)ptr, v);
+        _mm256_storeu_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 4 && Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm256_store_si256((__m512i*)ptr, v);
+        _mm256_store_si256((__m256i*)ptr, _mm512_castsi512_si256(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2 && !Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm_storeu_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
+        _mm_storeu_si128((__m128i*)ptr, _mm512_castsi512_si128(v));
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2 && Aligned>
     store(__m512i v, U* ptr)
     {
-        _mm_store_si128((__m128i*)ptr, _mm256_castsi256_si128(v));
+        _mm_store_si128((__m128i*)ptr, _mm512_castsi512_si128(v));
     }
 
     static __m512i add(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_add_epi64(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_add_epi64(a0, b0);
-        __m128i ab1 = _mm_add_epi64(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        return _mm512_add_epi64(a, b);
     }
 
     static __m512i sub(__m512i a, __m512i b)
     {
-#ifdef __AVX2__
-        return _mm256_sub_epi64(a, b);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i b0 = _mm256_castsi256_si128(b);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i b1 = _mm256_extractf128_si256(b, 1);
-        __m128i ab0 = _mm_sub_epi64(a0, b0);
-        __m128i ab1 = _mm_sub_epi64(a1, b1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(ab0), ab1, 1);
-#endif
+        return _mm512_sub_epi64(a, b);
     }
 
     static __m512i mul(__m512i a, __m512i b)
     {
-        return _mm256_setr_epi64x((U)_mm256_extract_epi64(a, 0) *
-                                  (U)_mm256_extract_epi64(b, 0),
-                                  (U)_mm256_extract_epi64(a, 1) *
-                                  (U)_mm256_extract_epi64(b, 1),
-                                  (U)_mm256_extract_epi64(a, 2) *
-                                  (U)_mm256_extract_epi64(b, 2),
-                                  (U)_mm256_extract_epi64(a, 3) *
-                                  (U)_mm256_extract_epi64(b, 3));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i lo = _mm256_setr_epi64x((U)_mm256_extract_epi64(a0, 0) * (U)_mm256_extract_epi64(b0, 0),
+                                        (U)_mm256_extract_epi64(a0, 1) * (U)_mm256_extract_epi64(b0, 1),
+                                        (U)_mm256_extract_epi64(a0, 2) * (U)_mm256_extract_epi64(b0, 2),
+                                        (U)_mm256_extract_epi64(a0, 3) * (U)_mm256_extract_epi64(b0, 3));
+        __m256i hi = _mm256_setr_epi64x((U)_mm256_extract_epi64(a1, 0) * (U)_mm256_extract_epi64(b1, 0),
+                                        (U)_mm256_extract_epi64(a1, 1) * (U)_mm256_extract_epi64(b1, 1),
+                                        (U)_mm256_extract_epi64(a1, 2) * (U)_mm256_extract_epi64(b1, 2),
+                                        (U)_mm256_extract_epi64(a1, 3) * (U)_mm256_extract_epi64(b1, 3));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo), hi, 1);
     }
 
     static __m512i div(__m512i a, __m512i b)
     {
-        return _mm256_setr_epi64x((U)_mm256_extract_epi64(a, 0) /
-                                  (U)_mm256_extract_epi64(b, 0),
-                                  (U)_mm256_extract_epi64(a, 1) /
-                                  (U)_mm256_extract_epi64(b, 1),
-                                  (U)_mm256_extract_epi64(a, 2) /
-                                  (U)_mm256_extract_epi64(b, 2),
-                                  (U)_mm256_extract_epi64(a, 3) /
-                                  (U)_mm256_extract_epi64(b, 3));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i lo = _mm256_setr_epi64x((U)_mm256_extract_epi64(a0, 0) / (U)_mm256_extract_epi64(b0, 0),
+                                        (U)_mm256_extract_epi64(a0, 1) / (U)_mm256_extract_epi64(b0, 1),
+                                        (U)_mm256_extract_epi64(a0, 2) / (U)_mm256_extract_epi64(b0, 2),
+                                        (U)_mm256_extract_epi64(a0, 3) / (U)_mm256_extract_epi64(b0, 3));
+        __m256i hi = _mm256_setr_epi64x((U)_mm256_extract_epi64(a1, 0) / (U)_mm256_extract_epi64(b1, 0),
+                                        (U)_mm256_extract_epi64(a1, 1) / (U)_mm256_extract_epi64(b1, 1),
+                                        (U)_mm256_extract_epi64(a1, 2) / (U)_mm256_extract_epi64(b1, 2),
+                                        (U)_mm256_extract_epi64(a1, 3) / (U)_mm256_extract_epi64(b1, 3));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo), hi, 1);
     }
 
     static __m512i pow(__m512i a, __m512i b)
     {
-        return _mm256_setr_epi64x((U)std::pow((U)_mm256_extract_epi64(a, 0),
-                                              (U)_mm256_extract_epi64(b, 0)),
-                                  (U)std::pow((U)_mm256_extract_epi64(a, 1),
-                                              (U)_mm256_extract_epi64(b, 1)),
-                                  (U)std::pow((U)_mm256_extract_epi64(a, 2),
-                                              (U)_mm256_extract_epi64(b, 2)),
-                                  (U)std::pow((U)_mm256_extract_epi64(a, 3),
-                                              (U)_mm256_extract_epi64(b, 3)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i b0 = _mm512_extracti64x4_epi64(b, 0);
+        __m256i b1 = _mm512_extracti64x4_epi64(b, 1);
+        __m256i lo = _mm256_setr_epi64x((U)std::pow((U)_mm256_extract_epi64(a0, 0), (U)_mm256_extract_epi64(b0, 0)),
+                                        (U)std::pow((U)_mm256_extract_epi64(a0, 1), (U)_mm256_extract_epi64(b0, 1)),
+                                        (U)std::pow((U)_mm256_extract_epi64(a0, 2), (U)_mm256_extract_epi64(b0, 2)),
+                                        (U)std::pow((U)_mm256_extract_epi64(a0, 3), (U)_mm256_extract_epi64(b0, 3)));
+        __m256i hi = _mm256_setr_epi64x((U)std::pow((U)_mm256_extract_epi64(a1, 0), (U)_mm256_extract_epi64(b1, 0)),
+                                        (U)std::pow((U)_mm256_extract_epi64(a1, 1), (U)_mm256_extract_epi64(b1, 1)),
+                                        (U)std::pow((U)_mm256_extract_epi64(a1, 2), (U)_mm256_extract_epi64(b1, 2)),
+                                        (U)std::pow((U)_mm256_extract_epi64(a1, 3), (U)_mm256_extract_epi64(b1, 3)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo), hi, 1);
     }
 
     static __m512i negate(__m512i a)
     {
-#ifdef __AVX2__
-        return _mm256_sub_epi64(_mm256_setzero_si256(), a);
-#else
-        __m128i a0 = _mm256_castsi256_si128(a);
-        __m128i a1 = _mm256_extractf128_si256(a, 1);
-        __m128i na0 = _mm_sub_epi64(_mm_setzero_si128(), a0);
-        __m128i na1 = _mm_sub_epi64(_mm_setzero_si128(), a1);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(na0), na1, 1);
-#endif
+        return _mm512_sub_epi64(_mm512_setzero_si512(), a);
     }
 
     static __m512i exp(__m512i a)
     {
-        return _mm256_setr_epi64x((U)std::exp((U)_mm256_extract_epi64(a, 0)),
-                                  (U)std::exp((U)_mm256_extract_epi64(a, 1)),
-                                  (U)std::exp((U)_mm256_extract_epi64(a, 2)),
-                                  (U)std::exp((U)_mm256_extract_epi64(a, 3)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i lo = _mm256_setr_epi64x((U)std::exp((U)_mm256_extract_epi64(a0, 0)),
+                                        (U)std::exp((U)_mm256_extract_epi64(a0, 1)),
+                                        (U)std::exp((U)_mm256_extract_epi64(a0, 2)),
+                                        (U)std::exp((U)_mm256_extract_epi64(a0, 3)));
+        __m256i hi = _mm256_setr_epi64x((U)std::exp((U)_mm256_extract_epi64(a1, 0)),
+                                        (U)std::exp((U)_mm256_extract_epi64(a1, 1)),
+                                        (U)std::exp((U)_mm256_extract_epi64(a1, 2)),
+                                        (U)std::exp((U)_mm256_extract_epi64(a1, 3)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo), hi, 1);
     }
 
     static __m512i sqrt(__m512i a)
     {
-        return _mm256_setr_epi64x((U)std::sqrt((U)_mm256_extract_epi64(a, 0)),
-                                  (U)std::sqrt((U)_mm256_extract_epi64(a, 1)),
-                                  (U)std::sqrt((U)_mm256_extract_epi64(a, 2)),
-                                  (U)std::sqrt((U)_mm256_extract_epi64(a, 3)));
+        __m256i a0 = _mm512_extracti64x4_epi64(a, 0);
+        __m256i a1 = _mm512_extracti64x4_epi64(a, 1);
+        __m256i lo = _mm256_setr_epi64x((U)std::sqrt((U)_mm256_extract_epi64(a0, 0)),
+                                        (U)std::sqrt((U)_mm256_extract_epi64(a0, 1)),
+                                        (U)std::sqrt((U)_mm256_extract_epi64(a0, 2)),
+                                        (U)std::sqrt((U)_mm256_extract_epi64(a0, 3)));
+        __m256i hi = _mm256_setr_epi64x((U)std::sqrt((U)_mm256_extract_epi64(a1, 0)),
+                                        (U)std::sqrt((U)_mm256_extract_epi64(a1, 1)),
+                                        (U)std::sqrt((U)_mm256_extract_epi64(a1, 2)),
+                                        (U)std::sqrt((U)_mm256_extract_epi64(a1, 3)));
+        return _mm512_inserti64x4(_mm512_castsi256_si512(lo), hi, 1);
     }
 };
 
