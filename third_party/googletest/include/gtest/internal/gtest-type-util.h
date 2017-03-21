@@ -152,7 +152,7 @@ struct Types<T1, T...> {
 
 namespace internal {
 
-# define GTEST_TEMPLATE_ template <typename T> class
+# define GTEST_TEMPLATE_ template <typename T_> class
 
 // The template "selector" struct TemplateSel<Tmpl> is used to
 // represent Tmpl, which must be a class template with one type
