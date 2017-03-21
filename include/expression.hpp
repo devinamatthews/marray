@@ -1053,7 +1053,7 @@ inline bool is_contiguous(const slice_dim& dim)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims)), bool>
-is_contiguous(array_expr<T, Dims...>& expr)
+is_array_contiguous(const array_expr<T, Dims...>& expr)
 {
     return true;
 }
@@ -1064,9 +1064,15 @@ is_contiguous(array_expr<T, Dims...>& expr)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim >= NDim-sizeof...(Dims)), bool>
-is_contiguous(array_expr<T, Dims...>& expr)
+is_array_contiguous(const array_expr<T, Dims...>& expr)
 {
     return is_contiguous(std::get<Dim-(NDim-sizeof...(Dims))>(expr.dims));
+}
+
+template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
+bool is_contiguous(const array_expr<T, Dims...>& expr)
+{
+    return is_array_contiguous<NDim, Dim, T, Dims...>(expr);
 }
 
 template <unsigned NDim, unsigned Dim, typename Expr>
@@ -1078,7 +1084,7 @@ is_contiguous(const Expr& expr)
 
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_binary_expression<Expr>::value, bool>
-is_contiguous(Expr& expr)
+is_contiguous(const Expr& expr)
 {
     return is_contiguous<NDim, Dim>(expr.first) &&
            is_contiguous<NDim, Dim>(expr.second);
@@ -1086,45 +1092,42 @@ is_contiguous(Expr& expr)
 
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_unary_expression<Expr>::value, bool>
-is_contiguous(Expr& expr)
+is_contiguous(const Expr& expr)
 {
     return is_contiguous<NDim, Dim>(expr.expr);
 }
 
-constexpr unsigned min_width(unsigned a, unsigned b)
-{
-    return (b < a ? b : a);
-}
+template <typename Expr, typename=void>
+struct vector_width;
 
 template <typename T, typename... Dims>
-constexpr unsigned vector_width(array_expr<T, Dims...>& expr)
+struct vector_width<array_expr<T, Dims...>>
 {
-    return vector_traits<T>::vector_width;
-}
+    constexpr static unsigned value = vector_traits<T>::vector_width;
+};
 
 template <typename Expr>
-constexpr detail::enable_if_t<is_scalar<Expr>::value, unsigned>
-vector_width(const Expr& expr)
+struct vector_width<Expr,detail::enable_if_t<is_scalar<Expr>::value>>
 {
-    return vector_traits<Expr>::vector_width;
-}
+    constexpr static unsigned value = vector_traits<Expr>::vector_width;
+};
 
 template <typename Expr>
-constexpr detail::enable_if_t<is_binary_expression<Expr>::value, unsigned>
-vector_width(Expr& expr)
+struct vector_width<Expr,detail::enable_if_t<is_unary_expression<Expr>::value>>
 {
-    return min_width(min_width(vector_width(expr.first),
-                               vector_width(expr.second)),
-        vector_traits<typename expr_result_type<Expr>::type>::vector_width);
-}
+    constexpr static unsigned w1_ = vector_width<detail::decay_t<typename Expr::expr_type>>::value;
+    constexpr static unsigned w2_ = vector_width<detail::decay_t<typename Expr::result_type>>::value;
+    constexpr static unsigned value = (w1_ < w2_ ? w1_ : w2_);
+};
 
 template <typename Expr>
-constexpr detail::enable_if_t<is_unary_expression<Expr>::value, unsigned>
-vector_width(Expr& expr)
+struct vector_width<Expr,detail::enable_if_t<is_binary_expression<Expr>::value>>
 {
-    return min_width(vector_width(expr.expr),
-        vector_traits<typename expr_result_type<Expr>::type>::vector_width);
-}
+    constexpr static unsigned w1_ = vector_width<detail::decay_t<typename Expr::first_type>>::value;
+    constexpr static unsigned w2_ = vector_width<detail::decay_t<typename Expr::second_type>>::value;
+    constexpr static unsigned w3_ = vector_width<detail::decay_t<typename Expr::result_type>>::value;
+    constexpr static unsigned value = (w3_ < (w1_ < w2_ ? w1_ : w2_) ? w3_ : (w1_ < w2_ ? w1_ : w2_));
+};
 
 /*
  * Increment (go to the next element) or decrement (return to the first element)
@@ -1158,11 +1161,11 @@ void decrement(array_expr<T, Dims...>& expr, const slice_dim& dim)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims))>
-increment(array_expr<T, Dims...>& expr) {}
+increment_array(array_expr<T, Dims...>& expr) {}
 
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims))>
-decrement(array_expr<T, Dims...>& expr) {}
+decrement_array(array_expr<T, Dims...>& expr) {}
 
 /*
  * For the remaining sizeof...(Dims) dimensions, subtract NDim-sizeof...(Dims)
@@ -1170,16 +1173,28 @@ decrement(array_expr<T, Dims...>& expr) {}
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim >= NDim-sizeof...(Dims))>
-increment(array_expr<T, Dims...>& expr)
+increment_array(array_expr<T, Dims...>& expr)
 {
     increment(expr, std::get<Dim-(NDim-sizeof...(Dims))>(expr.dims));
 }
 
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim >= NDim-sizeof...(Dims))>
-decrement(array_expr<T, Dims...>& expr)
+decrement_array(array_expr<T, Dims...>& expr)
 {
     decrement(expr, std::get<Dim-(NDim-sizeof...(Dims))>(expr.dims));
+}
+
+template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
+void increment(array_expr<T, Dims...>& expr)
+{
+    increment_array<NDim, Dim, T, Dims...>(expr);
+}
+
+template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
+void decrement(array_expr<T, Dims...>& expr)
+{
+    decrement_array<NDim, Dim, T, Dims...>(expr);
 }
 
 /*
@@ -1374,8 +1389,8 @@ struct assign_expr_loop_vec_row_major<NDim, NDim>
     template <typename LHS, typename RHS>
     void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
-        constexpr unsigned Width = min_width(vector_width(lhs),
-                                             vector_width(rhs));
+        constexpr unsigned Width = (vector_width<LHS>::value < vector_width<RHS>::value ?
+                                    vector_width<LHS>::value : vector_width<RHS>::value);
         constexpr bool Aligned = false;
 
         assign_expr_inner_loop_vec<NDim, NDim-1, Width, Aligned>()(lhs, rhs, len);
@@ -1412,8 +1427,8 @@ struct assign_expr_loop_vec_col_major<NDim, 0>
     template <typename LHS, typename RHS>
     void operator()(LHS& lhs, RHS& rhs, const std::array<idx_type, NDim>& len) const
     {
-        constexpr unsigned Width = min_width(vector_width(lhs),
-                                             vector_width(rhs));
+        constexpr unsigned Width = (vector_width<LHS>::value < vector_width<RHS>::value ?
+                                    vector_width<LHS>::value : vector_width<RHS>::value);
         constexpr bool Aligned = false;
 
         assign_expr_inner_loop_vec<NDim, 0, Width, Aligned>()(lhs, rhs, len);

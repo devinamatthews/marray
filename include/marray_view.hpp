@@ -773,14 +773,22 @@ class marray_view
             a.swap(b);
         }
 
-        operator const marray_view<const Type, NDim>&() const
+        template <typename Type_, unsigned NDim_,
+                  typename=detail::enable_if_t<std::is_same<const Type,Type_>::value && 
+                                               !std::is_same<const Type,Type>::value &&
+                                               (NDim == NDim_)>>
+        operator const marray_view<Type_, NDim_>&() const
         {
-            return reinterpret_cast<const marray_view<const Type, NDim>&>(*this);
+            return reinterpret_cast<const marray_view<Type_, NDim_>&>(*this);
         }
 
-        operator marray_view<const Type, NDim>&()
+        template <typename Type_, unsigned NDim_,
+                  typename=detail::enable_if_t<std::is_same<const Type,Type_>::value && 
+                                               !std::is_same<const Type,Type>::value &&
+                                               (NDim == NDim_)>>
+        operator marray_view<Type_, NDim_>&()
         {
-            return reinterpret_cast<marray_view<const Type, NDim>&>(*this);
+            return reinterpret_cast<marray_view<Type_, NDim_>&>(*this);
         }
 };
 
