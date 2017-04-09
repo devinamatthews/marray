@@ -37,7 +37,8 @@ template <typename T, typename... Dims>
 struct array_expr
 {
     typedef T& result_type;
-    typedef typename vector_traits<T>::vector_type vector_type;
+    typedef vector_traits<typename std::remove_cv<T>::type> vec_traits;
+    typedef typename vec_traits::vector_type vector_type;
 
     T* data;
     std::tuple<Dims...> dims;
@@ -81,7 +82,7 @@ struct array_expr
     detail::enable_if_t<(Dim < NDim-sizeof...(Dims)),vector_type>
     eval_vec(idx_type) const
     {
-        return vector_traits<T>::load1(data);
+        return vec_traits::load1(data);
     }
 
     template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
@@ -94,19 +95,19 @@ struct array_expr
     template <unsigned Width, bool Aligned>
     vector_type eval_vec(idx_type i, const slice_dim&) const
     {
-        return vector_traits<T>::template load<Width,Aligned>(data+i);
+        return vec_traits::template load<Width,Aligned>(data+i);
     }
 
     template <unsigned Width, bool Aligned>
     vector_type eval_vec(idx_type, const bcast_dim&) const
     {
-        return vector_traits<T>::load1(data);
+        return vec_traits::load1(data);
     }
 
     template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned>
     void store_vec(idx_type i, vector_type v) const
     {
-        vector_traits<T>::template store<Width,Aligned>(v, data+i);
+        vec_traits::template store<Width,Aligned>(v, data+i);
     }
 };
 
@@ -1103,7 +1104,7 @@ struct vector_width;
 template <typename T, typename... Dims>
 struct vector_width<array_expr<T, Dims...>>
 {
-    constexpr static unsigned value = vector_traits<T>::vector_width;
+    constexpr static unsigned value = vector_traits<typename std::remove_cv<T>::type>::vector_width;
 };
 
 template <typename Expr>
@@ -1332,8 +1333,7 @@ struct assign_expr_inner_loop_vec
                                  vector_traits<T>::alignment) / sizeof(T);
 
         idx_type peel = Aligned ? 0 :
-                        (vector_traits<T>::vector_width - misalignment) %
-                        vector_traits<T>::vector_width;
+                        std::min(len[Dim], vector_traits<T>::vector_width - misalignment);
 
         // Number of elements in the final incomplete vector
         idx_type remainder = (len[Dim]-peel) %

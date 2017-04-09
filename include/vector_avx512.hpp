@@ -58,9 +58,11 @@ struct vector_traits<float>
     detail::enable_if_t<std::is_same<T,int8_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_CACA);
-        __m256i i8 = _mm256_packs_epi16(i16, i16);
+        __m512i i32 = _mm512_cvtps_epi32(v);
+        __m256i i32lo = _mm512_extracti64x4_epi64(i32, 0);
+        __m256i i32hi = _mm512_extracti64x4_epi64(i32, 1);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32lo, i32hi), _MM_PERM_DBCA);
+        __m256i i8 = _mm256_permute4x64_epi64(_mm256_packs_epi16(i16, i16), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
 
@@ -68,9 +70,11 @@ struct vector_traits<float>
     detail::enable_if_t<std::is_same<T,uint8_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_CACA);
-        __m256i i8 = _mm256_packus_epi16(i16, i16);
+        __m512i i32 = _mm512_cvtps_epi32(v);
+        __m256i i32lo = _mm512_extracti64x4_epi64(i32, 0);
+        __m256i i32hi = _mm512_extracti64x4_epi64(i32, 1);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32lo, i32hi), _MM_PERM_DBCA);
+        __m256i i8 = _mm256_permute4x64_epi64(_mm256_packus_epi16(i16, i16), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
 
@@ -78,8 +82,10 @@ struct vector_traits<float>
     detail::enable_if_t<std::is_same<T,int16_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_CACA);
+        __m512i i32 = _mm512_cvtps_epi32(v);
+        __m256i i32lo = _mm512_extracti64x4_epi64(i32, 0);
+        __m256i i32hi = _mm512_extracti64x4_epi64(i32, 1);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32lo, i32hi), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -87,8 +93,10 @@ struct vector_traits<float>
     detail::enable_if_t<std::is_same<T,uint16_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(v));
-        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_CACA);
+        __m512i i32 = _mm512_cvtps_epi32(v);
+        __m256i i32lo = _mm512_extracti64x4_epi64(i32, 0);
+        __m256i i32hi = _mm512_extracti64x4_epi64(i32, 1);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32lo, i32hi), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -356,7 +364,7 @@ struct vector_traits<double>
     convert(__m512d v)
     {
         __m256i i32 = _mm512_cvtpd_epi32(v);
-        __m256i i16 = _mm256_packs_epi32(i32, i32);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_DBCA);
         __m256i i8 = _mm256_packs_epi16(i16, i16);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
@@ -366,7 +374,7 @@ struct vector_traits<double>
     convert(__m512d v)
     {
         __m256i i32 = _mm512_cvtpd_epi32(v);
-        __m256i i16 = _mm256_packus_epi32(i32, i32);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_DBCA);
         __m256i i8 = _mm256_packus_epi16(i16, i16);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
@@ -376,7 +384,7 @@ struct vector_traits<double>
     convert(__m512d v)
     {
         __m256i i32 = _mm512_cvtpd_epi32(v);
-        __m256i i16 = _mm256_packs_epi32(i32, i32);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -385,7 +393,7 @@ struct vector_traits<double>
     convert(__m512d v)
     {
         __m256i i32 = _mm512_cvtpd_epi32(v);
-        __m256i i16 = _mm256_packus_epi32(i32, i32);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -584,11 +592,11 @@ struct vector_traits<std::complex<float>>
     convert(__m512 v)
     {
         // ( -, 7, -, 6, -, 5, -, 4, -, 3, -, 2, -, 1, -, 0)
-        __m512 tmp1 = _mm512_permute_ps(v, _MM_PERM_CACA);
+        __m512 tmp1 = _mm512_permute_ps(v, _MM_PERM_DBCA);
         // ( 7, 6, 7, 6, 5, 4, 5, 4, 3, 2, 3, 2, 1, 0, 1, 0)
-        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(tmp1), _MM_PERM_CACA));
+        __m512 tmp2 = _mm512_castpd_ps(_mm512_permutex_pd(_mm512_castps_pd(tmp1), _MM_PERM_DBCA));
         // ( 7, 6, 5, 4, 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0)
-        return _mm512_shuffle_f32x4(tmp2, tmp2, _MM_PERM_CACA);
+        return _mm512_shuffle_f32x4(tmp2, tmp2, _MM_PERM_DBCA);
         // ( 7, 6, 5, 4, 3, 2, 1, 0, 7, 6, 5, 4, 3, 2, 1, 0)
     }
 
@@ -617,20 +625,20 @@ struct vector_traits<std::complex<float>>
     detail::enable_if_t<std::is_same<T,int8_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m128i i32 = _mm_cvtps_epi32(_mm512_castps512_ps128(convert<float>(v)));
-        __m128i i16 = _mm_packs_epi32(i32, i32);
-        __m512i i8 = _mm512_castsi128_si512(_mm_packs_epi16(i16, i16));
-        return _mm512_shuffle_i32x4(i8, i8, _MM_PERM_AAAA);
+        __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(convert<float>(v)));
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_DBCA);
+        __m256i i8 = _mm256_packs_epi16(i16, i16);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
 
     template <typename T> static
     detail::enable_if_t<std::is_same<T,uint8_t>::value, __m512i>
     convert(__m512 v)
     {
-        __m128i i32 = _mm_cvtps_epi32(_mm512_castps512_ps128(convert<float>(v)));
-        __m128i i16 = _mm_packus_epi32(i32, i32);
-        __m512i i8 = _mm512_castsi128_si512(_mm_packus_epi16(i16, i16));
-        return _mm512_shuffle_i32x4(i8, i8, _MM_PERM_AAAA);
+        __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(convert<float>(v)));
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_DBCA);
+        __m256i i8 = _mm256_packus_epi16(i16, i16);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
 
     template <typename T> static
@@ -638,8 +646,8 @@ struct vector_traits<std::complex<float>>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(convert<float>(v)));
-        __m512i i16 = _mm512_castsi256_si512(_mm256_shuffle_epi32(_mm256_packs_epi32(i32, i32), _MM_PERM_CACA));
-        return _mm512_shuffle_i32x4(i16, i16, _MM_PERM_AAAA);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i32, i32), _MM_PERM_DBCA);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
     template <typename T> static
@@ -647,8 +655,8 @@ struct vector_traits<std::complex<float>>
     convert(__m512 v)
     {
         __m256i i32 = _mm256_cvtps_epi32(_mm512_castps512_ps256(convert<float>(v)));
-        __m512i i16 = _mm512_castsi256_si512(_mm256_shuffle_epi32(_mm256_packus_epi32(i32, i32), _MM_PERM_CACA));
-        return _mm512_shuffle_i32x4(i16, i16, _MM_PERM_AAAA);
+        __m256i i16 = _mm256_permute4x64_epi64(_mm256_packus_epi32(i32, i32), _MM_PERM_DBCA);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
     template <typename T> static
@@ -933,9 +941,9 @@ struct vector_traits<std::complex<double>>
     convert(__m512d v)
     {
         // ( -, 3, -, 2, -, 1, -, 0)
-        __m512d tmp = _mm512_permutex_pd(v, _MM_PERM_CACA);
+        __m512d tmp = _mm512_permutex_pd(v, _MM_PERM_DBCA);
         // ( 3, 2, 3, 2, 1, 0, 1, 0)
-        return _mm512_shuffle_f64x2(tmp, tmp, _MM_PERM_CACA);
+        return _mm512_shuffle_f64x2(tmp, tmp, _MM_PERM_DBCA);
         // ( 3, 2, 1, 0, 3, 2, 1, 0)
     }
 
@@ -1192,8 +1200,8 @@ template <typename U>
 struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
                                             std::is_same<U,uint8_t>::value>>
 {
-    constexpr static unsigned vector_width = 32;
-    constexpr static size_t alignment = 32;
+    constexpr static unsigned vector_width = 64;
+    constexpr static size_t alignment = 64;
     typedef __m512i vector_type;
 
     template <typename T> static
@@ -1393,7 +1401,7 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int8_t>::value ||
     detail::enable_if_t<Width == 8>
     store(__m512i v, U* ptr)
     {
-        _mm_storel_epi64((__m128i*)ptr, _mm512_castsi512_si128(v));
+        *(int64_t*)ptr = _mm_extract_epi64(_mm512_castsi512_si128(v), 0);
     }
 
     template <unsigned Width, bool Aligned> static
@@ -1944,14 +1952,14 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int16_t>::value ||
     detail::enable_if_t<Width == 4>
     store(__m512i v, U* ptr)
     {
-        _mm_storel_epi64((__m128i*)ptr, _mm512_castsi512_si128(v));
+        *(int64_t*)ptr = _mm_extract_epi64(_mm512_castsi512_si128(v), 0);
     }
 
     template <unsigned Width, bool Aligned> static
     detail::enable_if_t<Width == 2>
     store(__m512i v, U* ptr)
     {
-        *(int32_t*)ptr = _mm256_extract_epi32(_mm512_castsi512_si256(v), 0);
+        *(int32_t*)ptr = _mm_extract_epi32(_mm512_castsi512_si128(v), 0);
     }
 
     static __m512i add(__m512i a, __m512i b)
@@ -2213,10 +2221,10 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     {
         __m256i lo32 = _mm512_extracti64x4_epi64(v, 0);
         __m256i hi32 = _mm512_extracti64x4_epi64(v, 1);
-        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_PERM_CACA)
-                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_PERM_CACA);
-        __m256i lo = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi16(i16, i16), _MM_PERM_CACA)
-                                              : _mm256_permute4x64_epi64(_mm256_packus_epi16(i16, i16), _MM_PERM_CACA);
+        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_PERM_DBCA)
+                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_PERM_DBCA);
+        __m256i lo = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi16(i16, i16), _MM_PERM_DBCA)
+                                              : _mm256_permute4x64_epi64(_mm256_packus_epi16(i16, i16), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(lo), lo, 1);
     }
 
@@ -2227,8 +2235,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     {
         __m256i lo32 = _mm512_extracti64x4_epi64(v, 0);
         __m256i hi32 = _mm512_extracti64x4_epi64(v, 1);
-        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_PERM_CACA)
-                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_PERM_CACA);
+        __m256i i16 = std::is_signed<U>::value ? _mm256_permute4x64_epi64(_mm256_packs_epi32(lo32, hi32), _MM_PERM_DBCA)
+                                               : _mm256_permute4x64_epi64(_mm256_packus_epi32(lo32, hi32), _MM_PERM_DBCA);
         return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
@@ -2354,7 +2362,7 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int32_t>::value ||
     detail::enable_if_t<Width == 2>
     store(__m512i v, U* ptr)
     {
-        _mm_storel_epi64((__m128i*)ptr, _mm512_castsi512_si128(v));
+        *(int64_t*)ptr = _mm_extract_epi64(_mm512_castsi512_si128(v), 0);
     }
 
     static __m512i add(__m512i a, __m512i b)
@@ -2563,15 +2571,11 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
         T f = (U)_mm256_extract_epi64(hi, 1);
         T g = (U)_mm256_extract_epi64(hi, 2);
         T h = (U)_mm256_extract_epi64(hi, 3);
-        __m256i lo8 = _mm256_setr_epi8(a, b, c, d, a, b, c, d,
-                                       a, b, c, d, a, b, c, d,
-                                       a, b, c, d, a, b, c, d,
-                                       a, b, c, d, a, b, c, d);
-        __m256i hi8 = _mm256_setr_epi8(e, f, g, h, e, f, g, h,
-                                       e, f, g, h, e, f, g, h,
-                                       e, f, g, h, e, f, g, h,
-                                       e, f, g, h, e, f, g, h);
-        return _mm512_inserti64x4(_mm512_castsi256_si512(lo8), hi8, 1);
+        __m256i i8 = _mm256_setr_epi8(a, b, c, d, e, f, g, h,
+                                      a, b, c, d, e, f, g, h,
+                                      a, b, c, d, e, f, g, h,
+                                      a, b, c, d, e, f, g, h);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i8), i8, 1);
     }
 
     template <typename T> static
@@ -2589,11 +2593,9 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
         T f = (U)_mm256_extract_epi64(hi, 1);
         T g = (U)_mm256_extract_epi64(hi, 2);
         T h = (U)_mm256_extract_epi64(hi, 3);
-        __m256i lo16 = _mm256_setr_epi16(a, b, c, d, a, b, c, d,
-                                         a, b, c, d, a, b, c, d);
-        __m256i hi16 = _mm256_setr_epi16(e, f, g, h, e, f, g, h,
-                                         e, f, g, h, e, f, g, h);
-        return _mm512_inserti64x4(_mm512_castsi256_si512(lo16), hi16, 1);
+        __m256i i16 = _mm256_setr_epi16(a, b, c, d, e, f, g, h,
+                                        a, b, c, d, e, f, g, h);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i16), i16, 1);
     }
 
     template <typename T> static
@@ -2611,9 +2613,8 @@ struct vector_traits<U, detail::enable_if_t<std::is_same<U,int64_t>::value ||
         T f = (U)_mm256_extract_epi64(hi, 1);
         T g = (U)_mm256_extract_epi64(hi, 2);
         T h = (U)_mm256_extract_epi64(hi, 3);
-        __m256i lo32 = _mm256_setr_epi32(a, b, c, d, a, b, c, d);
-        __m256i hi32 = _mm256_setr_epi32(e, f, g, h, e, f, g, h);
-        return _mm512_inserti64x4(_mm512_castsi256_si512(lo32), hi32, 1);
+        __m256i i32 = _mm256_setr_epi32(a, b, c, d, e, f, g, h);
+        return _mm512_inserti64x4(_mm512_castsi256_si512(i32), i32, 1);
     }
 
     template <typename T> static
