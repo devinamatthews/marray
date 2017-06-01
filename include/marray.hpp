@@ -4,6 +4,7 @@
 #include "utility.hpp"
 #include "range.hpp"
 #include "rotate.hpp"
+#include "memory.hpp"
 
 namespace MArray
 {
@@ -30,115 +31,15 @@ namespace MArray
 {
 
 template <typename Type, unsigned NDim, typename Allocator>
-class marray
+class marray : public marray_base<Type, NDim, true>
 {
     static_assert(NDim > 0, "NDim must be positive");
 
-    public:
-        typedef Type value_type;
-        typedef Type* pointer;
-        typedef const Type* const_pointer;
-        typedef Type& reference;
-        typedef const Type& const_reference;
-
     protected:
-        struct alloc_s_ : Allocator
-        {
-            typedef std::allocator_traits<Allocator> traits_;
-
-            pointer data_ = nullptr;
-            size_t size_ = 0;
-
-            alloc_s_() {}
-
-            alloc_s_(const Allocator& alloc) : Allocator(alloc) {}
-
-            void allocate(size_t size)
-            {
-                data_ = traits_::allocate(*this, size);
-                size_ = size;
-            }
-
-            void deallocate()
-            {
-                traits_::deallocate(*this, data_, size_);
-                data_ = nullptr;
-                size_ = 0;
-            }
-
-            void destroy()
-            {
-                for (size_t i = 0;i < size_;i++)
-                {
-                    traits_::destroy(*this, data_+i);
-                }
-            }
-
-            operator const_pointer() const { return data_; }
-
-            operator pointer() { return data_; }
-
-            explicit operator bool() const { return data_; }
-        } alloc_;
-        std::array<idx_type,NDim> len_ = {};
-        std::array<stride_type,NDim> stride_ = {};
-        layout layout_ = layout::DEFAULT;
+        typedef marray_base<Type, NDim, true> base;
 
     public:
-        static std::array<stride_type, NDim>
-        default_strides(const std::array<idx_type, NDim>& len, layout layout = layout::DEFAULT)
-        {
-            return default_strides<idx_type>(len, layout);
-        }
-
-        template <typename U>
-        static detail::enable_if_integral_t<U,std::array<stride_type, NDim>>
-        default_strides(const std::array<U, NDim>& len, layout layout = layout::DEFAULT)
-        {
-            std::array<stride_type, NDim> stride;
-
-            if (NDim == 0) return stride;
-
-            if (layout == layout::ROW_MAJOR)
-            {
-                stride[NDim-1] = 1;
-                for (unsigned i = NDim-1;i > 0;i--)
-                {
-                    stride[i-1] = stride[i]*len[i];
-                }
-            }
-            else
-            {
-                stride[0] = 1;
-                for (unsigned i = 1;i < NDim;i++)
-                {
-                    stride[i] = stride[i-1]*len[i-1];
-                }
-            }
-
-            return stride;
-        }
-
         marray() {}
-
-        template <typename U, typename=detail::enable_if_assignable_t<reference, U>>
-        marray(const marray_view<U, NDim>& other, layout layout = layout::DEFAULT)
-        {
-            reset(other, layout);
-        }
-
-        template <typename U, unsigned OldNDim, unsigned NIndexed, typename... Dims,
-                  typename=detail::enable_if_assignable_t<reference, U>>
-        marray(const marray_slice<U, OldNDim, NIndexed, Dims...>& other, layout layout = layout::DEFAULT)
-        {
-            reset(other, layout);
-        }
-
-        template <typename U, typename UAlloc, typename=detail::enable_if_assignable_t<reference, U>>
-        marray(const marray<U, NDim, UAlloc>& other, layout layout = layout::DEFAULT)
-        {
-            reset(other, layout);
-        }
 
         marray(const marray& other)
         {
@@ -148,6 +49,18 @@ class marray
         marray(marray&& other)
         {
             reset(std::move(other));
+        }
+
+        template <typename U, bool Owner>
+        marray(const marray_base<U, NDim, Owner>& other, layout layout = layout::DEFAULT)
+        {
+            reset(other, layout);
+        }
+
+        template <typename U, unsigned OldNDim, unsigned NIndexed, typename... Dims>
+        marray(const marray_slice<U, OldNDim, NIndexed, Dims...>& other, layout layout = layout::DEFAULT)
+        {
+            reset(other, layout);
         }
 
         explicit marray(const std::array<idx_type, NDim>& len, const Type& val=Type(), layout layout = layout::DEFAULT)
@@ -181,11 +94,6 @@ class marray
         marray(const std::array<U, NDim>& len, uninitialized_t, layout layout = layout::DEFAULT)
         {
             reset(len, uninitialized, layout);
-        }
-
-        ~marray()
-        {
-            reset();
         }
 
         marray& operator=(const marray& other)
@@ -236,10 +144,10 @@ class marray
 
         void reset()
         {
-            if (alloc_)
+            if (mem_)
             {
-                alloc_.destroy();
-                alloc_.deallocate();
+                mem_.destroy();
+                mem_.deallocate();
             }
 
             len_.fill(0);
@@ -292,7 +200,7 @@ class marray
         reset(const std::array<U, NDim>& len, const Type& val=Type(), layout layout = layout::DEFAULT)
         {
             reset(len, uninitialized, layout);
-            std::uninitialized_fill_n(alloc_.data_, alloc_.size_, val);
+            std::uninitialized_fill_n(mem_.data_, mem_.size_, val);
         }
 
         void reset(const std::array<idx_type, NDim>& len, layout layout)
@@ -319,7 +227,7 @@ class marray
             reset();
 
             size_t size = std::accumulate(len.begin(), len.end(), size_type(1), std::multiplies<size_type>());
-            alloc_.allocate(size);
+            mem_.allocate(size);
 
             layout_ = layout;
             std::copy_n(len.begin(), NDim, len_.begin());
@@ -1038,17 +946,17 @@ class marray
 
         const_pointer cdata() const
         {
-            return alloc_;
+            return mem_;
         }
 
         const_pointer data() const
         {
-            return alloc_;
+            return mem_;
         }
 
         pointer data()
         {
-            return alloc_;
+            return mem_;
         }
 
         template <typename=void, unsigned N=NDim>
@@ -1109,17 +1017,19 @@ class marray
         void swap(marray& other)
         {
             using std::swap;
-            swap(alloc_.data_, other.alloc_.data_);
-            swap(alloc_.size_, other.alloc_.size_);
-            swap(len_, other.len_);
-            swap(stride_, other.stride_);
+            swap(mem_, other.mem_);
             swap(layout_, other.layout_);
+            base::swap(other);
         }
 
         friend void swap(marray& a, marray& b)
         {
             a.swap(b);
         }
+
+    protected:
+        memory<Type,Allocator> mem_;
+        layout layout_ = layout::DEFAULT;
 };
 
 /*

@@ -528,6 +528,18 @@ namespace detail
 
     template <size_t N>
     using static_range = typename static_range_helper<N>::type;
+
+    template <typename R, typename T, typename=void>
+    struct is_range_of : std::false_type {};
+
+    template <typename R, typename T>
+    struct is_range_of<R,T,typename std::enable_if<
+        std::is_convertible<decltype(*std::declval<R>().begin()),T>::value &&
+        std::is_convertible<decltype(*std::declval<R>().end()),T>::value>>
+        : std::true_type {};
+
+    template <typename R, typename T, typename U=void>
+    using enable_if_range_of_t = typename std::enable_if<is_range_of<R,T>::value,U>::type;
 }
 
 /*
