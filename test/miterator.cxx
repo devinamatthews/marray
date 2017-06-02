@@ -6,7 +6,7 @@ using namespace MArray;
 
 TEST(miterator, next)
 {
-    idx_type off1, off2;
+    len_type off1, off2;
 
     miterator<0> m1(vector<int>{}, vector<int>{});
 
@@ -80,7 +80,7 @@ TEST(miterator, next)
 
 TEST(miterator, reset)
 {
-    idx_type off1;
+    len_type off1;
 
     miterator<2> m1(vector<int>{2,3}, vector<int>{1,2});
 
@@ -120,7 +120,7 @@ TEST(miterator, reset)
 
 TEST(miterator, position)
 {
-    idx_type off1;
+    len_type off1;
 
     miterator<2> m1(vector<int>{2,3}, vector<int>{1,2});
 
@@ -146,12 +146,12 @@ TEST(miterator, position)
 
     EXPECT_EQ(1, m1.position(0));
     EXPECT_EQ(2, m1.position(1));
-    EXPECT_EQ((array<idx_type,2>{1,2}), m1.position());
+    EXPECT_EQ((array<len_type,2>{1,2}), m1.position());
 }
 
 TEST(miterator, assign)
 {
-    idx_type off1;
+    len_type off1;
 
     miterator<2> m1(vector<int>{2,3}, vector<int>{1,2});
     miterator<2> m2(vector<int>{2,3}, vector<int>{1,3});
@@ -177,7 +177,7 @@ TEST(miterator, assign)
 
 TEST(miterator, swap)
 {
-    idx_type off1, off2;
+    len_type off1, off2;
 
     miterator<2> m1(vector<int>{2,3}, vector<int>{1,2});
     miterator<2> m2(vector<int>{2,3}, vector<int>{1,3});
@@ -209,9 +209,9 @@ TEST(miterator, swap)
 
 TEST(miterator, make_iterator)
 {
-    idx_type off1, off2;
+    len_type off1, off2;
 
-    auto m1 = make_iterator(array<idx_type,0>{}, array<stride_type,0>{});
+    auto m1 = make_iterator(array<len_type,0>{}, array<stride_type,0>{});
 
     off1 = 0;
     EXPECT_TRUE(m1.next(off1));
@@ -221,7 +221,7 @@ TEST(miterator, make_iterator)
     EXPECT_TRUE(m1.next(off1));
     EXPECT_EQ(0, off1);
 
-    auto m2 = make_iterator(array<idx_type,1>{5}, array<stride_type,1>{1}, array<stride_type,1>{2});
+    auto m2 = make_iterator(array<len_type,1>{5}, array<stride_type,1>{1}, array<stride_type,1>{2});
 
     off1 = 0;
     off2 = 0;
@@ -250,7 +250,7 @@ TEST(miterator, make_iterator)
     EXPECT_EQ(1, off1);
     EXPECT_EQ(2, off2);
 
-    auto m3 = make_iterator(array<idx_type,2>{2,3}, array<stride_type,2>{1,2});
+    auto m3 = make_iterator(array<len_type,2>{2,3}, array<stride_type,2>{1,2});
 
     off1 = 0;
     EXPECT_TRUE(m3.next(off1));

@@ -15,10 +15,6 @@
 #include <string>
 #include <functional>
 
-#ifndef MARRAY_DEFAULT_LAYOUT
-#define MARRAY_DEFAULT_LAYOUT ROW_MAJOR
-#endif
-
 #ifdef MARRAY_ENABLE_ASSERTS
 #define MARRAY_ASSERT(e) assert(e)
 #else
@@ -41,9 +37,17 @@ namespace slice
     constexpr bcast_t bcast;
 }
 
-typedef ptrdiff_t idx_type;
-typedef size_t size_type;
-typedef ptrdiff_t stride_type;
+#ifndef MARRAY_LEN_TYPE
+#define MARRAY_LEN_TYPE ptrdiff_t
+#endif
+
+typedef MARRAY_LEN_TYPE len_type;
+
+#ifndef MARRAY_STRIDE_TYPE
+#define MARRAY_STRIDE_TYPE ptrdiff_t
+#endif
+
+typedef MARRAY_STRIDE_TYPE stride_type;
 
 /*
  * The special value uninitialized is used to construct an array which
@@ -56,12 +60,35 @@ constexpr uninitialized_t uninitialized;
 /*
  * Specifies the layout of the array data.
  */
-enum class layout {COLUMN_MAJOR, ROW_MAJOR, DEFAULT=MARRAY_DEFAULT_LAYOUT};
+struct layout
+{
+    int type;
+
+    constexpr layout(int type) : type(type) {}
+
+    bool operator==(layout other) const { return type == other.type; }
+    bool operator!=(layout other) const { return type != other.type; }
+};
+
+struct column_major_layout : layout { constexpr column_major_layout() : layout(0) {} };
+constexpr column_major_layout COLUMN_MAJOR;
+
+struct row_major_layout : layout { constexpr row_major_layout() : layout(1) {} };
+constexpr row_major_layout ROW_MAJOR;
+
+constexpr decltype(MARRAY_DEFAULT_LAYOUT) DEFAULT;
 
 template <typename I> class range_t;
 
 namespace detail
 {
+    std::vector<unsigned> inverse_permutation(const std::vector<unsigned>& p)
+    {
+        std::vector<unsigned> ip(p.size());
+        for (unsigned i = 0;i < p.size();i++) ip[p[i]] = i;
+        return ip;
+    }
+
     template <typename T>
     using decay_t = typename std::decay<T>::type;
 
@@ -150,12 +177,15 @@ namespace detail
                                   void>::type>
     : std::true_type {};
 
-    template <typename T, typename C, typename=void>
+    template <typename C, typename T, typename=void>
     struct is_container_of : std::false_type {};
 
-    template <typename T, typename C>
-    struct is_container_of<T, C, typename std::enable_if<is_container<C>::value>::type>
-    : std::is_convertible<typename C::value_type, T> {};
+    template <typename C, typename T>
+    struct is_container_of<C, T, typename std::enable_if<is_container<C>::value>::type>
+    : std::is_assignable<T&, typename C::value_type> {};
+
+    template <typename C, typename T, typename U=void>
+    using enable_if_container_of_t = typename std::enable_if<is_container_of<C, T>::value,U>::type;
 
     template <typename T, typename... Ts>
     struct are_containers_helper;
@@ -182,11 +212,11 @@ namespace detail
     struct are_containers_of_helper;
 
     template <typename T, typename C>
-    struct are_containers_of_helper<T, C> : is_container_of<T, C> {};
+    struct are_containers_of_helper<T, C> : is_container_of<C, T> {};
 
     template <typename T, typename C, typename... Cs>
     struct are_containers_of_helper
-    : std::conditional<is_container_of<T, C>::value,
+    : std::conditional<is_container_of<C, T>::value,
                        are_containers_of_helper<T, Cs...>,
                        std::false_type>::type {};
 
@@ -320,19 +350,19 @@ namespace detail
     template <size_t NDim, size_t N, typename Offset>
     struct dec_offsets_helper<NDim, N, N, Offset>
     {
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         dec_offsets_helper(unsigned i,
                            Offset& off0,
-                           const std::array<idx_type,NDim>& pos,
+                           const std::array<len_type,NDim>& pos,
                            const std::array<std::array<stride_type,NDim>,N>& strides)
         {
             off0 -= pos[i]*strides[N-1][i];
         }
 
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         dec_offsets_helper(unsigned i,
                            Offset& off0,
-                           const std::vector<idx_type>& pos,
+                           const std::vector<len_type>& pos,
                            const std::array<std::vector<stride_type>,N>& strides)
         {
             off0 -= pos[i]*strides[N-1][i];
@@ -342,20 +372,20 @@ namespace detail
     template <size_t NDim, size_t N, size_t I, typename Offset, typename... Offsets>
     struct dec_offsets_helper
     {
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         dec_offsets_helper(unsigned i,
                            Offset& off0, Offsets&... off,
-                           const std::array<idx_type,NDim>& pos,
+                           const std::array<len_type,NDim>& pos,
                            const std::array<std::array<stride_type,NDim>,N>& strides)
         {
             off0 -= pos[i]*strides[I-1][i];
             dec_offsets_helper<NDim, N, I+1, Offsets...>(i, off..., pos, strides);
         }
 
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         dec_offsets_helper(unsigned i,
                            Offset& off0, Offsets&... off,
-                           const std::vector<idx_type>& pos,
+                           const std::vector<len_type>& pos,
                            const std::array<std::vector<stride_type>,N>& strides)
         {
             off0 -= pos[i]*strides[I-1][i];
@@ -363,18 +393,18 @@ namespace detail
         }
     };
 
-    template <typename idx_type, typename stride_type, size_t NDim, size_t N, typename... Offsets>
+    template <typename len_type, typename stride_type, size_t NDim, size_t N, typename... Offsets>
     void dec_offsets(unsigned i,
-                     const std::array<idx_type,NDim>& pos,
+                     const std::array<len_type,NDim>& pos,
                      const std::array<std::array<stride_type,NDim>,N>& strides,
                      Offsets&... off)
     {
         dec_offsets_helper<NDim, N, 1, Offsets...>(i, off..., pos, strides);
     }
 
-    template <typename idx_type, typename stride_type, size_t N, typename... Offsets>
+    template <typename len_type, typename stride_type, size_t N, typename... Offsets>
     void dec_offsets(unsigned i,
-                     const std::vector<idx_type>& pos,
+                     const std::vector<len_type>& pos,
                      const std::array<std::vector<stride_type>,N>& strides,
                      Offsets&... off)
     {
@@ -387,17 +417,17 @@ namespace detail
     template <size_t NDim, size_t N, typename Offset>
     struct move_offsets_helper<NDim, N, N, Offset>
     {
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         move_offsets_helper(Offset& off0,
-                           const std::array<idx_type,NDim>& pos,
+                           const std::array<len_type,NDim>& pos,
                            const std::array<std::array<stride_type,NDim>,N>& strides)
         {
             for (unsigned i = 0;i < pos.size();i++) off0 += pos[i]*strides[N-1][i];
         }
 
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         move_offsets_helper(Offset& off0,
-                           const std::vector<idx_type>& pos,
+                           const std::vector<len_type>& pos,
                            const std::array<std::vector<stride_type>,N>& strides)
         {
             for (unsigned i = 0;i < pos.size();i++) off0 += pos[i]*strides[N-1][i];
@@ -407,18 +437,18 @@ namespace detail
     template <size_t NDim, size_t N, size_t I, typename Offset, typename... Offsets>
     struct move_offsets_helper
     {
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         move_offsets_helper(Offset& off0, Offsets&... off,
-                           const std::array<idx_type,NDim>& pos,
+                           const std::array<len_type,NDim>& pos,
                            const std::array<std::array<stride_type,NDim>,N>& strides)
         {
             for (unsigned i = 0;i < pos.size();i++) off0 += pos[i]*strides[I-1][i];
             move_offsets_helper<NDim, N, I+1, Offsets...>(off..., pos, strides);
         }
 
-        template <typename idx_type, typename stride_type>
+        template <typename len_type, typename stride_type>
         move_offsets_helper(Offset& off0, Offsets&... off,
-                           const std::vector<idx_type>& pos,
+                           const std::vector<len_type>& pos,
                            const std::array<std::vector<stride_type>,N>& strides)
         {
             for (unsigned i = 0;i < pos.size();i++) off0 += pos[i]*strides[I-1][i];
@@ -426,16 +456,16 @@ namespace detail
         }
     };
 
-    template <typename idx_type, typename stride_type, size_t NDim, size_t N, typename... Offsets>
-    void move_offsets(const std::array<idx_type,NDim>& pos,
+    template <typename len_type, typename stride_type, size_t NDim, size_t N, typename... Offsets>
+    void move_offsets(const std::array<len_type,NDim>& pos,
                      const std::array<std::array<stride_type,NDim>,N>& strides,
                      Offsets&... off)
     {
         move_offsets_helper<NDim, N, 1, Offsets...>(off..., pos, strides);
     }
 
-    template <typename idx_type, typename stride_type, size_t N, typename... Offsets>
-    void move_offsets(const std::vector<idx_type>& pos,
+    template <typename len_type, typename stride_type, size_t N, typename... Offsets>
+    void move_offsets(const std::vector<len_type>& pos,
                      const std::array<std::vector<stride_type>,N>& strides,
                      Offsets&... off)
     {
@@ -533,9 +563,9 @@ namespace detail
     struct is_range_of : std::false_type {};
 
     template <typename R, typename T>
-    struct is_range_of<R,T,typename std::enable_if<
-        std::is_convertible<decltype(*std::declval<R>().begin()),T>::value &&
-        std::is_convertible<decltype(*std::declval<R>().end()),T>::value>>
+    struct is_range_of<R, T, enable_if_t<
+        std::is_assignable<T&,decltype(*std::declval<R>().begin())>::value &&
+        std::is_assignable<T&,decltype(*std::declval<R>().end())>::value>>
         : std::true_type {};
 
     template <typename R, typename T, typename U=void>

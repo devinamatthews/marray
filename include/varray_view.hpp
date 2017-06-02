@@ -1,75 +1,34 @@
 #ifndef _MARRAY_VARRAY_VIEW_HPP_
 #define _MARRAY_VARRAY_VIEW_HPP_
 
-#include "varray.hpp"
+#include "varray_base.hpp"
 
 namespace MArray
 {
 
-template <typename T>
-class varray_view
+template <typename Type>
+class varray_view : public varray_base<Type, varray_view<Type>, false>
 {
-    public:
-        typedef T value_type;
-        typedef T* pointer;
-        typedef const T* const_pointer;
-        typedef T& reference;
-        typedef const T& const_reference;
-
     protected:
-        pointer data_ = nullptr;
-        std::vector<idx_type> len_;
-        std::vector<stride_type> stride_;
+        typedef varray_base<Type, varray_view, false> base;
 
-        template <unsigned Dim>
-        void get_slice(pointer& ptr, std::vector<idx_type>& len,
-                       std::vector<stride_type>& stride) const {}
-
-        template <unsigned Dim, typename... Args>
-        void get_slice(pointer& ptr, std::vector<idx_type>& len,
-                       std::vector<stride_type>& stride,
-                       idx_type arg, Args&&... args) const
-        {
-            MARRAY_ASSERT(arg >= 0 && arg < len_[Dim]);
-            ptr += arg*stride_[Dim];
-            get_slice<Dim+1>(ptr, len, stride, std::forward<Args>(args)...);
-        }
-
-        template <unsigned Dim, typename I, typename... Args>
-        void get_slice(pointer& ptr, std::vector<idx_type>& len,
-                       std::vector<stride_type>& stride,
-                       const range_t<I>& arg, Args&&... args) const
-        {
-            MARRAY_ASSERT(arg.front() <= arg.back());
-            MARRAY_ASSERT(arg.front() >= 0 && arg.back() < len_[Dim]);
-            ptr += arg.front()*stride_[Dim];
-            len.push_back(arg.size());
-            stride.push_back(arg.step()*stride_[Dim]);
-            get_slice<Dim+1>(ptr, len, stride, std::forward<Args>(args)...);
-        }
-
-        template <unsigned Dim, typename... Args>
-        void get_slice(pointer& ptr, std::vector<idx_type>& len,
-                       std::vector<stride_type>& stride,
-                       all_t, Args&&... args) const
-        {
-            len.push_back(len_[Dim]);
-            stride.push_back(stride_[Dim]);
-            get_slice<Dim+1>(ptr, len, stride, std::forward<Args>(args)...);
-        }
-
-        template <unsigned Dim>
-        void get_reference(pointer& ptr) const {}
-
-        template <unsigned Dim, typename... Args>
-        void get_reference(pointer& ptr, idx_type arg, Args&&... args) const
-        {
-            MARRAY_ASSERT(arg >= 0 && arg < len_[Dim]);
-            ptr += arg*stride_[Dim];
-            get_reference<Dim+1>(ptr, std::forward<Args>(args)...);
-        }
+        using base::len_;
+        using base::stride_;
+        using base::data_;
 
     public:
+        using typename base::value_type;
+        using typename base::pointer;
+        using typename base::const_pointer;
+        using typename base::reference;
+        using typename base::const_reference;
+
+        /***********************************************************************
+         *
+         * Constructors
+         *
+         **********************************************************************/
+
         varray_view() {}
 
         varray_view(const varray_view& other)
@@ -82,148 +41,101 @@ class varray_view
             reset(std::move(other));
         }
 
-        template <typename U, typename=detail::enable_if_convertible_t<U*,pointer>>
-        varray_view(const varray_view<U>& other)
+        template <typename U, typename D, bool O,
+            typename=detail::enable_if_convertible_t<
+                typename varray_base<U, D, O>::cptr,pointer>>
+        varray_view(const varray_base<U, D, O>& other)
         {
             reset(other);
         }
 
-        template <typename U, typename UAlloc, typename T_=T,
-                  typename=detail::enable_if_const_t<T_>,
-                  typename=detail::enable_if_convertible_t<U*,pointer>>
-        varray_view(const varray<U, UAlloc>& other)
+        template <typename U, typename D, bool O,
+            typename=detail::enable_if_convertible_t<
+                typename varray_base<U, D, O>::pointer,pointer>>
+        varray_view(varray_base<U, D, O>& other)
         {
             reset(other);
         }
 
-        template <typename U, typename UAlloc,
-                  typename=detail::enable_if_convertible_t<U*,pointer>>
-        varray_view(varray<U, UAlloc>& other)
-        {
-            reset(other);
-        }
-
-        varray_view(const std::vector<idx_type>& len, pointer ptr, layout layout = layout::DEFAULT)
+        varray_view(std::initializer_list<len_type> len, pointer ptr, layout layout = DEFAULT)
         {
             reset(len, ptr, layout);
         }
 
-        template <typename U, typename=detail::enable_if_integral_t<U>>
-        varray_view(const std::vector<U>& len, pointer ptr, layout layout = layout::DEFAULT)
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
+        varray_view(const U& len, pointer ptr, layout layout = DEFAULT)
         {
             reset(len, ptr, layout);
         }
 
-        varray_view(const std::vector<idx_type>& len, pointer ptr, const std::vector<stride_type>& stride)
+        varray_view(std::initializer_list<len_type> len, pointer ptr,
+                    std::initializer_list<stride_type> stride)
         {
             reset(len, ptr, stride);
         }
 
         template <typename U, typename V, typename=
-                  detail::enable_if_t<std::is_integral<U>::value &&
-                                      std::is_integral<V>::value>>
-        varray_view(const std::vector<U>& len, pointer ptr, const std::vector<V>& stride)
+                  detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
+                                      detail::is_container_of<V,stride_type>::value>>
+        varray_view(const U& len, pointer ptr, const V& stride)
         {
             reset(len, ptr, stride);
         }
 
-        const varray_view& operator=(const varray_view& other) const
+        /***********************************************************************
+         *
+         * Base operations
+         *
+         **********************************************************************/
+
+        varray_view& operator=(const varray_view& other)
         {
-            copy(other, *this);
-            return *this;
+            return base::template operator=<>(other);
         }
 
-        template <typename U, typename=detail::enable_if_assignable_t<reference,U>>
-        const varray_view& operator=(const varray_view<U>& other) const
+        using base::operator=;
+        using base::reset;
+        using base::cview;
+        using base::view;
+        using base::fix;
+        using base::shifted;
+        using base::shifted_up;
+        using base::shifted_down;
+        using base::permuted;
+        using base::lowered;
+        using base::cfront;
+        using base::front;
+        using base::cback;
+        using base::back;
+        using base::operator();
+        using base::cdata;
+        using base::data;
+        using base::length;
+        using base::lengths;
+        using base::stride;
+        using base::strides;
+        using base::dimension;
+        using base::size;
+
+        /***********************************************************************
+         *
+         * Mutating shift
+         *
+         **********************************************************************/
+
+        void shift(std::initializer_list<len_type> n)
         {
-            copy(other, *this);
-            return *this;
+            shift<decltype(n)>(n);
         }
 
-        template <typename U, typename Alloc,
-                  typename=detail::enable_if_assignable_t<reference,U>>
-        const varray_view& operator=(const varray<U, Alloc>& other) const
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
+        void shift(const U& n)
         {
-            copy(other.view(), *this);
-            return *this;
+            MARRAY_ASSERT(n.size() == dimension());
+            for (unsigned i = 0;i < dimension();i++) shift(i, n[i]);
         }
 
-        const varray_view& operator=(const T& value) const
-        {
-            copy(value, *this);
-            return *this;
-        }
-
-        void reset()
-        {
-            data_ = nullptr;
-            len_.clear();
-            stride_.clear();
-        }
-
-        void reset(varray_view&& other)
-        {
-            swap(other);
-        }
-
-        template <typename U>
-        detail::enable_if_convertible_t<U*,pointer>
-        reset(const varray_view<U>& other)
-        {
-            data_ = other.data();
-            len_ = other.lengths();
-            stride_ = other.strides();
-        }
-
-        template <typename U, typename UAlloc, typename T_=T,
-                  typename=detail::enable_if_const_t<T_>>
-        detail::enable_if_convertible_t<U*,pointer>
-        reset(const varray<U, UAlloc>& other)
-        {
-            data_ = other.data();
-            len_ = other.lengths();
-            stride_ = other.strides();
-        }
-
-        template <typename U, typename UAlloc>
-        detail::enable_if_convertible_t<U*,pointer>
-        reset(varray<U, UAlloc>& other)
-        {
-            data_ = other.data();
-            len_ = other.lengths();
-            stride_ = other.strides();
-        }
-
-        void reset(const std::vector<idx_type>& len, pointer ptr, layout layout = layout::DEFAULT)
-        {
-            reset<idx_type>(len, ptr, layout);
-        }
-
-        template <typename U>
-        detail::enable_if_integral_t<U>
-        reset(const std::vector<U>& len, pointer ptr, layout layout = layout::DEFAULT)
-        {
-            reset(len, ptr, varray<typename std::remove_cv<T>::type>::default_strides(len, layout));
-        }
-
-        void reset(const std::vector<idx_type>& len, pointer ptr, const std::vector<stride_type>& stride)
-        {
-            reset<idx_type, stride_type>(len, ptr, stride);
-        }
-
-        template <typename U, typename V>
-        detail::enable_if_t<std::is_integral<U>::value &&
-                            std::is_integral<V>::value>
-        reset(const std::vector<U>& len, pointer ptr, const std::vector<V>& stride)
-        {
-            MARRAY_ASSERT(len.size() > 0);
-            MARRAY_ASSERT(len.size() == stride.size());
-            data_ = ptr;
-            len_.assign(len.begin(), len.end());
-            stride_.assign(stride.begin(), stride.end());
-        }
-
-        void shift(unsigned dim, idx_type n)
+        void shift(unsigned dim, len_type n)
         {
             MARRAY_ASSERT(dim < dimension());
             data_ += n*stride_[dim];
@@ -239,74 +151,54 @@ class varray_view
             shift(dim, -len_[dim]);
         }
 
-        varray_view<T> shifted(unsigned dim, idx_type n) const
+        /***********************************************************************
+         *
+         * Mutating permutation
+         *
+         **********************************************************************/
+
+        void permute(std::initializer_list<unsigned> perm)
         {
-            MARRAY_ASSERT(dim < dimension());
-            varray_view<T> r(*this);
-            r.shift(dim, n);
-            return r;
+            permute<decltype(perm)>(perm);
         }
 
-        varray_view<T> shifted_down(unsigned dim) const
-        {
-            return shifted(dim, len_[dim]);
-        }
-
-        varray_view<T> shifted_up(unsigned dim) const
-        {
-            return shifted(dim, -len_[dim]);
-        }
-
-        void permute(const std::vector<unsigned>& perm)
-        {
-            permute<unsigned>(perm);
-        }
-
-        template <typename U>
-        detail::enable_if_integral_t<U>
-        permute(const std::vector<U>& perm)
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
+        void permute(const U& perm)
         {
             MARRAY_ASSERT(perm.size() == dimension());
 
-            std::vector<idx_type> len(len_);
+            std::vector<len_type> len(len_);
             std::vector<stride_type> stride(stride_);
 
+            auto it = perm.begin();
             for (unsigned i = 0;i < dimension();i++)
             {
-                MARRAY_ASSERT(0 <= perm[i] && perm[i] < dimension());
-                for (unsigned j = 0;j < i;j++) MARRAY_ASSERT(perm[i] != perm[j]);
+                MARRAY_ASSERT(0 <= *it && *it < dimension());
+                for (auto it2 = perm.begin();it2 != it;++it2)
+                    MARRAY_ASSERT(*it != *it2);
+
+                len_[i] = len[*it];
+                stride_[i] = stride[*it];
+                ++it;
             }
-
-            for (unsigned i = 0;i < dimension();i++)
-            {
-                len_[i] = len[perm[i]];
-                stride_[i] = stride[perm[i]];
-            }
         }
 
-        varray_view<T> permuted(const std::vector<unsigned>& perm) const
+        /***********************************************************************
+         *
+         * Mutating dimension change
+         *
+         **********************************************************************/
+
+        void lower(std::initializer_list<unsigned> split)
         {
-            return permuted<unsigned>(perm);
+            lower<decltype(split)>(split);
         }
 
-        template <typename U>
-        detail::enable_if_integral_t<U,varray_view<T>>
-        permuted(const std::vector<U>& perm) const
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
+        void lower(const U& split_)
         {
-            varray_view<T> r(*this);
-            r.permute(perm);
-            return r;
-        }
+            std::vector<unsigned> split(split_.begin(), split_.end());
 
-        void lower(const std::vector<unsigned>& split)
-        {
-            lower<unsigned>(split);
-        }
-
-        template <typename U>
-        detail::enable_if_integral_t<U>
-        lower(const std::vector<U>& split)
-        {
             MARRAY_ASSERT(split.size() < dimension());
 
             unsigned newdim = split.size()+1;
@@ -316,7 +208,7 @@ class varray_view
                 if (i != 0) MARRAY_ASSERT(split[i-1] <= split[i]);
             }
 
-            std::vector<idx_type> len = len_;
+            std::vector<len_type> len = len_;
             std::vector<stride_type> stride = stride_;
 
             for (unsigned i = 0;i < newdim;i++)
@@ -351,174 +243,29 @@ class varray_view
             stride_.resize(newdim);
         }
 
-        varray_view<T> lowered(const std::vector<unsigned>& split) const
+        /***********************************************************************
+         *
+         * Mutating reversal
+         *
+         **********************************************************************/
+
+        void reverse()
         {
-            return lowered<unsigned>(split);
+            for (unsigned i = 0;i < dimension();i++) reverse(i);
         }
 
-        template <typename U>
-        detail::enable_if_integral_t<U,varray_view<T>>
-        lowered(const std::vector<U>& split) const
+        void reversed(unsigned dim)
         {
-            varray_view<T> r(*this);
-            r.lower(split);
-            return r;
-        }
-
-        void rotate_dim(unsigned dim, idx_type shift)
-        {
-            MArray::rotate_dim(*this, dim, shift);
-        }
-
-        void rotate(const std::vector<idx_type>& shift)
-        {
-            rotate<idx_type>(shift);
-        }
-
-        template <typename U>
-        detail::enable_if_integral_t<U>
-        rotate(const std::vector<U>& shift)
-        {
-            MARRAY_ASSERT(shift.size() == dimension());
-            for (unsigned dim = 0;dim < dimension();dim++)
-            {
-                rotate_dim(dim, shift[dim]);
-            }
-        }
-
-        const_reference cfront() const
-        {
-            MARRAY_ASSERT(dimension() == 1);
-            MARRAY_ASSERT(len_[0] > 0);
-            return data_[0];
-        }
-
-        reference front() const
-        {
-            MARRAY_ASSERT(dimension() == 1);
-            MARRAY_ASSERT(len_[0] > 0);
-            return data_[0];
-        }
-
-        varray_view<const T> cfront(unsigned dim) const
-        {
-            MARRAY_ASSERT(dimension() > 1);
             MARRAY_ASSERT(dim < dimension());
-            MARRAY_ASSERT(len_[dim] > 0);
-
-            std::vector<idx_type> len(dimension()-1);
-            std::vector<stride_type> stride(dimension()-1);
-
-            std::copy_n(len_.begin(), dim, len.begin());
-            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
-            std::copy_n(stride_.begin(), dim, stride.begin());
-            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
-
-            return {len, data_, stride};
+            data_ += (len_[dim]-1)*stride_[dim];
+            stride_[dim] = -stride_[dim];
         }
 
-        varray_view<T> front(unsigned dim) const
-        {
-            MARRAY_ASSERT(dimension() > 1);
-            MARRAY_ASSERT(dim < dimension());
-            MARRAY_ASSERT(len_[dim] > 0);
-
-            std::vector<idx_type> len(dimension()-1);
-            std::vector<stride_type> stride(dimension()-1);
-
-            std::copy_n(len_.begin(), dim, len.begin());
-            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
-            std::copy_n(stride_.begin(), dim, stride.begin());
-            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
-
-            return {len, data_, stride};
-        }
-
-        const_reference cback() const
-        {
-            MARRAY_ASSERT(dimension() == 1);
-            MARRAY_ASSERT(len_[0] > 0);
-            return data_[(len_[0]-1)*stride_[0]];
-        }
-
-        reference back() const
-        {
-            MARRAY_ASSERT(dimension() == 1);
-            MARRAY_ASSERT(len_[0] > 0);
-            return data_[(len_[0]-1)*stride_[0]];
-        }
-
-        varray_view<const T> cback(unsigned dim) const
-        {
-            MARRAY_ASSERT(dimension() > 1);
-            MARRAY_ASSERT(dim < dimension());
-            MARRAY_ASSERT(len_[dim] > 0);
-
-            std::vector<idx_type> len(dimension()-1);
-            std::vector<stride_type> stride(dimension()-1);
-
-            std::copy_n(len_.begin(), dim, len.begin());
-            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
-            std::copy_n(stride_.begin(), dim, stride.begin());
-            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
-
-            return {len, data_+(len_[dim]-1)*stride_[dim], stride};
-        }
-
-        varray_view<T> back(unsigned dim) const
-        {
-            MARRAY_ASSERT(dimension() > 1);
-            MARRAY_ASSERT(dim < dimension());
-            MARRAY_ASSERT(len_[dim] > 0);
-
-            std::vector<idx_type> len(dimension()-1);
-            std::vector<stride_type> stride(dimension()-1);
-
-            std::copy_n(len_.begin(), dim, len.begin());
-            std::copy_n(len_.begin()+dim+1, dimension()-dim-1, len.begin()+dim);
-            std::copy_n(stride_.begin(), dim, stride.begin());
-            std::copy_n(stride_.begin()+dim+1, dimension()-dim-1, stride.begin()+dim);
-
-            return {len, data_+(len_[dim]-1)*stride_[dim], stride};
-        }
-
-        template <typename... Args>
-        detail::enable_if_t<detail::are_indices_or_slices<Args...>::value &&
-                            !detail::are_convertible<idx_type, Args...>::value,
-                            varray_view<T>>
-        operator()(Args&&... args) const
-        {
-            MARRAY_ASSERT(sizeof...(Args) == dimension());
-
-            pointer ptr = data();
-            std::vector<idx_type> len;
-            std::vector<stride_type> stride;
-
-            get_slice<0>(ptr, len, stride, std::forward<Args>(args)...);
-
-            return {len, ptr, stride};
-        }
-
-        template <typename... Args>
-        detail::enable_if_t<detail::are_convertible<idx_type, Args...>::value,
-                            reference>
-        operator()(Args&&... args) const
-        {
-            MARRAY_ASSERT(sizeof...(Args) == dimension());
-            pointer ptr = data();
-            get_reference<0>(ptr, std::forward<Args>(args)...);
-            return *ptr;
-        }
-
-        const_pointer cdata() const
-        {
-            return data_;
-        }
-
-        pointer data() const
-        {
-            return data_;
-        }
+        /***********************************************************************
+         *
+         * Basic setters
+         *
+         **********************************************************************/
 
         pointer data(pointer ptr)
         {
@@ -526,28 +273,11 @@ class varray_view
             return ptr;
         }
 
-        idx_type length(unsigned dim) const
-        {
-            MARRAY_ASSERT(dim < dimension());
-            return len_[dim];
-        }
-
-        idx_type length(unsigned dim, idx_type len)
+        len_type length(unsigned dim, len_type len)
         {
             MARRAY_ASSERT(dim < dimension());
             std::swap(len, len_[dim]);
             return len;
-        }
-
-        const std::vector<idx_type>& lengths() const
-        {
-            return len_;
-        }
-
-        stride_type stride(unsigned dim) const
-        {
-            MARRAY_ASSERT(dim < dimension());
-            return stride_[dim];
         }
 
         stride_type stride(unsigned dim, stride_type stride)
@@ -557,22 +287,15 @@ class varray_view
             return stride;
         }
 
-        const std::vector<stride_type>& strides() const
-        {
-            return stride_;
-        }
-
-        unsigned dimension() const
-        {
-            return static_cast<unsigned>(len_.size());
-        }
+        /***********************************************************************
+         *
+         * Swap
+         *
+         **********************************************************************/
 
         void swap(varray_view& other)
         {
-            using std::swap;
-            swap(data_, other.data_);
-            swap(len_, other.len_);
-            swap(stride_, other.stride_);
+            base::swap(other);
         }
 
         friend void swap(varray_view& a, varray_view& b)
@@ -580,61 +303,6 @@ class varray_view
             a.swap(b);
         }
 };
-
-template <unsigned NDim, typename T>
-marray_view<T, NDim> fix(const varray_view<T>& other)
-{
-    MARRAY_ASSERT(NDim == other.dimension());
-
-    std::array<idx_type, NDim> len;
-    std::array<stride_type, NDim> stride;
-    std::copy_n(other.lengths().begin(), NDim, len.begin());
-    std::copy_n(other.strides().begin(), NDim, stride.begin());
-
-    return {len, other.data(), stride};
-}
-
-template <typename T, unsigned NDim>
-varray_view<T> vary(const marray_view<T, NDim>& other)
-{
-    std::vector<idx_type> len{other.lengths().begin(), other.lengths().end()};
-    std::vector<stride_type> stride{other.strides().begin(), other.strides().end()};
-    return {len, other.data(), stride};
-}
-
-template <typename T, unsigned NDim, unsigned NIndexed, typename... Dims>
-varray_view<T> vary(const marray_slice<T, NDim, NIndexed, Dims...>& other)
-{
-    return vary(other.view());
-}
-
-template <typename T, unsigned NDim, typename Alloc>
-varray_view<const T> vary(const marray<T, NDim, Alloc>& other)
-{
-    std::vector<idx_type> len{other.lengths().begin(), other.lengths().end()};
-    std::vector<stride_type> stride{other.strides().begin(), other.strides().end()};
-    return {len, other.data(), stride};
-}
-
-template <typename T, unsigned NDim, typename Alloc>
-varray_view<T> vary(marray<T, NDim, Alloc>& other)
-{
-    std::vector<idx_type> len{other.lengths().begin(), other.lengths().end()};
-    std::vector<stride_type> stride{other.strides().begin(), other.strides().end()};
-    return {len, other.data(), stride};
-}
-
-template <typename T>
-varray_view<const T> cview(const varray_view<T>& x)
-{
-    return x;
-}
-
-template <typename T>
-varray_view<T> view(const varray_view<T>& x)
-{
-    return x;
-}
 
 }
 

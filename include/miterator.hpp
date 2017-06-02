@@ -15,7 +15,7 @@ class miterator
         miterator(miterator&&) = default;
 
         template <typename Len, typename... Strides,
-                  typename=typename std::enable_if<detail::is_container_of<idx_type, Len>::value &&
+                  typename=typename std::enable_if<detail::is_container_of<Len, len_type>::value &&
                                                    detail::are_containers_of<stride_type, Strides...>::value &&
                                                    sizeof...(Strides) == N>::type>
         miterator(const Len& len, const Strides&... strides)
@@ -94,7 +94,7 @@ class miterator
         }
 
         template <typename Pos, typename... Offsets,
-                  typename=typename std::enable_if<detail::is_container_of<idx_type, Pos>::value &&
+                  typename=typename std::enable_if<detail::is_container_of<Pos, len_type>::value &&
                                                    sizeof...(Offsets) == N>::type>
         void position(const Pos& pos, Offsets&... off)
         {
@@ -117,22 +117,22 @@ class miterator
             return NDim;
         }
 
-        idx_type position(unsigned dim) const
+        len_type position(unsigned dim) const
         {
             return pos_[dim];
         }
 
-        const std::array<idx_type,NDim>& position() const
+        const std::array<len_type,NDim>& position() const
         {
             return pos_;
         }
 
-        idx_type length(unsigned dim) const
+        len_type length(unsigned dim) const
         {
             return len_[dim];
         }
 
-        const std::array<idx_type,NDim>& lengths() const
+        const std::array<len_type,NDim>& lengths() const
         {
             return len_;
         }
@@ -163,17 +163,17 @@ class miterator
         }
 
     private:
-        std::array<idx_type,NDim> pos_;
-        std::array<idx_type,NDim> len_;
+        std::array<len_type,NDim> pos_;
+        std::array<len_type,NDim> len_;
         std::array<std::array<stride_type,NDim>,N> strides_;
         bool first_;
         bool empty_;
 };
 
-template <typename idx_type, typename stride_type, size_t NDim, typename... Strides,
+template <typename len_type, typename stride_type, size_t NDim, typename... Strides,
           typename=typename std::enable_if<detail::are_arrays_of<stride_type, NDim, Strides...>::value>::type>
 miterator<NDim, 1+sizeof...(Strides)>
-make_iterator(const std::array<idx_type, NDim>& len,
+make_iterator(const std::array<len_type, NDim>& len,
               const std::array<stride_type, NDim>& stride0,
               const Strides&... strides)
 {

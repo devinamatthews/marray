@@ -95,7 +95,7 @@ class viterator
         }
 
         template <typename Pos, typename... Offsets,
-                  typename=typename std::enable_if<detail::is_container_of<idx_type, Pos>::value &&
+                  typename=typename std::enable_if<detail::is_container_of<Pos, len_type>::value &&
                                                    sizeof...(Offsets) == N>::type>
         void position(const Pos& pos, Offsets&... off)
         {
@@ -118,22 +118,22 @@ class viterator
             return ndim_;
         }
 
-        idx_type position(unsigned dim) const
+        len_type position(unsigned dim) const
         {
             return pos_[dim];
         }
 
-        const std::vector<idx_type>& position() const
+        const std::vector<len_type>& position() const
         {
             return pos_;
         }
 
-        idx_type length(unsigned dim) const
+        len_type length(unsigned dim) const
         {
             return len_[dim];
         }
 
-        const std::vector<idx_type>& lengths() const
+        const std::vector<len_type>& lengths() const
         {
             return len_;
         }
@@ -166,17 +166,17 @@ class viterator
 
     private:
         size_t ndim_ = 0;
-        std::vector<idx_type> pos_;
-        std::vector<idx_type> len_;
+        std::vector<len_type> pos_;
+        std::vector<len_type> len_;
         std::array<std::vector<stride_type>,N> strides_;
         bool first_ = true;
         bool empty_ = true;
 };
 
-template <typename idx_type, typename stride_type, typename... Strides,
+template <typename len_type, typename stride_type, typename... Strides,
           typename=typename std::enable_if<detail::are_containers<Strides...>::value>::type>
 viterator<1+sizeof...(Strides)>
-make_iterator(const std::vector<idx_type>& len,
+make_iterator(const std::vector<len_type>& len,
               const std::vector<stride_type>& stride0,
               const Strides&... strides)
 {

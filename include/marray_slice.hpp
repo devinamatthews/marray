@@ -1,27 +1,13 @@
 #ifndef _MARRAY_MARRAY_SLICE_HPP_
 #define _MARRAY_MARRAY_SLICE_HPP_
 
-#include "marray.hpp"
+#include "marray_base.hpp"
 
 namespace MArray
 {
 
 namespace detail
 {
-
-template <typename... Dims>
-struct num_slice_dims;
-
-template <>
-struct num_slice_dims<> : std::integral_constant<unsigned, 0> {};
-
-template <typename... Dims>
-struct num_slice_dims<slice_dim, Dims...>
-: std::integral_constant<unsigned, num_slice_dims<Dims...>::value+1> {};
-
-template <typename... Dims>
-struct num_slice_dims<bcast_dim, Dims...>
-: std::integral_constant<unsigned, num_slice_dims<Dims...>::value> {};
 
 template <typename It1, typename It2>
 void get_slice_dims_helper(It1 len, It2 stride) {}
@@ -37,9 +23,11 @@ void get_slice_dims_helper(It1 len, It2 stride,
 
 template <typename It1, typename It2, typename... Dims>
 void get_slice_dims_helper(It1 len, It2 stride,
-                           const bcast_dim&, const Dims&... dims)
+                           const bcast_dim& dim, const Dims&... dims)
 {
-    get_slice_dims_helper(len, stride, dims...);
+    *len = dim.len;
+    *stride = 0;
+    get_slice_dims_helper(++len, ++stride, dims...);
 }
 
 template <typename It1, typename It2, typename... Dims, size_t... I>
@@ -82,7 +70,7 @@ class marray_slice
         typedef typename marray_view<Type, NDim>::reference reference;
 
     protected:
-        const std::array<idx_type, NDim>& len_;
+        const std::array<len_type, NDim>& len_;
         const std::array<stride_type, NDim>& stride_;
         pointer data_;
         std::tuple<Dims...> dims_;
@@ -90,14 +78,14 @@ class marray_slice
         static constexpr unsigned DimsLeft = NDim - NIndexed;
         static constexpr unsigned CurDim = NIndexed-1;
         static constexpr unsigned NextDim = NIndexed;
-        static constexpr unsigned NSliced = detail::num_slice_dims<Dims...>::value;
+        static constexpr unsigned NSliced = sizeof...(Dims);
         static constexpr unsigned NewNDim = NSliced + DimsLeft;
 
     public:
         marray_slice(const marray_slice& other) = default;
 
         template <typename Array, typename=decltype(std::declval<Array>().lengths())>
-        marray_slice(Array&& array, idx_type i)
+        marray_slice(Array&& array, len_type i)
         : len_(array.lengths()), stride_(array.strides()),
           data_(array.data() + i*stride_[CurDim]) {}
 
@@ -108,11 +96,11 @@ class marray_slice
           dims_(slice_dim{slice.size(), slice.step()*stride_[CurDim]}) {}
 
         template <typename Array, typename=decltype(std::declval<Array>().lengths())>
-        marray_slice(Array&& array)
+        marray_slice(Array&& array, bcast_t, len_type len)
         : len_(array.lengths()), stride_(array.strides()),
-          data_(array.data()), dims_(bcast_dim{}) {}
+          data_(array.data()), dims_(bcast_dim{len}) {}
 
-        marray_slice(const marray_slice<Type, NDim, NIndexed-1, Dims...>& parent, idx_type i)
+        marray_slice(const marray_slice<Type, NDim, NIndexed-1, Dims...>& parent, len_type i)
         : len_(parent.len_), stride_(parent.stride_),
           data_(parent.data_ + i*parent.stride_[CurDim]), dims_(parent.dims_) {}
 
@@ -125,10 +113,11 @@ class marray_slice
                 std::make_tuple(slice_dim{slice.size(), slice.step()*stride_[CurDim]}))) {}
 
         template <typename... OldDims>
-        marray_slice(const marray_slice<Type, NDim, NIndexed, OldDims...>& parent)
+        marray_slice(const marray_slice<Type, NDim, NIndexed, OldDims...>& parent,
+                     bcast_t, len_type len)
         : len_(parent.len_), stride_(parent.stride_),
           data_(parent.data_),
-          dims_(std::tuple_cat(parent.dims_, std::make_tuple(bcast_dim{}))) {}
+          dims_(std::tuple_cat(parent.dims_, std::make_tuple(bcast_dim{len}))) {}
 
         const marray_slice& operator=(const marray_slice& other) const
         {
@@ -178,7 +167,7 @@ class marray_slice
 
         template <int N=DimsLeft>
         detail::enable_if_t<N==1 && !sizeof...(Dims), reference>
-        operator[](idx_type i) const
+        operator[](len_type i) const
         {
             MARRAY_ASSERT(i >= 0 && i < len_[NDim-1]);
             return data_[i*stride_[NextDim]];
@@ -187,7 +176,7 @@ class marray_slice
         template <int N=DimsLeft>
         detail::enable_if_t<N!=1 || sizeof...(Dims),
                             marray_slice<Type, NDim, NIndexed+1, Dims...>>
-        operator[](idx_type i) const
+        operator[](len_type i) const
         {
             static_assert(DimsLeft, "No more dimensions to index");
             MARRAY_ASSERT(i >= 0 && i < len_[NextDim]);
@@ -208,13 +197,13 @@ class marray_slice
         operator[](all_t) const
         {
             static_assert(DimsLeft, "No more dimensions to index");
-            return {*this, range(idx_type(), len_[NIndexed])};
+            return {*this, range(len_type(), len_[NIndexed])};
         }
 
         marray_slice<Type, NDim, NIndexed, Dims..., bcast_dim>
         operator[](bcast_t) const
         {
-            return {*this};
+            return {*this, slice::bcast, len_[NIndexed]};
         }
 
         template <typename Arg, typename=
@@ -250,14 +239,14 @@ class marray_slice
             return std::get<Dim>(dims_);
         }
 
-        idx_type base_length(unsigned dim) const
+        len_type base_length(unsigned dim) const
         {
             MARRAY_ASSERT(dim < NDim);
             return len_[dim];
         }
 
         template <unsigned Dim>
-        idx_type base_length() const
+        len_type base_length() const
         {
             static_assert(Dim < NDim, "Dim out of range");
             return len_[Dim];
@@ -278,25 +267,12 @@ class marray_slice
 
         marray_view<const Type, NewNDim> cview() const
         {
-            static_assert(NSliced == sizeof...(Dims),
-                          "Only pure slices can be viewed");
-
-            std::array<idx_type, NewNDim> len;
-            std::array<stride_type, NewNDim> stride;
-
-            detail::get_slice_dims(len.begin(), stride.begin(), dims_);
-            std::copy_n(len_.begin()+NextDim, DimsLeft, len.begin()+NSliced);
-            std::copy_n(stride_.begin()+NextDim, DimsLeft, stride.begin()+NSliced);
-
-            return {len, data_, stride};
+            return view();
         }
 
         marray_view<Type, NewNDim> view() const
         {
-            static_assert(NSliced == sizeof...(Dims),
-                          "Only pure slices can be viewed");
-
-            std::array<idx_type, NewNDim> len;
+            std::array<len_type, NewNDim> len;
             std::array<stride_type, NewNDim> stride;
 
             detail::get_slice_dims(len.begin(), stride.begin(), dims_);

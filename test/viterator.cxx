@@ -6,7 +6,7 @@ using namespace MArray;
 
 TEST(viterator, next)
 {
-    idx_type off1, off2;
+    len_type off1, off2;
 
     viterator<> m1(vector<int>{}, vector<int>{});
 
@@ -80,7 +80,7 @@ TEST(viterator, next)
 
 TEST(viterator, reset)
 {
-    idx_type off1;
+    len_type off1;
 
     viterator<> m1(vector<int>{2,3}, vector<int>{1,2});
 
@@ -120,7 +120,7 @@ TEST(viterator, reset)
 
 TEST(viterator, position)
 {
-    idx_type off1;
+    len_type off1;
 
     viterator<> m1(vector<int>{2,3}, vector<int>{1,2});
 
@@ -146,12 +146,12 @@ TEST(viterator, position)
 
     EXPECT_EQ(1, m1.position(0));
     EXPECT_EQ(2, m1.position(1));
-    EXPECT_EQ((vector<idx_type>{1,2}), m1.position());
+    EXPECT_EQ((vector<len_type>{1,2}), m1.position());
 }
 
 TEST(viterator, assign)
 {
-    idx_type off1;
+    len_type off1;
 
     viterator<> m1(vector<int>{2,3}, vector<int>{1,2});
     viterator<> m2(vector<int>{2,3}, vector<int>{1,3});
@@ -177,7 +177,7 @@ TEST(viterator, assign)
 
 TEST(viterator, swap)
 {
-    idx_type off1, off2;
+    len_type off1, off2;
 
     viterator<> m1(vector<int>{2,3}, vector<int>{1,2});
     viterator<> m2(vector<int>{2,3}, vector<int>{1,3});
@@ -209,9 +209,9 @@ TEST(viterator, swap)
 
 TEST(viterator, make_iterator)
 {
-    idx_type off1, off2;
+    len_type off1, off2;
 
-    auto m1 = make_iterator(vector<idx_type>{}, vector<stride_type>{});
+    auto m1 = make_iterator(vector<len_type>{}, vector<stride_type>{});
 
     off1 = 0;
     EXPECT_TRUE(m1.next(off1));
@@ -221,7 +221,7 @@ TEST(viterator, make_iterator)
     EXPECT_TRUE(m1.next(off1));
     EXPECT_EQ(0, off1);
 
-    auto m2 = make_iterator(vector<idx_type>{5}, vector<stride_type>{1}, vector<stride_type>{2});
+    auto m2 = make_iterator(vector<len_type>{5}, vector<stride_type>{1}, vector<stride_type>{2});
 
     off1 = 0;
     off2 = 0;
@@ -250,7 +250,7 @@ TEST(viterator, make_iterator)
     EXPECT_EQ(1, off1);
     EXPECT_EQ(2, off2);
 
-    auto m3 = make_iterator(vector<idx_type>{2,3}, vector<stride_type>{1,2});
+    auto m3 = make_iterator(vector<len_type>{2,3}, vector<stride_type>{1,2});
 
     off1 = 0;
     EXPECT_TRUE(m3.next(off1));
@@ -278,7 +278,7 @@ template <unsigned N=1>
 class viterator
 {
     public:
-        typedef unsigned idx_type;
+        typedef unsigned len_type;
         typedef ptrdiff_t stride_type;
 
         viterator() {}
@@ -366,7 +366,7 @@ class viterator
         }
 
         template <typename Pos, typename... Offsets,
-                  typename=typename std::enable_if<detail::is_container_of<idx_type, Pos>::value &&
+                  typename=typename std::enable_if<detail::is_container_of<Pos, len_type>::value &&
                                                    sizeof...(Offsets) == N>::type>
         void position(const Pos& pos, Offsets&... off)
         {
@@ -389,22 +389,22 @@ class viterator
             return ndim_;
         }
 
-        idx_type position(unsigned dim) const
+        len_type position(unsigned dim) const
         {
             return pos_[dim];
         }
 
-        const std::vector<idx_type>& position() const
+        const std::vector<len_type>& position() const
         {
             return pos_;
         }
 
-        idx_type length(unsigned dim) const
+        len_type length(unsigned dim) const
         {
             return len_[dim];
         }
 
-        const std::vector<idx_type>& lengths() const
+        const std::vector<len_type>& lengths() const
         {
             return len_;
         }
@@ -432,17 +432,17 @@ class viterator
 
     private:
         size_t ndim_ = 0;
-        std::vector<idx_type> pos_;
-        std::vector<idx_type> len_;
+        std::vector<len_type> pos_;
+        std::vector<len_type> len_;
         std::array<std::vector<stride_type>,N> strides_;
         bool first_ = true;
         bool empty_ = true;
 };
 
-template <typename idx_type, typename stride_type, typename... Strides,
+template <typename len_type, typename stride_type, typename... Strides,
           typename=typename std::enable_if<detail::are_containers<Strides...>::value>::type>
 viterator<1+sizeof...(Strides)>
-make_iterator(const std::vector<idx_type>& len,
+make_iterator(const std::vector<len_type>& len,
               const std::vector<stride_type>& stride0,
               const Strides&... strides)
 {

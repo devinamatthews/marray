@@ -9,11 +9,30 @@ namespace MArray
 {
 
 template <typename Array>
-void rotate_dim(Array& array, unsigned dim, idx_type shift)
+void rotate(Array& array, std::initializer_list<len_type> shift)
+{
+    rotate<Array, decltype(shift)>(array, shift);
+}
+
+template <typename Array, typename U, typename=detail::enable_if_container_of_t<U,len_type>>
+void rotate(Array& array, const U& shift)
+{
+    MARRAY_ASSERT(shift.size() == array.dimension());
+
+    auto it = shift.begin();
+    for (unsigned i = 0;i < array.dimension();i++)
+    {
+        rotate(array, i, *it);
+        ++it;
+    }
+}
+
+template <typename Array>
+void rotate(Array& array, unsigned dim, len_type shift)
 {
     MARRAY_ASSERT(dim < array.dimension());
 
-    idx_type n = array.length(dim);
+    len_type n = array.length(dim);
     stride_type s = array.stride(dim);
 
     if (n == 0) return;

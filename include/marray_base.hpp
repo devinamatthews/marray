@@ -3,17 +3,15 @@
 
 #include "utility.hpp"
 #include "range.hpp"
-#include "rotate.hpp"
-#include "memory.hpp"
 
 namespace MArray
 {
 
-template <typename Type, unsigned NDimLeft, typename Derived, bool Owner>
-class marray_base;
-
 template <typename Type, unsigned NDim, unsigned NIndexed, typename... Dims>
 class marray_slice;
+
+template <typename Type, unsigned NDim, typename Derived, bool Owner>
+class marray_base;
 
 template <typename Type, unsigned NDim>
 class marray_view;
@@ -29,74 +27,20 @@ struct is_expression_arg_or_scalar;
 #include "expression.hpp"
 #include "marray_slice.hpp"
 #include "marray_view.hpp"
+#include "marray.hpp"
+#include "miterator.hpp"
 
 namespace MArray
 {
 
-namespace detail
-{
-
-template <typename... Dims>
-struct get_sliced_dims_helper;
-
-template <>
-struct get_sliced_dims_helper<>
-{
-    template <typename Lengths, typename Strides>
-    get_sliced_dims_helper(Lengths lengths, Strides strides) {}
-};
-
-template <typename Dim, typename... Dims>
-struct get_sliced_dims_helper<Dim, Dims...>
-{
-    template <typename Lengths, typename Strides>
-    get_sliced_dims_helper(Lengths lengths, Strides strides,
-                           const slice_dim& dim)
-    {
-        *lengths == dim.len;
-        *strides == dim.stride;
-    }
-
-    template <typename Lengths, typename Strides>
-    get_sliced_dims_helper(Lengths, Strides, const bcast_dim&)
-    {
-        static_assert(false, "Cannot take a view of a broadcasted array");
-    }
-
-    template <typename Lengths, typename Strides>
-    get_sliced_dims_helper(Lengths lengths, Strides strides,
-                           const Dim& dim, const Dims&... dims)
-    {
-        get_sliced_dim(lengths, strides, dim);
-        get_sliced_dims_helper<Dims...>(++lengths, ++strides, dims...);
-    }
-};
-
-template <typename Lengths, typename Strides,
-          typename T, unsigned NDim, bool Owner, typename... Dims>
-void get_sliced_dims(Lengths lengths, Strides strides,
-                     const marray_base<T,NDim,Owner,Dims...>& array)
-{
-    get_sliced_dims_helper<Dims...>(lengths, strides, array.dims_);
-}
-
-}
-
-template <typename Type, unsigned NDimLeft, typename Derived, bool Owner>
+template <typename Type, unsigned NDim, typename Derived, bool Owner>
 class marray_base
 {
-    protected:
-        typedef typename std::conditional<Owner,const Type,Type>::type cType;
-        typedef cType& cref;
-        typedef cType* cptr;
+    static_assert(NDim > 0, "NDim must be positive");
 
-        template <typename U>
-        decltype(std::declval<U>().dims_) dims_helper_(U* u);
-        std::tuple<> dims_helper(...);
-        typedef decltype(dims_helper_((Derived*)0)) Dims;
-
-        static constexpr unsigned NSliced = std::tuple_size<Dims>::value;
-        static constexpr unsigned NDim = NDimLeft + NSliced;
+    template <typename, unsigned, typename, bool> friend class marray_base;
+    template <typename, unsigned> friend class marray_view;
+    template <typename, unsigned, typename> friend class marray;
 
     public:
         typedef Type value_type;
@@ -105,109 +49,260 @@ class marray_base
         typedef Type& reference;
         typedef const Type& const_reference;
 
-        template <unsigned N>
-        static std::array<stride_type, N>
-        default_strides(std::initializer_list<idx_type> len, layout layout = layout::DEFAULT)
+    protected:
+        typedef typename std::conditional<Owner,const Type,Type>::type ctype;
+        typedef ctype& cref;
+        typedef ctype* cptr;
+
+        std::array<len_type, NDim> len_ = {};
+        std::array<stride_type, NDim> stride_ = {};
+        pointer data_ = nullptr;
+
+        /***********************************************************************
+         *
+         * Reset
+         *
+         **********************************************************************/
+
+        void reset()
         {
-            return default_strides<N,decltype(len)>(len, layout);
+            data_ = nullptr;
+            len_.fill(0);
+            stride_.fill(0);
         }
 
-        template <unsigned N, typename U>
-        static std::array<stride_type, N>
-        default_strides(const U& len, layout layout = layout::DEFAULT)
+        template <typename U, bool O, typename D,
+            typename=detail::enable_if_convertible_t<
+                typename marray_base<U, NDim, D, O>::cptr,pointer>>
+        void reset(const marray_base<U, NDim, D, O>& other)
+        {
+            reset(const_cast<marray_base<U, NDim, D, O>&>(other));
+        }
+
+        template <typename U, bool O, typename D,
+            typename=detail::enable_if_convertible_t<
+                typename marray_base<U, NDim, D, O>::pointer,pointer>>
+        void reset(marray_base<U, NDim, D, O>& other)
+        {
+            data_ = other.data_;
+            len_ = other.len_;
+            stride_ = other.stride_;
+        }
+
+        template <typename U, unsigned OldNDim, unsigned NIndexed, typename... Dims,
+            typename=detail::enable_if_convertible_t<U*,pointer>>
+        void reset(const marray_slice<U, OldNDim, NIndexed, Dims...>& other)
+        {
+            reset(other.view());
+        }
+
+        void reset(std::initializer_list<len_type> len, pointer ptr, layout layout = DEFAULT)
+        {
+            reset<decltype(len)>(len, ptr, layout);
+        }
+
+        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        void reset(const U& len, pointer ptr, layout layout = DEFAULT)
+        {
+            reset(len, ptr, strides(len, layout));
+        }
+
+        void reset(std::initializer_list<len_type> len, pointer ptr,
+                   std::initializer_list<stride_type> stride)
+        {
+            reset<decltype(len), decltype(stride)>(len, ptr, stride);
+        }
+
+        template <typename U, typename V, typename=detail::enable_if_t<
+            detail::is_range_of<U,len_type>::value &&
+            detail::is_range_of<V,stride_type>::value>>
+        void reset(const U& len, pointer ptr, const V& stride)
+        {
+            data_ = ptr;
+            std::copy_n(len.begin(), NDim, len_.begin());
+            std::copy_n(stride.begin(), NDim, stride_.begin());
+        }
+
+        void swap(marray_base& other)
+        {
+            using std::swap;
+            swap(data_, other.data_);
+            swap(len_, other.len_);
+            swap(stride_, other.stride_);
+        }
+
+    public:
+
+        /***********************************************************************
+         *
+         * Static helper functions
+         *
+         **********************************************************************/
+
+        static std::array<stride_type, NDim>
+        strides(std::initializer_list<len_type> len, layout layout = DEFAULT)
+        {
+            return strides<decltype(len)>(len, layout);
+        }
+
+        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        static std::array<stride_type, NDim>
+        strides(const U& len, layout layout = DEFAULT)
         {
             //TODO: add alignment option
 
-            std::array<stride_type, N> stride;
+            std::array<stride_type, NDim> stride;
 
-            if (N == 0) return stride;
-
-            if (layout == layout::ROW_MAJOR)
+            if (layout == ROW_MAJOR)
             {
-                stride[N-1] = 1;
-                for (unsigned i = N;i --> 1;)
+                /*
+                 * Some monkeying around has to be done to support len as a
+                 * std::initializer_list (or other forward iterator range)
+                 */
+                auto it = len.begin(); ++it;
+                std::copy_n(it, NDim-1, stride.begin());
+                stride[NDim-1] = 1;
+                for (unsigned i = NDim;i --> 1;)
                 {
-                    stride[i-1] = stride[i]*len[i];
+                    stride[i-1] *= stride[i];
                 }
             }
             else
             {
                 stride[0] = 1;
-                for (unsigned i = 1;i < N;i++)
+                auto it = len.begin();
+                for (unsigned i = 1;i < NDim;i++)
                 {
-                    stride[i] = stride[i-1]*len[i-1];
+                    stride[i] = stride[i-1]*(*it);
+                    ++it;
                 }
             }
 
             return stride;
         }
 
-        marray_base& operator=(const marray_base& other)
+        static stride_type size(std::initializer_list<len_type> len)
+        {
+            return size<decltype(len)>(len);
+        }
+
+        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        static stride_type size(const U& len)
+        {
+            //TODO: add alignment option
+
+            stride_type s = 1;
+            for (auto& l : len) s *= l;
+            return s;
+        }
+
+        /***********************************************************************
+         *
+         * Operators
+         *
+         **********************************************************************/
+
+        marray_base& operator=(const marray_base& other) = delete;
+
+        template <typename Expression,
+            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
+        Derived& operator=(const Expression& other)
         {
             assign_expr(*this, other);
-            return *this;
+            return static_cast<Derived&>(*this);
+        }
+
+        template <typename Expression, bool O=Owner,
+            typename=detail::enable_if_t<!O && is_expression_arg_or_scalar<Expression>::value>>
+        const Derived& operator=(const Expression& other) const
+        {
+            assign_expr(*this, other);
+            return static_cast<const Derived&>(*this);
         }
 
         template <typename Expression,
             typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
-        marray& operator=(const Expression& other)
-        {
-            assign_expr(*this, other);
-            return *this;
-        }
-
-        template <typename Expression,
-            typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
-        marray& operator+=(const Expression& other)
+        Derived& operator+=(const Expression& other)
         {
             *this = *this + other;
-            return *this;
+            return static_cast<Derived&>(*this);
+        }
+
+        template <typename Expression, bool O=Owner,
+            typename=detail::enable_if_t<!O && is_expression_arg_or_scalar<Expression>::value>>
+        const Derived& operator+=(const Expression& other) const
+        {
+            *this = *this + other;
+            return static_cast<const Derived&>(*this);
         }
 
         template <typename Expression,
             typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
-        marray& operator-=(const Expression& other)
+        Derived& operator-=(const Expression& other)
         {
             *this = *this - other;
-            return *this;
+            return static_cast<Derived&>(*this);
+        }
+
+        template <typename Expression, bool O=Owner,
+            typename=detail::enable_if_t<!O && is_expression_arg_or_scalar<Expression>::value>>
+        const Derived& operator-=(const Expression& other) const
+        {
+            *this = *this - other;
+            return static_cast<const Derived&>(*this);
         }
 
         template <typename Expression,
             typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
-        marray& operator*=(const Expression& other)
+        Derived& operator*=(const Expression& other)
         {
             *this = *this * other;
-            return *this;
+            return static_cast<Derived&>(*this);
+        }
+
+        template <typename Expression, bool O=Owner,
+            typename=detail::enable_if_t<!O && is_expression_arg_or_scalar<Expression>::value>>
+        const Derived& operator*=(const Expression& other) const
+        {
+            *this = *this * other;
+            return static_cast<const Derived&>(*this);
         }
 
         template <typename Expression,
             typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
-        marray& operator/=(const Expression& other)
+        Derived& operator/=(const Expression& other)
         {
             *this = *this / other;
-            return *this;
+            return static_cast<Derived&>(*this);
         }
+
+        template <typename Expression, bool O=Owner,
+            typename=detail::enable_if_t<!O && is_expression_arg_or_scalar<Expression>::value>>
+        const Derived& operator/=(const Expression& other) const
+        {
+            *this = *this / other;
+            return static_cast<const Derived&>(*this);
+        }
+
+        /***********************************************************************
+         *
+         * Views
+         *
+         **********************************************************************/
 
         marray_view<const Type, NDim> cview() const
         {
             return const_cast<marray_base&>(*this).view();
         }
 
-        marray_view<cType, NDim> view() const
+        marray_view<ctype, NDim> view() const
         {
             return const_cast<marray_base&>(*this).view();
         }
 
         marray_view<Type, NDim> view()
         {
-            std::array<idx_type,NDim> len;
-            std::array<stride_type,NDim> stride;
-
-            detail::get_sliced_dims(len.begin(), stride.begin(), *this);
-            std::copy_n(lengths().begin(), NDimLeft, len.begin()+NSliced);
-            std::copy_n(strides().begin(), NDimLeft, stride.begin()+NSliced);
-
-            return {len, data(), stride};
+            return *this;
         }
 
         friend marray_view<const Type, NDim> cview(const marray_base& x)
@@ -215,7 +310,7 @@ class marray_base
             return x.view();
         }
 
-        friend marray_view<cType, NDim> view(const marray_base& x)
+        friend marray_view<ctype, NDim> view(const marray_base& x)
         {
             return x.view();
         }
@@ -225,44 +320,86 @@ class marray_base
             return x.view();
         }
 
-        marray_view<cType, NDim> shifted(std::initializer_list<idx_type> n) const
+        /***********************************************************************
+         *
+         * Shifting
+         *
+         **********************************************************************/
+
+        marray_view<ctype, NDim> shifted(std::initializer_list<len_type> n) const
         {
             return const_cast<marray_base&>(*this).shifted(n);
         }
 
-        marray_view<Type, NDim> shifted(std::initializer_list<idx_type> n)
+        marray_view<Type, NDim> shifted(std::initializer_list<len_type> n)
+        {
+            return shifted<decltype(n)>(n);
+        }
+
+        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        marray_view<ctype, NDim> shifted(const U& n) const
+        {
+            return const_cast<marray_base&>(*this).shifted(n);
+        }
+
+        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        marray_view<Type, NDim> shifted(const U& n)
         {
             marray_view<Type,NDim> r(*this);
             r.shift(n);
             return r;
         }
 
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        marray_view<ctype,1> shifted(len_type n) const
+        {
+            return const_cast<marray_base&>(*this).shifted(n);
+        }
+
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        marray_view<Type,1> shifted(len_type n)
+        {
+            return shifted(0, n);
+        }
+
         template <unsigned Dim>
-        marray_view<cType, NDim> shifted(idx_type n) const
+        marray_view<ctype, NDim> shifted(len_type n) const
         {
             return const_cast<marray_base&>(*this).shifted<Dim>(n);
         }
 
         template <unsigned Dim>
-        marray_view<Type, NDim> shifted(idx_type n)
+        marray_view<Type, NDim> shifted(len_type n)
         {
             return shifted(Dim, n);
         }
 
-        marray_view<cType, NDim> shifted(unsigned dim, idx_type n) const
+        marray_view<ctype, NDim> shifted(unsigned dim, len_type n) const
         {
             return const_cast<marray_base&>(*this).shifted(dim, n);
         }
 
-        marray_view<Type, NDim> shifted(unsigned dim, idx_type n)
+        marray_view<Type, NDim> shifted(unsigned dim, len_type n)
         {
             marray_view<Type,NDim> r(*this);
             r.shift(dim, n);
             return r;
         }
 
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        marray_view<ctype,1> shifted_down() const
+        {
+            return const_cast<marray_base&>(*this).shifted_down();
+        }
+
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        marray_view<Type,1> shifted_down()
+        {
+            return shifted_down(0);
+        }
+
         template <unsigned Dim>
-        marray_view<cType,NDim> shifted_down() const
+        marray_view<ctype,NDim> shifted_down() const
         {
             return const_cast<marray_base&>(*this).shifted_down<Dim>();
         }
@@ -273,18 +410,30 @@ class marray_base
             return shifted_down(Dim);
         }
 
-        marray_view<cType,NDim> shifted_down(unsigned dim) const
+        marray_view<ctype,NDim> shifted_down(unsigned dim) const
         {
             return const_cast<marray_base&>(*this).shifted_down(dim);
         }
 
         marray_view<Type,NDim> shifted_down(unsigned dim)
         {
-            return shifted(dim, length(dim));
+            return shifted(dim, len_[dim]);
+        }
+
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        marray_view<ctype,1> shifted_up() const
+        {
+            return const_cast<marray_base&>(*this).shifted_up();
+        }
+
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        marray_view<Type,1> shifted_up()
+        {
+            return shifted_up(0);
         }
 
         template <unsigned Dim>
-        marray_view<cType,NDim> shifted_up() const
+        marray_view<ctype,NDim> shifted_up() const
         {
             return const_cast<marray_base&>(*this).shifted_up<Dim>();
         }
@@ -295,17 +444,23 @@ class marray_base
             return shifted_up(Dim);
         }
 
-        marray_view<cType,NDim> shifted_up(unsigned dim) const
+        marray_view<ctype,NDim> shifted_up(unsigned dim) const
         {
             return const_cast<marray_base&>(*this).shifted_up(dim);
         }
 
         marray_view<Type,NDim> shifted_up(unsigned dim)
         {
-            return shifted(dim, -length(dim));
+            return shifted(dim, -len_[dim]);
         }
 
-        marray_view<cType,NDim> permuted(std::initializer_list<unsigned> perm) const
+        /***********************************************************************
+         *
+         * Permutation
+         *
+         **********************************************************************/
+
+        marray_view<ctype,NDim> permuted(std::initializer_list<unsigned> perm) const
         {
             return const_cast<marray_base&>(*this).permuted(perm);
         }
@@ -315,13 +470,13 @@ class marray_base
             return permuted<decltype(perm)>(perm);
         }
 
-        template <typename U>
-        marray_view<cType,NDim> permuted(const U& perm) const
+        template <typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        marray_view<ctype,NDim> permuted(const U& perm) const
         {
             return const_cast<marray_base&>(*this).permuted<U>(perm);
         }
 
-        template <typename U>
+        template <typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
         marray_view<Type,NDim> permuted(const U& perm)
         {
             marray_view<Type,NDim> r(*this);
@@ -329,57 +484,62 @@ class marray_base
             return r;
         }
 
-        template <unsigned N=NDim>
-        detail::enable_if_t<N==2,marray_view<cType, NDim>>
-        transposed() const
+        template <unsigned N=NDim, typename=detail::enable_if_t<N==2>>
+        marray_view<ctype, NDim> transposed() const
         {
             return const_cast<marray_base&>(*this).transposed();
         }
 
-        template <unsigned N=NDim>
-        detail::enable_if_t<N==2,marray_view<Type, NDim>>
-        transposed()
+        template <unsigned N=NDim, typename=detail::enable_if_t<N==2>>
+        marray_view<Type, NDim> transposed()
         {
             return permuted({1, 0});
         }
 
-        template <unsigned N=NDim>
-        detail::enable_if_t<N==2,marray_view<cType, NDim>>
-        T() const
+        template <unsigned N=NDim, typename=detail::enable_if_t<N==2>>
+        marray_view<ctype, NDim> T() const
         {
             return const_cast<marray_base&>(*this).T();
         }
 
-        template <unsigned N=NDim>
-        detail::enable_if_t<N==2,marray_view<Type, NDim>>
-        T()
+        template <unsigned N=NDim, typename=detail::enable_if_t<N==2>>
+        marray_view<Type, NDim> T()
         {
             return transposed();
         }
 
-        template <size_t NewNDim>
-        marray_view<cType, NewNDim> lowered(std::initializer_list<unsigned> split) const
+        /***********************************************************************
+         *
+         * Dimension change
+         *
+         **********************************************************************/
+
+        template <unsigned NewNDim>
+        marray_view<ctype, NewNDim> lowered(std::initializer_list<unsigned> split) const
         {
             return const_cast<marray_base&>(*this).lowered<NewNDim>(split);
         }
 
-        template <size_t NewNDim>
+        template <unsigned NewNDim>
         marray_view<Type, NewNDim> lowered(std::initializer_list<unsigned> split)
         {
             return lowered<NewNDim,decltype(split)>(split);
         }
 
-        template <size_t NewNDim, typename U>
-        marray_view<cType, NewNDim> lowered(const U& split) const
+        template <unsigned NewNDim, typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        marray_view<ctype, NewNDim> lowered(const U& split) const
         {
             return const_cast<marray_base&>(*this).lowered<NewNDim,U>(split);
         }
 
-        template <size_t NewNDim, typename U>
-        marray_view<Type, NewNDim> lowered(const U& split)
+        template <unsigned NewNDim, typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        marray_view<Type, NewNDim> lowered(const U& split_)
         {
-            constexpr size_t NSplit = NewNDim-1;
+            constexpr unsigned NSplit = NewNDim-1;
             MARRAY_ASSERT(NSplit < NDim);
+
+            std::array<unsigned, NDim-1> split;
+            std::copy_n(split_.begin(), NDim-1, split.begin());
 
             for (unsigned i = 0;i < NSplit;i++)
             {
@@ -387,7 +547,7 @@ class marray_base
                 if (i != 0) MARRAY_ASSERT(split[i-1] <= split[i]);
             }
 
-            std::array<idx_type, NSplit+1> newlen;
+            std::array<len_type, NSplit+1> newlen;
             std::array<stride_type, NSplit+1> newstride;
 
             for (unsigned i = 0;i <= NSplit;i++)
@@ -396,73 +556,100 @@ class marray_base
                 int end = (i == NSplit ? NDim-1 : split[i]-1);
                 if (begin > end) continue;
 
-                if (stride(begin) < stride(end))
+                if (stride_[begin] < stride_[end])
                 {
-                    newlen[i] = length(end);
-                    newstride[i] = stride(begin);
+                    newlen[i] = len_[end];
+                    newstride[i] = stride_[begin];
                     for (int j = begin;j < end;j++)
                     {
-                        MARRAY_ASSERT(stride(j+1) == stride(j)*length(j));
-                        newlen[i] *= length(j);
+                        MARRAY_ASSERT(stride_[j+1] == stride_[j]*len_[j]);
+                        newlen[i] *= len_[j];
                     }
                 }
                 else
                 {
-                    newlen[i] = length(end);
-                    newstride[i] = stride(end);
+                    newlen[i] = len_[end];
+                    newstride[i] = stride_[end];
                     for (int j = begin;j < end;j++)
                     {
-                        MARRAY_ASSERT(stride(j) == stride(j+1)*length(j+1));
-                        newlen[i] *= length(j);
+                        MARRAY_ASSERT(stride_[j] == stride_[j+1]*len_[j+1]);
+                        newlen[i] *= len_[j];
                     }
                 }
             }
 
-            return {newlen, data(), newstride};
+            return {newlen, data_, newstride};
         }
 
-        template <typename=void, unsigned N=NDim>
-        detail::enable_if_t<N==1, const_reference>
-        cfront() const
+        /***********************************************************************
+         *
+         * Reversal
+         *
+         **********************************************************************/
+
+        marray_view<ctype, NDim> reversed() const
         {
-            return const_cast<marray_base&>(*this).front();
+            return const_cast<marray_base&>(*this).reversed();
         }
 
-        template <typename=void, unsigned N=NDim>
-        detail::enable_if_t<N==1, cref>
-        front() const
+        marray_view<Type, NDim> reversed()
         {
-            return const_cast<marray_base&>(*this).front();
+            marray_view<Type,NDim> r(*this);
+            r.reverse();
+            return r;
         }
 
-        template <typename=void, unsigned N=NDim>
-        detail::enable_if_t<N==1, reference>
-        front()
+        template <unsigned Dim>
+        marray_view<ctype, NDim> reversed() const
         {
-            MARRAY_ASSERT(length(0) > 0);
-            return data()[0];
+            return const_cast<marray_base&>(*this).reversed<Dim>();
         }
 
-        template <unsigned Dim, unsigned N=NDim>
+        template <unsigned Dim>
+        marray_view<Type, NDim> reversed()
+        {
+            return reversed(Dim);
+        }
+
+        marray_view<ctype, NDim> reversed(unsigned dim) const
+        {
+            return const_cast<marray_base&>(*this).reversed(dim);
+        }
+
+        marray_view<Type, NDim> reversed(unsigned dim)
+        {
+            marray_view<Type,NDim> r(*this);
+            r.reverse(dim);
+            return r;
+        }
+
+        /***********************************************************************
+         *
+         * Slices
+         *
+         **********************************************************************/
+
+        template <unsigned Dim=0, unsigned N=NDim>
         detail::enable_if_t<N==1, const_reference>
         cfront() const
         {
             return const_cast<marray_base&>(*this).front<Dim>();
         }
 
-        template <unsigned Dim, unsigned N=NDim>
+        template <unsigned Dim=0, unsigned N=NDim>
         detail::enable_if_t<N==1, cref>
         front() const
         {
             return const_cast<marray_base&>(*this).front<Dim>();
         }
 
-        template <unsigned Dim, unsigned N=NDim>
+        template <unsigned Dim=0, unsigned N=NDim>
         detail::enable_if_t<N==1, reference>
         front()
         {
             static_assert(Dim == 0, "Dim out of range");
-            return front();
+            MARRAY_ASSERT(len_[0] > 0);
+            return data_[0];
         }
 
         template <unsigned N=NDim>
@@ -495,7 +682,7 @@ class marray_base
         }
 
         template <unsigned Dim, unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_view<cType, NDim-1>>
+        detail::enable_if_t<N!=1, marray_view<ctype, NDim-1>>
         front() const
         {
             return const_cast<marray_base&>(*this).front<Dim>();
@@ -516,7 +703,7 @@ class marray_base
         }
 
         template <unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_view<cType, NDim-1>>
+        detail::enable_if_t<N!=1, marray_view<ctype, NDim-1>>
         front(unsigned dim) const
         {
             return const_cast<marray_base&>(*this).front(dim);
@@ -529,77 +716,56 @@ class marray_base
             MARRAY_ASSERT(dim < NDim);
             MARRAY_ASSERT(len_[dim] > 0);
 
-            std::array<idx_type, NDim-1> len;
+            std::array<len_type, NDim-1> len;
             std::array<stride_type, NDim-1> stride;
 
-            std::copy_n(lengths().begin(), dim, len.begin());
-            std::copy_n(lengths().begin()+dim+1, NDim-dim-1, len.begin()+dim);
-            std::copy_n(strides().begin(), dim, stride.begin());
-            std::copy_n(strides().begin()+dim+1, NDim-dim-1, stride.begin()+dim);
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, NDim-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, NDim-dim-1, stride.begin()+dim);
 
-            return {len, data(), stride};
+            return {len, data_, stride};
         }
 
-        template <typename=void, unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, const_reference>
-        cback() const
-        {
-            return const_cast<marray_base&>(*this).back();
-        }
-
-        template <typename=void, unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, cref>
-        back() const
-        {
-            return const_cast<marray_base&>(*this).back();
-        }
-
-        template <typename=void, unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, reference>
-        back()
-        {
-            MARRAY_ASSERT(length(0) > 0);
-            return data()[(length(0)-1)*stride(0)];
-        }
-
-        template <unsigned Dim, unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, const_reference>
+        template <unsigned Dim=0, unsigned N=NDim>
+        detail::enable_if_t<N==1, const_reference>
         cback() const
         {
             return const_cast<marray_base&>(*this).back<Dim>();
         }
 
-        template <unsigned Dim, unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, cref>
+        template <unsigned Dim=0, unsigned N=NDim>
+        detail::enable_if_t<N==1, cref>
         back() const
         {
             return const_cast<marray_base&>(*this).back<Dim>();
         }
 
-        template <unsigned Dim, unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, reference>
+        template <unsigned Dim=0, unsigned N=NDim>
+        detail::enable_if_t<N==1, reference>
         back()
         {
             static_assert(Dim == 0, "Dim out of range");
-            return back();
+            MARRAY_ASSERT(len_[0] > 0);
+            return data_[(len_[0]-1)*stride_[0]];
         }
 
-        template <unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, const_reference>
+        template <unsigned N=NDim>
+        detail::enable_if_t<N==1, const_reference>
         cback(unsigned dim) const
         {
             return const_cast<marray_base&>(*this).back(dim);
         }
 
-        template <unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, cref>
+        template <unsigned N=NDim>
+        detail::enable_if_t<N==1, cref>
         back(unsigned dim) const
         {
             return const_cast<marray_base&>(*this).back(dim);
         }
 
-        template <unsigned ndim_=NDim>
-        detail::enable_if_t<ndim_==1, reference>
+        template <unsigned N=NDim>
+        detail::enable_if_t<N==1, reference>
         back(unsigned dim)
         {
             MARRAY_ASSERT(dim == 0);
@@ -614,7 +780,7 @@ class marray_base
         }
 
         template <unsigned Dim, unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_view<cType, NDim-1>>
+        detail::enable_if_t<N!=1, marray_view<ctype, NDim-1>>
         back() const
         {
             return const_cast<marray_base&>(*this).back<Dim>();
@@ -635,7 +801,7 @@ class marray_base
         }
 
         template <unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_view<cType, NDim-1>>
+        detail::enable_if_t<N!=1, marray_view<ctype, NDim-1>>
         back(unsigned dim) const
         {
             return const_cast<marray_base&>(*this).back(dim);
@@ -646,54 +812,63 @@ class marray_base
         back(unsigned dim)
         {
             MARRAY_ASSERT(dim < NDim);
-            MARRAY_ASSERT(length(dim) > 0);
+            MARRAY_ASSERT(len_[dim] > 0);
 
-            std::array<idx_type, NDim-1> len;
+            std::array<len_type, NDim-1> len;
             std::array<stride_type, NDim-1> stride;
 
-            std::copy_n(lengths().begin(), dim, len.begin());
-            std::copy_n(lengths().begin()+dim+1, NDim-dim-1, len.begin()+dim);
-            std::copy_n(strides().begin(), dim, stride.begin());
-            std::copy_n(strides().begin()+dim+1, NDim-dim-1, stride.begin()+dim);
+            std::copy_n(len_.begin(), dim, len.begin());
+            std::copy_n(len_.begin()+dim+1, NDim-dim-1, len.begin()+dim);
+            std::copy_n(stride_.begin(), dim, stride.begin());
+            std::copy_n(stride_.begin()+dim+1, NDim-dim-1, stride.begin()+dim);
 
-            return {len, data() + (length(dim)-1)*stride(dim), stride};
+            return {len, data_ + (len_[dim]-1)*stride_[dim], stride};
         }
+
+        /***********************************************************************
+         *
+         * Indexing
+         *
+         **********************************************************************/
 
         template <unsigned N=NDim>
         detail::enable_if_t<N==1, cref>
-        operator[](idx_type i) const
+        operator[](len_type i) const
         {
             return const_cast<marray_base&>(*this)[i];
         }
 
         template <unsigned N=NDim>
         detail::enable_if_t<N==1, reference>
-        operator[](idx_type i)
+        operator[](len_type i)
         {
-            MARRAY_ASSERT(i < length(0));
-            return data()[i*stride(0)];
+            MARRAY_ASSERT(i < len_[0]);
+            return data_[i*stride_[0]];
         }
 
         template <unsigned N=NDim>
-        detail::enable_if_t<N!=1, marray_slice<cType, NDim, 1>>
-        operator[](idx_type i) const
+        detail::enable_if_t<N!=1, marray_slice<ctype, NDim, 1>>
+        operator[](len_type i) const
         {
-            return const_cast<marray_base&>(*this)[i];
+            MARRAY_ASSERT(i < len_[0]);
+            return {*this, i};
         }
 
         template <unsigned N=NDim>
         detail::enable_if_t<N!=1, marray_slice<Type, NDim, 1>>
-        operator[](idx_type i)
+        operator[](len_type i)
         {
-            MARRAY_ASSERT(i < length(0));
+            MARRAY_ASSERT(i < len_[0]);
             return {*this, i};
         }
 
         template <typename I>
-        marray_slice<cType, NDim, 1, slice_dim>
+        marray_slice<ctype, NDim, 1, slice_dim>
         operator[](const range_t<I>& x) const
         {
-            return const_cast<marray_base&>(*this)[x];
+            MARRAY_ASSERT(x.front() <= x.back());
+            MARRAY_ASSERT(x.front() >= 0 && x.back() <= len_[0]);
+            return {*this, x};
         }
 
         template <typename I>
@@ -701,32 +876,32 @@ class marray_base
         operator[](const range_t<I>& x)
         {
             MARRAY_ASSERT(x.front() <= x.back());
-            MARRAY_ASSERT(x.front() >= 0 && x.back() <= length(0));
+            MARRAY_ASSERT(x.front() >= 0 && x.back() <= len_[0]);
             return {*this, x};
         }
 
-        marray_slice<cType, NDim, 1, slice_dim>
+        marray_slice<ctype, NDim, 1, slice_dim>
         operator[](all_t) const
         {
-            return const_cast<marray_base&>(*this)[slice::all];
+            return {*this, range(len_[0])};
         }
 
         marray_slice<Type, NDim, 1, slice_dim>
         operator[](all_t)
         {
-            return {*this, range(length(0))};
+            return {*this, range(len_[0])};
         }
 
-        marray_slice<cType, NDim, 0, bcast_dim>
+        marray_slice<ctype, NDim, 0, bcast_dim>
         operator[](bcast_t) const
         {
-            return const_cast<marray_base&>(*this)[slice::bcast];
+            return {*this, slice::bcast, len_[0]};
         }
 
         marray_slice<Type, NDim, 0, bcast_dim>
         operator[](bcast_t)
         {
-            return {*this};
+            return {*this, slice::bcast, len_[0]};
         }
 
         template <typename Arg, typename=
@@ -763,64 +938,11 @@ class marray_base
             return (*this)[std::forward<Arg>(arg)](std::forward<Args>(args)...);
         }
 
-        template <bool O=Owner>
-        typename std::enable_if<O>::type
-        rotate_dim(unsigned dim, idx_type shift)
-        {
-            rotate_dim<false>(dim, shift);
-        }
-
-        template <bool O=Owner>
-        typename std::enable_if<!O>::type
-        rotate_dim(unsigned dim, idx_type shift) const
-        {
-            MArray::rotate_dim(*this, dim, shift);
-        }
-
-        template <unsigned Dim, bool O=Owner>
-        typename std::enable_if<O>::type
-        rotate_dim(idx_type shift)
-        {
-            rotate_dim<Dim,false>(shift);
-        }
-
-        template <unsigned Dim, bool O=Owner>
-        typename std::enable_if<!O>::type
-        rotate_dim(idx_type shift) const
-        {
-            rotate_dim(Dim, shift);
-        }
-
-        template <bool O=Owner>
-        typename std::enable_if<O>::type
-        rotate(std::initializer_list<idx_type> shift)
-        {
-            rotate<false>(shift);
-        }
-
-        template <bool O=Owner>
-        typename std::enable_if<!O>::type
-        rotate(std::initializer_list<idx_type> shift) const
-        {
-            rotate<decltype(shift)>(shift);
-        }
-
-        template <typename U, bool O=Owner>
-        typename std::enable_if<O>::type
-        rotate(const U& shift)
-        {
-            rotate<U,false>(shift);
-        }
-
-        template <typename U, bool O=Owner>
-        typename std::enable_if<!O>::type
-        rotate(const U& shift) const
-        {
-            for (unsigned dim = 0;dim < NDim;dim++)
-            {
-                rotate_dim(dim, shift[dim]);
-            }
-        }
+        /***********************************************************************
+         *
+         * Basic getters
+         *
+         **********************************************************************/
 
         const_pointer cdata() const
         {
@@ -834,199 +956,61 @@ class marray_base
 
         pointer data()
         {
-            return derived().data_;
+            return data_;
         }
 
-        template <typename=void, unsigned N=NDim>
-        detail::enable_if_t<N==1, idx_type>
-        length() const
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        len_type length() const
         {
-            return length(0);
+            return len_[0];
         }
 
         template <unsigned Dim>
-        idx_type length() const
+        len_type length() const
         {
             static_assert(Dim < NDim, "Dim out of range");
-            return length(Dim);
+            return len_[Dim];
         }
 
-        idx_type length(unsigned dim) const
+        len_type length(unsigned dim) const
         {
             MARRAY_ASSERT(dim < NDim);
-            return lengths()[dim];
+            return len_[dim];
         }
 
-        const std::array<idx_type, NDim>& lengths() const
+        const std::array<len_type, NDim>& lengths() const
         {
-            return derived().len_;
+            return len_;
         }
 
-        template <typename=void, unsigned N=NDim>
-        detail::enable_if_t<N==1, stride_type>
-        stride() const
+        template <typename=void, unsigned N=NDim, typename=detail::enable_if_t<N==1>>
+        stride_type stride() const
         {
-            return stride(0);
+            return stride_[0];
         }
 
         template <unsigned Dim>
         stride_type stride() const
         {
             static_assert(Dim < NDim, "Dim out of range");
-            return stride(Dim);
+            return stride_[Dim];
         }
 
         stride_type stride(unsigned dim) const
         {
             MARRAY_ASSERT(dim < NDim);
-            return strides()[dim];
+            return stride_[dim];
         }
 
         const std::array<stride_type, NDim>& strides() const
         {
-            return derived().stride_;
+            return stride_;
         }
 
         static constexpr unsigned dimension()
         {
             return NDim;
         }
-
-    protected:
-        void shift(std::initializer_list<idx_type> n)
-        {
-            MARRAY_ASSERT(n.size() == NDim);
-            for (unsigned dim = 0;dim < NDim;dim++)
-            {
-                shift(dim, n.begin()[dim]);
-            }
-        }
-
-        template <unsigned Dim>
-        void shift(idx_type n)
-        {
-            static_assert(Dim < NDim, "Dim out of range");
-            shift(Dim, n);
-        }
-
-        void shift(unsigned dim, idx_type n)
-        {
-            MARRAY_ASSERT(dim < NDim);
-            derived().data_ += n*derived().stride_[dim];
-        }
-
-        template <unsigned Dim>
-        void shift_down()
-        {
-            shift_down(Dim);
-        }
-
-        void shift_down(unsigned dim)
-        {
-            shift(dim, derived().len_[dim]);
-        }
-
-        template <unsigned Dim>
-        void shift_up()
-        {
-            shift_up(Dim);
-        }
-
-        void shift_up(unsigned dim)
-        {
-            shift(dim, -derived().len_[dim]);
-        }
-
-        void permute(const std::array<unsigned, NDim>& perm)
-        {
-            permute<decltype(perm)>(perm);
-        }
-
-        template <typename U>
-        void permute(const U& perm)
-        {
-            std::array<idx_type, NDim> len = derived().len_;
-            std::array<stride_type, NDim> stride = derived().stride_;
-
-            for (unsigned i = 0;i < NDim;i++)
-            {
-                MARRAY_ASSERT(0 <= perm[i] && perm[i] < NDim);
-                for (unsigned j = 0;j < i;j++)
-                    MARRAY_ASSERT(perm[i] != perm[j]);
-            }
-
-            for (unsigned i = 0;i < NDim;i++)
-            {
-                derived().len_[i] = len[perm[i]];
-                derived().stride_[i] = stride[perm[i]];
-            }
-        }
-
-        template <unsigned N=NDim>
-        detail::enable_if_t<N==2> transpose()
-        {
-            permute({1, 0});
-        }
-
-        pointer data(pointer ptr)
-        {
-            std::swap(ptr, derived().data_);
-            return ptr;
-        }
-
-        template <unsigned Dim>
-        idx_type length(idx_type len)
-        {
-            static_assert(Dim < NDim, "Dim out of range");
-            return length(Dim, len);
-        }
-
-        idx_type length(unsigned dim, idx_type len)
-        {
-            MARRAY_ASSERT(dim < NDim);
-            std::swap(len, derived().len_[dim]);
-            return len;
-        }
-
-        template <unsigned Dim>
-        stride_type stride(stride_type s)
-        {
-            static_assert(Dim < NDim, "Dim out of range");
-            return stride(Dim, s);
-        }
-
-        stride_type stride(unsigned dim, stride_type s)
-        {
-            MARRAY_ASSERT(dim < NDim);
-            std::swap(s, derived().stride_[dim]);
-            return s;
-        }
-
-        const Derived& derived() const
-        {
-            return static_cast<const Derived&>(*this);
-        }
-
-        Derived& derived()
-        {
-            return static_cast<Derived&>(*this);
-        }
-};
-
-template <typename Type, unsigned NDim>
-class marray_data
-{
-    protected:
-        Type* data_;
-        std::array<idx_type,NDim> len_;
-        std::array<idx_type,NDim> stride_;
-};
-
-template <typename Type, unsigned NDim>
-class marray_ref : public marray_base<Type, NDim, marray_ref, false>
-{
-    protected:
-        const marray_data<Type, NDim>& data_;
 };
 
 }
