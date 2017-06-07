@@ -9,38 +9,38 @@ using namespace MArray;
 TEST(short_vector, constructor)
 {
     short_vector<int, 4> v1;
-    EXPECT_EQ(0, v1.size());
-    EXPECT_EQ(4, v1.capacity());
+    EXPECT_EQ(0u, v1.size());
+    EXPECT_EQ(4u, v1.capacity());
 
     short_vector<int, 4> v2(2);
-    EXPECT_EQ(2, v2.size());
-    EXPECT_EQ(4, v2.capacity());
+    EXPECT_EQ(2u, v2.size());
+    EXPECT_EQ(4u, v2.capacity());
 
     short_vector<int, 4> v3(6);
-    EXPECT_EQ(6, v3.size());
-    EXPECT_LE(6, v3.capacity());
+    EXPECT_EQ(6u, v3.size());
+    EXPECT_LE(6u, v3.capacity());
 
     vector<int> v{0, 2};
     short_vector<int, 4> v4(v.begin(), v.end());
-    EXPECT_EQ(2, v4.size());
-    EXPECT_EQ(4, v4.capacity());
+    EXPECT_EQ(2u, v4.size());
+    EXPECT_EQ(4u, v4.capacity());
 
     short_vector<int, 4> v5(v4);
-    EXPECT_EQ(2, v5.size());
-    EXPECT_EQ(4, v5.capacity());
+    EXPECT_EQ(2u, v5.size());
+    EXPECT_EQ(4u, v5.capacity());
     EXPECT_EQ(v5, v4);
 
     short_vector<int, 4> v6(short_vector<int, 4>(3));
-    EXPECT_EQ(3, v6.size());
-    EXPECT_EQ(4, v6.capacity());
+    EXPECT_EQ(3u, v6.size());
+    EXPECT_EQ(4u, v6.capacity());
 
     short_vector<int, 4> v7{0, 2, 4};
-    EXPECT_EQ(3, v7.size());
-    EXPECT_EQ(4, v7.capacity());
+    EXPECT_EQ(3u, v7.size());
+    EXPECT_EQ(4u, v7.capacity());
 
     short_vector<int, 4> v8{0, 1, 2, 3, 4, 5, 6};
-    EXPECT_EQ(7, v8.size());
-    EXPECT_LE(7, v8.capacity());
+    EXPECT_EQ(7u, v8.size());
+    EXPECT_LE(7u, v8.capacity());
 }
 
 TEST(short_vector, assignment)
@@ -184,46 +184,46 @@ TEST(short_vector, size_capacity_empty)
 {
     short_vector<int, 4> v1;
 
-    EXPECT_EQ(0, v1.size());
-    EXPECT_EQ(4, v1.capacity());
+    EXPECT_EQ(0u, v1.size());
+    EXPECT_EQ(4u, v1.capacity());
     EXPECT_TRUE(v1.empty());
 
     v1 = {0, 3, 4};
 
-    EXPECT_EQ(3, v1.size());
-    EXPECT_EQ(4, v1.capacity());
+    EXPECT_EQ(3u, v1.size());
+    EXPECT_EQ(4u, v1.capacity());
     EXPECT_FALSE(v1.empty());
 
     v1 = {0, 3, 4, 0, 4, 2, 4, 8};
 
-    EXPECT_EQ(8, v1.size());
-    EXPECT_LE(8, v1.capacity());
+    EXPECT_EQ(8u, v1.size());
+    EXPECT_LE(8u, v1.capacity());
     EXPECT_FALSE(v1.empty());
 
     v1.clear();
 
-    EXPECT_EQ(0, v1.size());
-    EXPECT_LE(8, v1.capacity());
+    EXPECT_EQ(0u, v1.size());
+    EXPECT_LE(8u, v1.capacity());
     EXPECT_TRUE(v1.empty());
 
     v1 = {0, 3, 4, 0, 4};
     v1.shrink_to_fit();
 
-    EXPECT_EQ(5, v1.size());
-    EXPECT_EQ(5, v1.capacity());
+    EXPECT_EQ(5u, v1.size());
+    EXPECT_EQ(5u, v1.capacity());
     EXPECT_FALSE(v1.empty());
 
     v1.clear();
     v1.shrink_to_fit();
 
-    EXPECT_EQ(0, v1.size());
-    EXPECT_EQ(4, v1.capacity());
+    EXPECT_EQ(0u, v1.size());
+    EXPECT_EQ(4u, v1.capacity());
     EXPECT_TRUE(v1.empty());
 
     v1.reserve(567);
 
-    EXPECT_EQ(0, v1.size());
-    EXPECT_LE(567, v1.capacity());
+    EXPECT_EQ(0u, v1.size());
+    EXPECT_LE(567u, v1.capacity());
     EXPECT_TRUE(v1.empty());
 }
 

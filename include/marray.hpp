@@ -1,7 +1,7 @@
 #ifndef _MARRAY_MARRAY_HPP_
 #define _MARRAY_MARRAY_HPP_
 
-#include "marray_base.hpp"
+#include "marray_view.hpp"
 
 namespace MArray
 {
@@ -9,6 +9,13 @@ namespace MArray
 template <typename Type, unsigned NDim, typename Allocator>
 class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, true>
 {
+    template <typename, unsigned, typename, bool> friend class marray_base;
+    template <typename, unsigned> friend class marray_view;
+    template <typename, unsigned, typename> friend class marray;
+    template <typename, typename, bool> friend class varray_base;
+    template <typename> friend class varray_view;
+    template <typename, typename> friend class varray;
+
     protected:
         typedef marray_base<Type, NDim, marray, true> base;
         typedef std::allocator_traits<Allocator> alloc_traits;
@@ -25,6 +32,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         using typename base::const_pointer;
         using typename base::reference;
         using typename base::const_reference;
+        using typename base::initializer_type;
 
         /***********************************************************************
          *
@@ -42,6 +50,13 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         marray(marray&& other)
         {
             reset(std::move(other));
+        }
+
+        template <typename U, typename A,
+            typename=detail::enable_if_assignable_t<reference,U>>
+        marray(const marray<U, NDim, A>& other)
+        {
+            reset(other);
         }
 
         template <typename U, typename D, bool O,
@@ -63,7 +78,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
             reset(len, val, layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         explicit marray(const U& len, const Type& val=Type(), layout layout = DEFAULT)
         {
             reset(len, val, layout);
@@ -74,7 +89,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
             reset(len, Type(), layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         marray(const U& len, layout layout)
         {
             reset(len, Type(), layout);
@@ -85,10 +100,15 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
             reset(len, uninitialized, layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         marray(const U& len, uninitialized_t, layout layout = DEFAULT)
         {
             reset(len, uninitialized, layout);
+        }
+
+        marray(initializer_type data, layout layout = DEFAULT)
+        {
+            reset(data, layout);
         }
 
         /***********************************************************************
@@ -158,6 +178,13 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
             swap(other);
         }
 
+        template <typename U, typename A,
+            typename=detail::enable_if_assignable_t<reference, U>>
+        void reset(const marray<U, NDim, A>& other)
+        {
+            reset(other, other.layout_);
+        }
+
         template <typename U, typename D, bool O,
             typename=detail::enable_if_assignable_t<reference, U>>
         void reset(const marray_base<U, NDim, D, O>& other, layout layout = DEFAULT)
@@ -183,10 +210,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 
         void reset(std::initializer_list<len_type> len, const Type& val=Type(), layout layout = DEFAULT)
         {
-            reset<decltype(len)>(len, val, layout);
+            reset<>(len, val, layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         void reset(const U& len, const Type& val=Type(), layout layout = DEFAULT)
         {
             reset(len, uninitialized, layout);
@@ -195,10 +222,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 
         void reset(std::initializer_list<len_type> len, layout layout)
         {
-            reset<decltype(len)>(len, Type(), layout);
+            reset<>(len, Type(), layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         void reset(const U& len, layout layout)
         {
             reset(len, Type(), layout);
@@ -206,10 +233,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 
         void reset(std::initializer_list<len_type> len, uninitialized_t, layout layout = DEFAULT)
         {
-            reset<decltype(len)>(len, uninitialized, layout);
+            reset<>(len, uninitialized, layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         void reset(const U& len, uninitialized_t, layout layout = DEFAULT)
         {
             reset();
@@ -220,6 +247,18 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
                         base::strides(len, layout));
         }
 
+        void reset(initializer_type data, layout layout = DEFAULT)
+        {
+            reset();
+
+            layout_ = layout;
+            base::set_lengths(0, len_, data);
+            storage_.size = size(len_);
+            data_ = alloc_traits::allocate(storage_, storage_.size);
+            stride_ = base::strides(len_, layout);
+            base::set_data(0, data_, data);
+        }
+
         /***********************************************************************
          *
          * Resize
@@ -228,10 +267,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 
         void resize(std::initializer_list<len_type> len, const Type& val=Type())
         {
-            resize<decltype(len)>(len, val);
+            resize<>(len, val);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         void resize(const U& len, const Type& val=Type())
         {
             marray a(std::move(*this));

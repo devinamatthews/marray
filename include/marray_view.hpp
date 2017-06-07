@@ -64,7 +64,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
             reset(len, ptr, layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         marray_view(const U& len, pointer ptr, layout layout = DEFAULT)
         {
             reset(len, ptr, layout);
@@ -77,8 +77,8 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         }
 
         template <typename U, typename V, typename=
-                  detail::enable_if_t<detail::is_range_of<U,len_type>::value &&
-                                      detail::is_range_of<V,stride_type>::value>>
+                  detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
+                                      detail::is_container_of<V,stride_type>::value>>
         marray_view(const U& len, pointer ptr, const V& stride)
         {
             reset(len, ptr, stride);
@@ -133,10 +133,10 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
 
         void shift(std::initializer_list<len_type> n)
         {
-            shift<decltype(n)>(n);
+            shift<>(n);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         void shift(const U& n)
         {
             MARRAY_ASSERT(n.size() == NDim);
@@ -209,10 +209,10 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
 
         void permute(const std::array<unsigned, NDim>& perm)
         {
-            permute<decltype(perm)>(perm);
+            permute<>(perm);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
         void permute(const U& perm)
         {
             std::array<len_type, NDim> len = len_;
@@ -221,7 +221,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
             auto it = perm.begin();
             for (unsigned i = 0;i < NDim;i++)
             {
-                MARRAY_ASSERT(0 <= *it && *it < NDim);
+                MARRAY_ASSERT((unsigned)*it < NDim);
                 for (auto it2 = perm.begin();it2 != it;++it2)
                     MARRAY_ASSERT(*it != *it2);
 

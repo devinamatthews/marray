@@ -1,7 +1,7 @@
 #ifndef _MARRAY_VARRAY_HPP_
 #define _MARRAY_VARRAY_HPP_
 
-#include "varray_base.hpp"
+#include "varray_view.hpp"
 
 namespace MArray
 {
@@ -9,6 +9,13 @@ namespace MArray
 template <typename Type, typename Allocator>
 class varray : public varray_base<Type, varray<Type, Allocator>, true>
 {
+    template <typename, unsigned, typename, bool> friend class marray_base;
+    template <typename, unsigned> friend class marray_view;
+    template <typename, unsigned, typename> friend class marray;
+    template <typename, typename, bool> friend class varray_base;
+    template <typename> friend class varray_view;
+    template <typename, typename> friend class varray;
+
     protected:
         typedef varray_base<Type, varray, true> base;
         typedef std::allocator_traits<Allocator> alloc_traits;
@@ -42,6 +49,13 @@ class varray : public varray_base<Type, varray<Type, Allocator>, true>
         varray(varray&& other)
         {
             reset(std::move(other));
+        }
+
+        template <typename U, typename A,
+            typename=detail::enable_if_assignable_t<reference,U>>
+        varray(const varray<U, A>& other)
+        {
+            reset(other);
         }
 
         template <typename U, typename D, bool O,
@@ -150,6 +164,13 @@ class varray : public varray_base<Type, varray<Type, Allocator>, true>
             swap(other);
         }
 
+        template <typename U, typename A,
+            typename=detail::enable_if_assignable_t<reference,U>>
+        void reset(const varray<U, A>& other)
+        {
+            reset(other, other.layout_);
+        }
+
         template <typename U, typename D, bool O,
             typename=detail::enable_if_assignable_t<reference,U>>
         void reset(const varray_base<U, D, O>& other, layout layout = DEFAULT)
@@ -168,7 +189,7 @@ class varray : public varray_base<Type, varray<Type, Allocator>, true>
 
         void reset(std::initializer_list<len_type> len, const Type& val=Type(), layout layout = DEFAULT)
         {
-            reset<decltype(len)>(len, val, layout);
+            reset<>(len, val, layout);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -180,7 +201,7 @@ class varray : public varray_base<Type, varray<Type, Allocator>, true>
 
         void reset(std::initializer_list<len_type> len, layout layout)
         {
-            reset<decltype(len)>(len, Type(), layout);
+            reset<>(len, Type(), layout);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -191,7 +212,7 @@ class varray : public varray_base<Type, varray<Type, Allocator>, true>
 
         void reset(std::initializer_list<len_type> len, uninitialized_t, layout layout = DEFAULT)
         {
-            reset<decltype(len)>(len, uninitialized, layout);
+            reset<>(len, uninitialized, layout);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -214,7 +235,7 @@ class varray : public varray_base<Type, varray<Type, Allocator>, true>
 
         void resize(std::initializer_list<len_type> len, const Type& val=Type())
         {
-            resize<decltype(len)>(len, val);
+            resize<>(len, val);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>

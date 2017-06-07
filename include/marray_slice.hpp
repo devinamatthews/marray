@@ -10,7 +10,7 @@ namespace detail
 {
 
 template <typename It1, typename It2>
-void get_slice_dims_helper(It1 len, It2 stride) {}
+void get_slice_dims_helper(It1, It2) {}
 
 template <typename It1, typename It2, typename... Dims>
 void get_slice_dims_helper(It1 len, It2 stride,

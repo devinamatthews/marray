@@ -1,24 +1,7 @@
 #ifndef _MARRAY_VARRAY_BASE_HPP_
 #define _MARRAY_VARRAY_BASE_HPP_
 
-#include "marray.hpp"
-
-namespace MArray
-{
-
-template <typename Type, typename Derived, bool Owner>
-class varray_base;
-
-template <typename Type>
-class varray_view;
-
-template <typename Type, typename Allocator=std::allocator<Type>>
-class varray;
-
-}
-
-#include "varray_view.hpp"
-#include "varray.hpp"
+#include "marray_base.hpp"
 #include "viterator.hpp"
 
 namespace MArray
@@ -34,6 +17,9 @@ class varray_base
         typedef Type& reference;
         typedef const Type& const_reference;
 
+        template <typename, unsigned, typename, bool> friend class marray_base;
+        template <typename, unsigned> friend class marray_view;
+        template <typename, unsigned, typename> friend class marray;
         template <typename, typename, bool> friend class varray_base;
         template <typename> friend class varray_view;
         template <typename, typename> friend class varray;
@@ -54,8 +40,8 @@ class varray_base
          **********************************************************************/
 
         template <unsigned Dim>
-        void get_slice(pointer& ptr, std::vector<len_type>& len,
-                       std::vector<stride_type>& stride) const {}
+        void get_slice(pointer&, std::vector<len_type>&,
+                       std::vector<stride_type>&) const {}
 
         template <unsigned Dim, typename... Args>
         void get_slice(pointer& ptr, std::vector<len_type>& len,
@@ -91,7 +77,7 @@ class varray_base
         }
 
         template <unsigned Dim>
-        void get_reference(pointer& ptr) const {}
+        void get_reference(pointer&) const {}
 
         template <unsigned Dim, typename... Args>
         void get_reference(pointer& ptr, len_type arg, Args&&... args) const
@@ -187,7 +173,7 @@ class varray_base
 
         void reset(std::initializer_list<len_type> len, pointer ptr, layout layout = DEFAULT)
         {
-            reset<decltype(len)>(len, ptr, layout);
+            reset<>(len, ptr, layout);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -232,7 +218,7 @@ class varray_base
 
         static std::vector<stride_type> strides(std::initializer_list<len_type> len, layout layout = DEFAULT)
         {
-            return strides<decltype(len)>(len, layout);
+            return strides<>(len, layout);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -273,7 +259,7 @@ class varray_base
 
         stride_type size(std::initializer_list<len_type> len)
         {
-            return size<decltype(len)>(len);
+            return size<>(len);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -406,7 +392,7 @@ class varray_base
 
         varray_view<Type> shifted(std::initializer_list<len_type> n)
         {
-            return shifted<decltype(n)>(n);
+            return shifted<>(n);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -470,7 +456,7 @@ class varray_base
 
         varray_view<Type> permuted(std::initializer_list<unsigned> perm)
         {
-            return permuted<decltype(perm)>(perm);
+            return permuted<>(perm);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
@@ -500,7 +486,7 @@ class varray_base
 
         varray_view<Type> lowered(std::initializer_list<unsigned> split)
         {
-            return lowered<decltype(split)>(split);
+            return lowered<>(split);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>

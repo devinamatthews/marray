@@ -144,7 +144,7 @@ TYPED_TEST(expression_vector, vector_add)
 
     marray_view<T,1> c({128}, data3);
     marray_view<U,1> d({128}, data4);
-    marray<V,1> e({128});
+    marray<V,1> e({128}, V());
 
     e = c+d;
 
@@ -184,7 +184,7 @@ TYPED_TEST(expression_vector, vector_sub)
 
     marray_view<T,1> c({128}, data3);
     marray_view<U,1> d({128}, data4);
-    marray<V,1> e({128});
+    marray<V,1> e({128}, V());
 
     e = c-d;
 
@@ -271,7 +271,7 @@ TYPED_TEST(expression_vector, vector_mul)
 
     marray_view<T,1> c({128}, data3);
     marray_view<U,1> d({128}, data4);
-    marray<V,1> e({128});
+    marray<V,1> e({128}, V());
 
     e = c*d;
 
@@ -315,7 +315,7 @@ TYPED_TEST(expression_vector, vector_div)
 
     marray_view<T,1> c({128}, data3);
     marray_view<U,1> d({128}, data4);
-    marray<V,1> e({128});
+    marray<V,1> e({128}, V());
     c[ 0] = T(1);
     c[32] = T(1);
     c[64] = T(1);
@@ -450,7 +450,7 @@ TEST(expression, add)
     double data1[3] = {1, 2, 3};
     double data2[3] = {3, 2, 1};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
     marray_view<double,1> v3({3}, data2);
 
@@ -475,7 +475,7 @@ TEST(expression, sub)
     double data1[3] = {1, 2, 3};
     double data2[3] = {3, 2, 1};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
     marray_view<double,1> v3({3}, data2);
 
@@ -500,7 +500,7 @@ TEST(expression, mul)
     double data1[3] = {1, 2, 3};
     double data2[3] = {3, 2, 1};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
     marray_view<double,1> v3({3}, data2);
 
@@ -525,7 +525,7 @@ TEST(expression, div)
     double data1[3] = {1, 2, 3};
     double data2[3] = {3, 2, 1};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
     marray_view<double,1> v3({3}, data2);
 
@@ -550,7 +550,7 @@ TEST(expression, pow)
     double data1[3] = {1, 2, 3};
     double data2[3] = {3, 2, 1};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
     marray_view<double,1> v3({3}, data2);
 
@@ -568,7 +568,7 @@ TEST(expression, negate)
 {
     double data1[3] = {1, 2, 3};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
 
     v1 = -v2;
@@ -579,7 +579,7 @@ TEST(expression, exp)
 {
     double data1[3] = {1, 2, 3};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
 
     v1 = exp(v2);
@@ -590,7 +590,7 @@ TEST(expression, sqrt)
 {
     double data1[3] = {4, 9, 16};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
 
     v1 = sqrt(v2);
@@ -603,7 +603,7 @@ TEST(expression, compound)
     double data2[3] = {3, 2, 1};
     double data3[3] = {4, 7, 2};
 
-    marray<double,1> v1({3});
+    marray<double,1> v1({3}, 0);
     marray_view<double,1> v2({3}, data1);
     marray_view<double,1> v3({3}, data2);
     marray_view<double,1> v4({3}, data3);

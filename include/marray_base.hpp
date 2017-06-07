@@ -19,6 +19,15 @@ class marray_view;
 template <typename Type, unsigned NDim, typename Allocator=std::allocator<Type>>
 class marray;
 
+template <typename Type, typename Derived, bool Owner>
+class varray_base;
+
+template <typename Type>
+class varray_view;
+
+template <typename Type, typename Allocator=std::allocator<Type>>
+class varray;
+
 template <typename Expr>
 struct is_expression_arg_or_scalar;
 
@@ -26,12 +35,30 @@ struct is_expression_arg_or_scalar;
 
 #include "expression.hpp"
 #include "marray_slice.hpp"
-#include "marray_view.hpp"
-#include "marray.hpp"
 #include "miterator.hpp"
 
 namespace MArray
 {
+
+namespace detail
+{
+
+template <typename Type, unsigned NDim>
+struct initializer_type;
+
+template <typename Type>
+struct initializer_type<Type, 1u>
+{
+    typedef std::initializer_list<Type> type;
+};
+
+template <typename Type, unsigned NDim>
+struct initializer_type
+{
+    typedef std::initializer_list<typename initializer_type<Type, NDim-1>::type> type;
+};
+
+}
 
 template <typename Type, unsigned NDim, typename Derived, bool Owner>
 class marray_base
@@ -41,6 +68,9 @@ class marray_base
     template <typename, unsigned, typename, bool> friend class marray_base;
     template <typename, unsigned> friend class marray_view;
     template <typename, unsigned, typename> friend class marray;
+    template <typename, typename, bool> friend class varray_base;
+    template <typename> friend class varray_view;
+    template <typename, typename> friend class varray;
 
     public:
         typedef Type value_type;
@@ -48,6 +78,8 @@ class marray_base
         typedef const Type* const_pointer;
         typedef Type& reference;
         typedef const Type& const_reference;
+        typedef typename detail::initializer_type<Type, NDim>::type
+            initializer_type;
 
     protected:
         typedef typename std::conditional<Owner,const Type,Type>::type ctype;
@@ -98,10 +130,10 @@ class marray_base
 
         void reset(std::initializer_list<len_type> len, pointer ptr, layout layout = DEFAULT)
         {
-            reset<decltype(len)>(len, ptr, layout);
+            reset<>(len, ptr, layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         void reset(const U& len, pointer ptr, layout layout = DEFAULT)
         {
             reset(len, ptr, strides(len, layout));
@@ -114,13 +146,53 @@ class marray_base
         }
 
         template <typename U, typename V, typename=detail::enable_if_t<
-            detail::is_range_of<U,len_type>::value &&
-            detail::is_range_of<V,stride_type>::value>>
+            detail::is_container_of<U,len_type>::value &&
+            detail::is_container_of<V,stride_type>::value>>
         void reset(const U& len, pointer ptr, const V& stride)
         {
             data_ = ptr;
             std::copy_n(len.begin(), NDim, len_.begin());
             std::copy_n(stride.begin(), NDim, stride_.begin());
+        }
+
+        void set_lengths(unsigned i, std::array<len_type, NDim>& len, std::initializer_list<Type> data)
+        {
+            len[i] = data.size();
+        }
+
+        template <typename U>
+        void set_lengths(unsigned i, std::array<len_type, NDim>& len, std::initializer_list<U> data)
+        {
+            len[i] = data.size();
+            set_lengths(i+1, len, *data.begin());
+        }
+
+        void set_data(unsigned i, pointer ptr, std::initializer_list<Type> data)
+        {
+            auto it = data.begin();
+            for (len_type j = 0;j < len_[i];j++)
+            {
+                ptr[j*stride_[i]] = *it;
+                ++it;
+            }
+        }
+
+        template <typename U>
+        void set_data(unsigned i, pointer ptr, std::initializer_list<U> data)
+        {
+            auto it = data.begin();
+            for (len_type j = 0;j < len_[i];j++)
+            {
+                set_data(i+1, ptr + j*stride_[i], *it);
+                ++it;
+            }
+        }
+
+        void reset(initializer_type data, layout layout = DEFAULT)
+        {
+            set_lengths(0, len_, data);
+            stride_ = strides(len_, layout);
+            set_data(0, data_, data);
         }
 
         void swap(marray_base& other)
@@ -142,10 +214,10 @@ class marray_base
         static std::array<stride_type, NDim>
         strides(std::initializer_list<len_type> len, layout layout = DEFAULT)
         {
-            return strides<decltype(len)>(len, layout);
+            return strides<>(len, layout);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         static std::array<stride_type, NDim>
         strides(const U& len, layout layout = DEFAULT)
         {
@@ -183,10 +255,10 @@ class marray_base
 
         static stride_type size(std::initializer_list<len_type> len)
         {
-            return size<decltype(len)>(len);
+            return size<>(len);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         static stride_type size(const U& len)
         {
             //TODO: add alignment option
@@ -203,6 +275,15 @@ class marray_base
          **********************************************************************/
 
         marray_base& operator=(const marray_base& other) = delete;
+
+        marray_base& operator=(initializer_type data)
+        {
+            std::array<len_type, NDim> len;
+            set_lengths(0, len, data);
+            MARRAY_ASSERT(len == len_);
+            set_data(0, data_, data);
+            return *this;
+        }
 
         template <typename Expression,
             typename=detail::enable_if_t<is_expression_arg_or_scalar<Expression>::value>>
@@ -284,6 +365,31 @@ class marray_base
             return static_cast<const Derived&>(*this);
         }
 
+        template <typename U, unsigned N, typename D, bool O>
+        detail::enable_if_t<N==NDim, bool>
+        operator==(const marray_base<U, N, D, O>& other) const
+        {
+            if (len_ != other.len_) return false;
+
+            miterator<NDim, 2> it(len_, stride_, other.stride_);
+
+            auto a = data_;
+            auto b = other.data_;
+            while (it.next(a, b))
+            {
+                if (*a != *b) return false;
+            }
+
+            return true;
+        }
+
+        template <typename U, unsigned N, typename D, bool O>
+        detail::enable_if_t<N!=NDim, bool>
+        operator==(const marray_base<U, N, D, O>&) const
+        {
+            return false;
+        }
+
         /***********************************************************************
          *
          * Views
@@ -333,16 +439,16 @@ class marray_base
 
         marray_view<Type, NDim> shifted(std::initializer_list<len_type> n)
         {
-            return shifted<decltype(n)>(n);
+            return shifted<>(n);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         marray_view<ctype, NDim> shifted(const U& n) const
         {
             return const_cast<marray_base&>(*this).shifted(n);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,len_type>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
         marray_view<Type, NDim> shifted(const U& n)
         {
             marray_view<Type,NDim> r(*this);
@@ -467,16 +573,16 @@ class marray_base
 
         marray_view<Type,NDim> permuted(std::initializer_list<unsigned> perm)
         {
-            return permuted<decltype(perm)>(perm);
+            return permuted<>(perm);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
         marray_view<ctype,NDim> permuted(const U& perm) const
         {
             return const_cast<marray_base&>(*this).permuted<U>(perm);
         }
 
-        template <typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
         marray_view<Type,NDim> permuted(const U& perm)
         {
             marray_view<Type,NDim> r(*this);
@@ -523,23 +629,26 @@ class marray_base
         template <unsigned NewNDim>
         marray_view<Type, NewNDim> lowered(std::initializer_list<unsigned> split)
         {
-            return lowered<NewNDim,decltype(split)>(split);
+            return lowered<NewNDim,std::initializer_list<unsigned>>(split);
         }
 
-        template <unsigned NewNDim, typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        template <unsigned NewNDim, typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
         marray_view<ctype, NewNDim> lowered(const U& split) const
         {
             return const_cast<marray_base&>(*this).lowered<NewNDim,U>(split);
         }
 
-        template <unsigned NewNDim, typename U, typename=detail::enable_if_range_of_t<U,unsigned>>
+        template <unsigned NewNDim, typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
         marray_view<Type, NewNDim> lowered(const U& split_)
         {
-            constexpr unsigned NSplit = NewNDim-1;
-            MARRAY_ASSERT(NSplit < NDim);
+            static_assert(NewNDim > 0 && NewNDim <= NDim,
+                          "Cannot split into this number of dimensions");
 
-            std::array<unsigned, NDim-1> split;
-            std::copy_n(split_.begin(), NDim-1, split.begin());
+            constexpr unsigned NSplit = NewNDim-1;
+            MARRAY_ASSERT(split_.size() == NSplit);
+
+            std::array<unsigned, NSplit> split;
+            std::copy_n(split_.begin(), NSplit, split.begin());
 
             for (unsigned i = 0;i < NSplit;i++)
             {

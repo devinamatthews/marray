@@ -106,7 +106,8 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 PROGRAMS = $(noinst_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_bin_test_OBJECTS = test/expression.$(OBJEXT) \
+am_bin_test_OBJECTS = test/dpd_marray_view.$(OBJEXT) \
+	test/dpd_varray_view.$(OBJEXT) test/expression.$(OBJEXT) \
 	test/marray_view.$(OBJEXT) test/marray.$(OBJEXT) \
 	test/miterator.$(OBJEXT) test/range.$(OBJEXT) \
 	test/short_vector.$(OBJEXT) test/utility.$(OBJEXT) \
@@ -570,7 +571,9 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = -DMARRAY_ENABLE_ASSERTS -I$(srcdir)/include -Ithird_party/googletest/include
-bin_test_SOURCES = test/expression.cxx \
+bin_test_SOURCES = test/dpd_marray_view.cxx \
+		   test/dpd_varray_view.cxx \
+                   test/expression.cxx \
                    test/marray_view.cxx \
                    test/marray.cxx \
                    test/miterator.cxx \
@@ -637,6 +640,10 @@ test/$(am__dirstamp):
 test/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) test/$(DEPDIR)
 	@: > test/$(DEPDIR)/$(am__dirstamp)
+test/dpd_marray_view.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+test/dpd_varray_view.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
 test/expression.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 test/marray_view.$(OBJEXT): test/$(am__dirstamp) \
@@ -672,6 +679,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/dpd_marray_view.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/dpd_varray_view.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/expression.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/marray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/marray_view.Po@am__quote@

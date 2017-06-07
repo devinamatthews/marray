@@ -5,7 +5,9 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = -DMARRAY_ENABLE_ASSERTS -I$(srcdir)/include -Ithird_party/googletest/include
 
 noinst_PROGRAMS = bin/test
-bin_test_SOURCES = test/expression.cxx \
+bin_test_SOURCES = test/dpd_marray_view.cxx \
+		   test/dpd_varray_view.cxx \
+                   test/expression.cxx \
                    test/marray_view.cxx \
                    test/marray.cxx \
                    test/miterator.cxx \

@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "marray_view.hpp"
+#include "marray.hpp"
 #include "rotate.hpp"
 
 using namespace std;
@@ -245,6 +245,36 @@ TEST(marray_view, reset)
     EXPECT_EQ(nullptr, v1.data());
     EXPECT_EQ((array<len_type,3>{0, 0, 0}), v2.lengths());
     EXPECT_EQ((array<stride_type,3>{0, 0, 0}), v2.strides());
+}
+
+TEST(marray_view, initialize)
+{
+    std::array<double,18> data = {};
+
+    marray_view<double,3> v1({3, 2, 3}, data.data(), ROW_MAJOR);
+    marray_view<double,3> v2({3, 2, 3}, data.data(), COLUMN_MAJOR);
+
+    v1 = {{{ 0, 1, 2},
+           { 3, 4, 5}},
+          {{ 6, 7, 8},
+           { 9,10,11}},
+          {{12,13,14},
+           {15,16,17}}};
+
+    EXPECT_EQ((std::array<double,18>{ 0, 1, 2, 3, 4, 5,
+                                        6, 7, 8, 9,10,11,
+                                       12,13,14,15,16,17}), data);
+
+    v2 = {{{ 0, 1, 2},
+           { 3, 4, 5}},
+          {{ 6, 7, 8},
+           { 9,10,11}},
+          {{12,13,14},
+           {15,16,17}}};
+
+    EXPECT_EQ((std::array<double,18>{ 0, 6,12, 3, 9,15,
+                                      1, 7,13, 4,10,16,
+                                      2, 8,14, 5,11,17}), data);
 }
 
 TEST(marray_view, shift)

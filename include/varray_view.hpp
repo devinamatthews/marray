@@ -125,7 +125,7 @@ class varray_view : public varray_base<Type, varray_view<Type>, false>
 
         void shift(std::initializer_list<len_type> n)
         {
-            shift<decltype(n)>(n);
+            shift<>(n);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -159,7 +159,7 @@ class varray_view : public varray_base<Type, varray_view<Type>, false>
 
         void permute(std::initializer_list<unsigned> perm)
         {
-            permute<decltype(perm)>(perm);
+            permute<>(perm);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
@@ -173,7 +173,7 @@ class varray_view : public varray_base<Type, varray_view<Type>, false>
             auto it = perm.begin();
             for (unsigned i = 0;i < dimension();i++)
             {
-                MARRAY_ASSERT(0 <= *it && *it < dimension());
+                MARRAY_ASSERT((unsigned)*it < dimension());
                 for (auto it2 = perm.begin();it2 != it;++it2)
                     MARRAY_ASSERT(*it != *it2);
 
@@ -191,7 +191,7 @@ class varray_view : public varray_base<Type, varray_view<Type>, false>
 
         void lower(std::initializer_list<unsigned> split)
         {
-            lower<decltype(split)>(split);
+            lower<>(split);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>

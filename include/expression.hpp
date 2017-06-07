@@ -163,7 +163,7 @@ eval_at(Expr&& expr, len_type i)
 
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_scalar<detail::decay_t<Expr>>::value,Expr>
-eval_at(Expr&& expr, len_type i)
+eval_at(Expr&& expr, len_type)
 {
     return expr;
 }
@@ -179,7 +179,7 @@ eval_vec(Expr&& expr, len_type i)
 template <unsigned NDim, unsigned Dim, unsigned Width, bool Aligned, typename Expr>
 detail::enable_if_t<is_scalar<detail::decay_t<Expr>>::value,
                     typename vector_traits<detail::decay_t<Expr>>::vector_type>
-eval_vec(Expr&& expr, len_type i)
+eval_vec(Expr&& expr, len_type)
 {
     return vector_traits<detail::decay_t<Expr>>::set1(expr);
 }
@@ -986,7 +986,7 @@ bool check_expr_lengths(const array_expr<T, Dims...>& array,
 
 template <typename Expr, size_t NDim>
 detail::enable_if_t<is_scalar<Expr>::value,bool>
-check_expr_lengths(const Expr& expr, const std::array<len_type, NDim>& len)
+check_expr_lengths(const Expr&, const std::array<len_type, NDim>&)
 {
     return true;
 }
@@ -1010,7 +1010,7 @@ check_expr_lengths(const Expr& expr, const std::array<len_type, NDim>& len)
  * Return true if the dimension is vectorizable (stride-1).
  * Broadcast dimensions are trivially vectorizable.
  */
-inline bool is_contiguous(const bcast_dim& dim)
+inline bool is_contiguous(const bcast_dim&)
 {
     return true;
 }
@@ -1028,7 +1028,7 @@ inline bool is_contiguous(const slice_dim& dim)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims)), bool>
-is_array_contiguous(const array_expr<T, Dims...>& expr)
+is_array_contiguous(const array_expr<T, Dims...>&)
 {
     return true;
 }
@@ -1052,7 +1052,7 @@ bool is_contiguous(const array_expr<T, Dims...>& expr)
 
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_scalar<Expr>::value, bool>
-is_contiguous(const Expr& expr)
+is_contiguous(const Expr&)
 {
     return true;
 }
@@ -1111,7 +1111,7 @@ struct vector_width<Expr,detail::enable_if_t<is_binary_expression<Expr>::value>>
  * For broadcast dimensions this is a no-op.
  */
 template <typename T, typename... Dims>
-void increment(array_expr<T, Dims...>& expr, const bcast_dim& dim) {}
+void increment(array_expr<T, Dims...>&, const bcast_dim&) {}
 
 template <typename T, typename... Dims>
 void increment(array_expr<T, Dims...>& expr, const slice_dim& dim)
@@ -1120,7 +1120,7 @@ void increment(array_expr<T, Dims...>& expr, const slice_dim& dim)
 }
 
 template <typename T, typename... Dims>
-void decrement(array_expr<T, Dims...>& expr, const bcast_dim& dim) {}
+void decrement(array_expr<T, Dims...>&, const bcast_dim&) {}
 
 template <typename T, typename... Dims>
 void decrement(array_expr<T, Dims...>& expr, const slice_dim& dim)
@@ -1136,11 +1136,11 @@ void decrement(array_expr<T, Dims...>& expr, const slice_dim& dim)
  */
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims))>
-increment_array(array_expr<T, Dims...>& expr) {}
+increment_array(array_expr<T, Dims...>&) {}
 
 template <unsigned NDim, unsigned Dim, typename T, typename... Dims>
 detail::enable_if_t<(Dim < NDim-sizeof...(Dims))>
-decrement_array(array_expr<T, Dims...>& expr) {}
+decrement_array(array_expr<T, Dims...>&) {}
 
 /*
  * For the remaining sizeof...(Dims) dimensions, subtract NDim-sizeof...(Dims)
@@ -1179,11 +1179,11 @@ void decrement(array_expr<T, Dims...>& expr)
  */
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_scalar<Expr>::value>
-increment(const Expr& expr) {}
+increment(const Expr&) {}
 
 template <unsigned NDim, unsigned Dim, typename Expr>
 detail::enable_if_t<is_scalar<Expr>::value>
-decrement(const Expr& expr) {}
+decrement(const Expr&) {}
 
 /*
  * For binary and unary subexpressions, increment/decrement their children.

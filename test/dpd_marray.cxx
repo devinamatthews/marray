@@ -158,72 +158,6 @@ TEST(marray, reset)
     EXPECT_EQ((array<stride_type,3>{0, 0, 0}), v1.strides());
 }
 
-TEST(marray, initialize)
-{
-    marray<double,3> v1({3, 2, 3}, ROW_MAJOR);
-    marray<double,3> v2({3, 2, 3}, COLUMN_MAJOR);
-
-    v1 = {{{ 0, 1, 2},
-           { 3, 4, 5}},
-          {{ 6, 7, 8},
-           { 9,10,11}},
-          {{12,13,14},
-           {15,16,17}}};
-
-    EXPECT_EQ((std::array<double,18>{ 0, 1, 2, 3, 4, 5,
-                                      6, 7, 8, 9,10,11,
-                                     12,13,14,15,16,17}),
-              *(const std::array<double,18>*)v1.data());
-
-    v2 = {{{ 0, 1, 2},
-           { 3, 4, 5}},
-          {{ 6, 7, 8},
-           { 9,10,11}},
-          {{12,13,14},
-           {15,16,17}}};
-
-    EXPECT_EQ((std::array<double,18>{ 0, 6,12, 3, 9,15,
-                                      1, 7,13, 4,10,16,
-                                      2, 8,14, 5,11,17}),
-              *(const std::array<double,18>*)v2.data());
-
-    marray<double,3> v3({{{ 0, 1, 2},
-                          { 3, 4, 5}},
-                         {{ 6, 7, 8},
-                          { 9,10,11}},
-                         {{12,13,14},
-                          {15,16,17}}}, ROW_MAJOR);
-
-    EXPECT_EQ((std::array<double,18>{ 0, 1, 2, 3, 4, 5,
-                                      6, 7, 8, 9,10,11,
-                                     12,13,14,15,16,17}),
-              *(const std::array<double,18>*)v3.data());
-
-    marray<double,3> v4({{{ 0, 1, 2},
-                          { 3, 4, 5}},
-                         {{ 6, 7, 8},
-                          { 9,10,11}},
-                         {{12,13,14},
-                          {15,16,17}}}, COLUMN_MAJOR);
-
-    EXPECT_EQ((std::array<double,18>{ 0, 6,12, 3, 9,15,
-                                      1, 7,13, 4,10,16,
-                                      2, 8,14, 5,11,17}),
-              *(const std::array<double,18>*)v4.data());
-
-    marray<double,3> v5 = {{{ 0, 1, 2},
-                            { 3, 4, 5}},
-                           {{ 6, 7, 8},
-                            { 9,10,11}},
-                           {{12,13,14},
-                            {15,16,17}}};
-
-    EXPECT_EQ((std::array<double,18>{ 0, 1, 2, 3, 4, 5,
-                                      6, 7, 8, 9,10,11,
-                                     12,13,14,15,16,17}),
-              *(const std::array<double,18>*)v5.data());
-}
-
 TEST(marray, resize)
 {
     double data[6] = {0, 1, 2,
@@ -419,7 +353,7 @@ TEST(marray, rotate)
 
 TEST(marray, front_back)
 {
-    marray<double,1> v1({8}, 0);
+    marray<double,1> v1({8});
 
     EXPECT_EQ(v1.data(), &v1.cfront());
     EXPECT_EQ(v1.data(), &v1.front());

@@ -49,6 +49,20 @@ typedef MARRAY_LEN_TYPE len_type;
 
 typedef MARRAY_STRIDE_TYPE stride_type;
 
+#ifndef MARRAY_DEFAULT_LAYOUT
+#define MARRAY_DEFAULT_LAYOUT ROW_MAJOR
+#endif
+
+#define MARRAY_PASTE_(x,y) x##y
+#define MARRAY_PASTE(x,y) MARRAY_PASTE_(x,y)
+
+#define MARRAY_DEFAULT_DPD_LAYOUT_(type) \
+    MARRAY_PASTE(MARRAY_PASTE(type,_),MARRAY_DEFAULT_LAYOUT)
+
+#ifndef MARRAY_DEFAULT_DPD_LAYOUT
+#define MARRAY_DEFAULT_DPD_LAYOUT PREFIX
+#endif
+
 /*
  * The special value uninitialized is used to construct an array which
  * does not default- or value-initialize its elements (useful for avoiding
@@ -64,7 +78,7 @@ struct layout
 {
     int type;
 
-    constexpr layout(int type) : type(type) {}
+    constexpr explicit layout(int type) : type(type) {}
 
     bool operator==(layout other) const { return type == other.type; }
     bool operator!=(layout other) const { return type != other.type; }
@@ -78,16 +92,64 @@ constexpr row_major_layout ROW_MAJOR;
 
 constexpr decltype(MARRAY_DEFAULT_LAYOUT) DEFAULT;
 
+struct dpd_layout
+{
+    int type;
+
+    constexpr explicit dpd_layout(int type) : type(type) {}
+
+    dpd_layout(layout layout);
+
+    bool operator==(dpd_layout other) const { return type == other.type; }
+    bool operator!=(dpd_layout other) const { return type != other.type; }
+};
+
+struct balanced_column_major_layout : dpd_layout
+{ constexpr balanced_column_major_layout() : dpd_layout(0) {} };
+constexpr balanced_column_major_layout BALANCED_COLUMN_MAJOR;
+
+struct balanced_row_major_layout : dpd_layout
+{ constexpr balanced_row_major_layout() : dpd_layout(1) {} };
+constexpr balanced_row_major_layout BALANCED_ROW_MAJOR;
+
+struct blocked_column_major_layout : dpd_layout
+{ constexpr blocked_column_major_layout() : dpd_layout(2) {} };
+constexpr blocked_column_major_layout BLOCKED_COLUMN_MAJOR;
+
+struct blocked_row_major_layout : dpd_layout
+{ constexpr blocked_row_major_layout() : dpd_layout(3) {} };
+constexpr blocked_row_major_layout BLOCKED_ROW_MAJOR;
+
+struct prefix_column_major_layout : dpd_layout
+{ constexpr prefix_column_major_layout() : dpd_layout(4) {} };
+constexpr prefix_column_major_layout PREFIX_COLUMN_MAJOR;
+
+struct prefix_row_major_layout : dpd_layout
+{ constexpr prefix_row_major_layout() : dpd_layout(5) {} };
+constexpr prefix_row_major_layout PREFIX_ROW_MAJOR;
+
+constexpr decltype(MARRAY_DEFAULT_DPD_LAYOUT_(BALANCED)) BALANCED;
+constexpr decltype(MARRAY_DEFAULT_DPD_LAYOUT_(BLOCKED)) BLOCKED;
+constexpr decltype(MARRAY_DEFAULT_DPD_LAYOUT_(PREFIX)) PREFIX;
+
+inline dpd_layout::dpd_layout(layout layout)
+: type(layout == DEFAULT   ? MARRAY_DEFAULT_DPD_LAYOUT.type :
+       layout == ROW_MAJOR ? MARRAY_PASTE(MARRAY_DEFAULT_DPD_LAYOUT,_ROW_MAJOR).type
+                           : MARRAY_PASTE(MARRAY_DEFAULT_DPD_LAYOUT,_COLUMN_MAJOR).type) {}
+
 template <typename I> class range_t;
 
 namespace detail
 {
-    std::vector<unsigned> inverse_permutation(const std::vector<unsigned>& p)
+    inline std::vector<unsigned> inverse_permutation(const std::vector<unsigned>& p)
     {
         std::vector<unsigned> ip(p.size());
         for (unsigned i = 0;i < p.size();i++) ip[p[i]] = i;
         return ip;
     }
+
+    template <typename...>
+    struct exists {};
 
     template <typename T>
     using decay_t = typename std::decay<T>::type;
@@ -131,6 +193,18 @@ namespace detail
                       are_convertible<T, Args...>,
                       std::false_type> {};
 
+    template <typename T, typename... Args>
+    struct are_assignable;
+
+    template <typename T>
+    struct are_assignable<T> : std::true_type {};
+
+    template <typename T, typename Arg, typename... Args>
+    struct are_assignable<T, Arg, Args...> :
+        conditional_t<std::is_assignable<T, Arg>::value,
+                      are_assignable<T, Args...>,
+                      std::false_type> {};
+
     template <typename T, typename=void>
     struct is_index_or_slice_helper : std::false_type {};
 
@@ -161,20 +235,17 @@ namespace detail
                       are_indices_or_slices<Args...>,
                       std::false_type> {};
 
-    template <typename...>
-    struct is_container_helper {};
-
     template <typename T, typename=void>
     struct is_container : std::false_type {};
 
     template <typename T>
     struct is_container<T,
-        typename std::conditional<false,
-                                  is_container_helper<typename T::value_type,
-                                                      decltype(std::declval<T>().size()),
-                                                      decltype(std::declval<T>().begin()),
-                                                      decltype(std::declval<T>().end())>,
-                                  void>::type>
+        conditional_t<false,
+                      exists<typename T::value_type,
+                             decltype(std::declval<T>().size()),
+                             decltype(std::declval<T>().begin()),
+                             decltype(std::declval<T>().end())>,
+                      void>>
     : std::true_type {};
 
     template <typename C, typename T, typename=void>
@@ -186,6 +257,16 @@ namespace detail
 
     template <typename C, typename T, typename U=void>
     using enable_if_container_of_t = typename std::enable_if<is_container_of<C, T>::value,U>::type;
+
+    template <typename C, typename T>
+    struct is_container_of_containers_of :
+        conditional_t<is_container<C>::value,
+                      is_container_of<typename C::value_type, T>,
+                      std::false_type> {};
+
+    template <typename C, typename T, typename U=void>
+    using enable_if_container_of_containers_of_t =
+        typename std::enable_if<is_container_of_containers_of<C, T>::value,U>::type;
 
     template <typename T, typename... Ts>
     struct are_containers_helper;
@@ -558,18 +639,6 @@ namespace detail
 
     template <size_t N>
     using static_range = typename static_range_helper<N>::type;
-
-    template <typename R, typename T, typename=void>
-    struct is_range_of : std::false_type {};
-
-    template <typename R, typename T>
-    struct is_range_of<R, T, enable_if_t<
-        std::is_assignable<T&,decltype(*std::declval<R>().begin())>::value &&
-        std::is_assignable<T&,decltype(*std::declval<R>().end())>::value>>
-        : std::true_type {};
-
-    template <typename R, typename T, typename U=void>
-    using enable_if_range_of_t = typename std::enable_if<is_range_of<R,T>::value,U>::type;
 }
 
 /*
