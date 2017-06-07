@@ -214,9 +214,10 @@ namespace MArray
                 return from_+n*delta_;
             }
 
-            operator std::vector<T>() const
+            template <typename U>
+            operator std::vector<U>() const
             {
-                return std::vector<T>(begin(), end());
+                return std::vector<U>(begin(), end());
             }
 
             template <typename T_=T, typename=typename std::enable_if<std::is_same<T_,char>::value>::type>
