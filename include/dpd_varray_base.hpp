@@ -75,11 +75,13 @@ class dpd_varray_base
             layout_ = other.layout_;
         }
 
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
         void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len, pointer ptr,
+                   initializer_matrix<U> len, pointer ptr,
                    dpd_layout layout = DEFAULT)
         {
-            reset<initializer_matrix<len_type>>(irrep, nirrep, len, ptr, layout);
+            reset<initializer_matrix<U>>(irrep, nirrep, len, ptr, layout);
         }
 
         template <typename U, typename=
@@ -92,152 +94,28 @@ class dpd_varray_base
         }
 
         template <typename U, typename=
-            detail::enable_if_container_of_containers_of_t<U,len_type>>
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         void reset(unsigned irrep, unsigned nirrep, const U& len, pointer ptr,
                    dpd_layout layout = DEFAULT)
         {
             MARRAY_ASSERT(nirrep == 1 || nirrep == 2 ||
                           nirrep == 4 || nirrep == 8);
 
-            unsigned ndim = len.size();
-
+            unsigned ndim = detail::length(len, 0);
             MARRAY_ASSERT(ndim > 0);
+            MARRAY_ASSERT(detail::length(len, 1) == nirrep);
 
             irrep_ = irrep;
             nirrep_ = nirrep;
             data_ = ptr;
             layout_ = layout;
             len_.reset({ndim, nirrep}, ROW_MAJOR);
-            size_.reset({num_sizes(ndim, layout), nirrep}, ROW_MAJOR);
+            size_.reset({detail::num_sizes(ndim, layout), nirrep}, ROW_MAJOR);
             perm_.resize(ndim);
 
-            if (layout == BLOCKED_COLUMN_MAJOR ||
-                layout == PREFIX_COLUMN_MAJOR ||
-                layout == BALANCED_COLUMN_MAJOR)
-            {
-                // Column major
-                auto it = len.begin();
-                for (unsigned i = 0;i < ndim;i++)
-                {
-                    auto it2 = it->begin();
-                    for (unsigned j = 0;j < nirrep;j++)
-                    {
-                        len_[i][j] = *it2;
-                        ++it2;
-                    }
-                    perm_[i] = i;
-                    ++it;
-                }
-            }
-            else
-            {
-                // Row major: reverse the dimensions and treat as
-                // permuted column major
-                auto it = len.begin();
-                for (unsigned i = 0;i < ndim;i++)
-                {
-                    auto it2 = it->begin();
-                    for (unsigned j = 0;j < nirrep;j++)
-                    {
-                        len_[ndim-1-i][j] = *it2;
-                        ++it2;
-                    }
-                    perm_[i] = ndim-1-i;
-                    ++it;
-                }
-            }
-
-            if (layout == BALANCED_ROW_MAJOR ||
-                layout == BALANCED_COLUMN_MAJOR)
-            {
-                local_size(irrep_, 0, ndim, 0);
-            }
-            else
-            {
-                size_[0] = len_[0];
-
-                for (unsigned i = 1;i < ndim;i++)
-                {
-                    for (unsigned irr1 = 0;irr1 < nirrep;irr1++)
-                    {
-                        size_[i][irr1] = 0;
-                        for (unsigned irr2 = 0;irr2 < nirrep;irr2++)
-                        {
-                            size_[i][irr1] += size_[i-1][irr1^irr2]*
-                                              len_[i][irr2];
-                        }
-                    }
-                }
-            }
-        }
-
-        template <typename U>
-        void reset(unsigned irrep, unsigned nirrep,
-                   matrix_view<U> len, pointer ptr,
-                   dpd_layout layout = DEFAULT)
-        {
-            MARRAY_ASSERT(nirrep == 1 || nirrep == 2 ||
-                          nirrep == 4 || nirrep == 8);
-
-            unsigned ndim = len.length(0);
-
-            MARRAY_ASSERT(ndim > 0);
-            MARRAY_ASSERT(len.length(1) == nirrep);
-
-            irrep_ = irrep;
-            nirrep_ = nirrep;
-            data_ = ptr;
-            layout_ = layout;
-            len_.reset({ndim, nirrep}, ROW_MAJOR);
-            size_.reset({num_sizes(ndim, layout), nirrep}, ROW_MAJOR);
-            perm_.resize(ndim);
-
-            if (layout == BLOCKED_COLUMN_MAJOR ||
-                layout == PREFIX_COLUMN_MAJOR ||
-                layout == BALANCED_COLUMN_MAJOR)
-            {
-                // Column major
-                for (unsigned i = 0;i < ndim;i++)
-                {
-                    for (unsigned j = 0;j < nirrep;j++)
-                        len_[i][j] = len[i][j];
-                    perm_[i] = i;
-                }
-            }
-            else
-            {
-                // Row major: reverse the dimensions and treat as
-                // permuted column major
-                for (unsigned i = 0;i < ndim;i++)
-                {
-                    for (unsigned j = 0;j < nirrep;j++)
-                        len_[ndim-1-i][j] = len[i][j];
-                    perm_[i] = ndim-1-i;
-                }
-            }
-
-            if (layout == BALANCED_ROW_MAJOR ||
-                layout == BALANCED_COLUMN_MAJOR)
-            {
-                local_size(irrep_, 0, ndim, 0);
-            }
-            else
-            {
-                size_[0] = len_[0];
-
-                for (unsigned i = 1;i < ndim;i++)
-                {
-                    for (unsigned irr1 = 0;irr1 < nirrep;irr1++)
-                    {
-                        size_[i][irr1] = 0;
-                        for (unsigned irr2 = 0;irr2 < nirrep;irr2++)
-                        {
-                            size_[i][irr1] += size_[i-1][irr1^irr2]*
-                                              len_[i][irr2];
-                        }
-                    }
-                }
-            }
+            detail::set_len(len, len_, perm_, layout_);
+            detail::set_size(irrep_, len_, size_, layout_);
         }
 
         /***********************************************************************
@@ -279,6 +157,8 @@ class dpd_varray_base
             constexpr unsigned NDim = sizeof...(I);
             typedef typename View::pointer Ptr;
 
+            MARRAY_ASSERT(NDim == dimension());
+
             std::array<unsigned, NDim-1> nirrep;
             nirrep.fill(nirrep_);
 
@@ -308,97 +188,31 @@ class dpd_varray_base
             constexpr unsigned NDim = sizeof...(I);
             typedef Tp* Ptr;
 
+            MARRAY_ASSERT(NDim == dimension());
+
             std::array<unsigned, NDim-1> nirrep;
             nirrep.fill(nirrep_);
 
-            const_pointer cptr;
+            const_pointer cptr = data_;
             std::array<unsigned, NDim> irreps;
             std::array<len_type, NDim> len;
             std::array<stride_type, NDim> stride;
 
-            miterator<NDim-1, 0> it(nirrep);
-            while (it.next())
+            miterator<NDim-1, 0> it1(nirrep);
+            while (it1.next())
             {
                 irreps[0] = irrep_;
                 for (unsigned i = 1;i < NDim;i++)
                 {
-                    irreps[0] ^= irreps[i] = it.position()[i-1];
+                    irreps[0] ^= irreps[i] = it1.position()[i-1];
                 }
 
                 get_block(irreps, len, cptr, stride);
 
-                miterator<NDim, 1> it(len, stride);
+                miterator<NDim, 1> it2(len, stride);
                 Ptr ptr = const_cast<Ptr>(cptr);
-                while (it.next(ptr)) f(*ptr, irreps[I]..., it.position()[I]...);
+                while (it2.next(ptr)) f(*ptr, irreps[I]..., it2.position()[I]...);
             }
-        }
-
-        void local_size(unsigned irrep, unsigned begin, unsigned end,
-                        unsigned idx)
-        {
-            unsigned ndim = end-begin;
-
-            if (ndim == 1)
-            {
-                size_[idx][irrep] = len_[begin][irrep];
-                return;
-            }
-
-            unsigned mid = begin+(ndim+1)/2;
-            unsigned idxl = idx+1;
-            unsigned idxr = idx+((ndim+1)/2)*2;
-
-            stride_type size = 0;
-            for (unsigned irrepr = 0;irrepr < nirrep_;irrepr++)
-            {
-                unsigned irrepl = irrepr^irrep;
-                local_size(irrepl, begin, mid, idxl);
-                local_size(irrepr,   mid, end, idxr);
-                size += size_[idxl][irrepl]*size_[idxr][irrepr];
-            }
-
-            size_[idx][irrep] = size;
-        }
-
-        template <typename U, typename V>
-        unsigned local_offset(const std::vector<unsigned>& iperm,
-                              const U& irreps,
-                              stride_type size_before, pointer& data,
-                              V& stride,
-                              unsigned begin, unsigned end, unsigned idx)
-        {
-            unsigned ndim = end-begin;
-
-            if (ndim == 1)
-            {
-                stride[iperm[begin]] = size_before;
-                return irreps[iperm[begin]];
-            }
-
-            unsigned mid = begin+(ndim+1)/2;
-            unsigned idxl = idx+1;
-            unsigned idxr = idx+((ndim+1)/2)*2;
-
-            unsigned irrepl = local_offset(iperm, irreps, size_before,
-                                           data, stride, begin, mid, idxl);
-            unsigned irrepr = local_offset(iperm, irreps, size_before*size_[idxl][irrepl],
-                                           data, stride, mid, end, idxr);
-            unsigned irrep = irrepl^irrepr;
-
-            for (unsigned irr2 = 0;irr2 < irrepr;irr2++)
-            {
-                unsigned irr1 = irr2^irrep;
-                data += size_before*size_[idxl][irr1]*size_[idxr][irr2];
-            }
-
-            return irrep;
-        }
-
-        static unsigned num_sizes(unsigned ndim, dpd_layout layout)
-        {
-            if (layout == BALANCED_ROW_MAJOR ||
-                layout == BALANCED_COLUMN_MAJOR) return 2*ndim-1;
-            else return ndim;
         }
 
         void swap(dpd_varray_base& other)
@@ -421,19 +235,24 @@ class dpd_varray_base
          *
          **********************************************************************/
 
-        static stride_type size(unsigned irrep, initializer_matrix<len_type> len)
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
+        static stride_type size(unsigned irrep, initializer_matrix<U> len)
         {
-            return size<>(irrep, len);
+            return size<initializer_matrix<U>>(irrep, len);
         }
 
-        template <typename U, typename=detail::enable_if_container_of_containers_of_t<U,len_type>>
+        template <typename U, typename=
+            detail::enable_if_container_of_t<U,len_type>>
+        static stride_type size(unsigned irrep, std::initializer_list<U> len)
+        {
+            return size<std::initializer_list<U>>(irrep, len);
+        }
+
+        template <typename U, typename=
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         static stride_type size(unsigned irrep, const U& len)
-        {
-            return dpd_marray_base<Type,1,dpd_marray_view<Type,1>,false>::size(irrep, len);
-        }
-
-        template <typename U>
-        static stride_type size(unsigned irrep, matrix_view<U> len)
         {
             return dpd_marray_base<Type,1,dpd_marray_view<Type,1>,false>::size(irrep, len);
         }
@@ -540,14 +359,18 @@ class dpd_varray_base
          *
          **********************************************************************/
 
-        dpd_varray_view<ctype> permuted(std::initializer_list<unsigned> perm) const
+        template <typename U, typename=
+            detail::enable_if_assignable_t<unsigned&,U>>
+        dpd_varray_view<ctype> permuted(std::initializer_list<U> perm) const
         {
             return const_cast<dpd_varray_base&>(*this).permuted(perm);
         }
 
-        dpd_varray_view<Type> permuted(std::initializer_list<unsigned> perm)
+        template <typename U, typename=
+            detail::enable_if_assignable_t<unsigned&,U>>
+        dpd_varray_view<Type> permuted(std::initializer_list<U> perm)
         {
-            return permuted<>(perm);
+            return permuted<std::initializer_list<U>>(perm);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
@@ -653,67 +476,9 @@ class dpd_varray_base
             for (auto& i : irreps) irrep ^= i;
             MARRAY_ASSERT(irrep == irrep_);
 
-            auto iperm = detail::inverse_permutation(perm_);
-
             data = data_;
-
-            for (unsigned i = 0;i < ndim;i++)
-                len[i] = len_[perm_[i]][irreps[i]];
-
-            if (layout_ == BALANCED_ROW_MAJOR ||
-                layout_ == BALANCED_COLUMN_MAJOR)
-            {
-                local_offset(iperm, irreps, 1, data, stride, 0, ndim, 0);
-            }
-            else
-            {
-                if (layout_ == PREFIX_ROW_MAJOR ||
-                    layout_ == PREFIX_COLUMN_MAJOR)
-                {
-                    unsigned lirrep = 0;
-                    stride[iperm[0]] = 1;
-                    for (unsigned i = 1;i < ndim;i++)
-                    {
-                        lirrep ^= irreps[iperm[i-1]];
-                        stride[iperm[i]] = size_[i-1][lirrep];
-                    }
-
-                    unsigned rirrep = irrep_;
-                    for (unsigned i = ndim;i --> 1;)
-                    {
-                        for (unsigned irr1 = 0;irr1 < irreps[iperm[i]];irr1++)
-                        {
-                            unsigned irr2 = irr1^rirrep;
-                            data += size_[i-1][irr2]*len_[i][irr1];
-                        }
-                        rirrep ^= irreps[iperm[i]];
-                    }
-                }
-                else
-                {
-                    stride_type lsize = 1;
-                    for (unsigned i = 0;i < ndim;i++)
-                    {
-                        stride[iperm[i]] = lsize;
-                        lsize *= len[iperm[i]];
-                    }
-
-                    stride_type rsize = 1;
-                    unsigned rirrep = irrep_;
-                    for (unsigned i = ndim;i --> 1;)
-                    {
-                        stride_type offset = 0;
-                        for (unsigned irr1 = 0;irr1 < irreps[iperm[i]];irr1++)
-                        {
-                            unsigned irr2 = irr1^rirrep;
-                            offset += size_[i-1][irr2]*len_[i][irr1];
-                        }
-                        data += offset*rsize;
-                        rsize *= len[iperm[i]];
-                        rirrep ^= irreps[iperm[i]];
-                    }
-                }
-            }
+            detail::get_block(detail::inverse_permutation(perm_), irreps,
+                              len_, size_, layout_, len, data, stride);
         }
 
         /***********************************************************************

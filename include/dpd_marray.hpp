@@ -64,8 +64,10 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset(other, layout);
         }
 
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
         dpd_marray(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len,
+                   initializer_matrix<U> len,
                    const Type& val=Type(), dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, val, layout);
@@ -79,7 +81,9 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset(irrep, nirrep, len, val, layout);
         }
 
-        template <typename U, typename=detail::enable_if_container_of_containers_of_t<U,len_type>>
+        template <typename U, typename=
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         dpd_marray(unsigned irrep, unsigned nirrep,
                    const U& len, const Type& val=Type(),
                    dpd_layout layout = DEFAULT)
@@ -87,16 +91,10 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset(irrep, nirrep, len, val, layout);
         }
 
-        template <typename U>
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
         dpd_marray(unsigned irrep, unsigned nirrep,
-                   matrix_view<U> len, const Type& val=Type(),
-                   dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, val, layout);
-        }
-
-        dpd_marray(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len, dpd_layout layout)
+                   initializer_matrix<U> len, dpd_layout layout)
         {
             reset(irrep, nirrep, len, Type(), layout);
         }
@@ -108,22 +106,19 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset(irrep, nirrep, len, Type(), layout);
         }
 
-        template <typename U, typename=detail::enable_if_container_of_containers_of_t<U,len_type>>
+        template <typename U, typename=
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         dpd_marray(unsigned irrep, unsigned nirrep,
                    const U& len, dpd_layout layout)
         {
             reset(irrep, nirrep, len, Type(), layout);
         }
 
-        template <typename U>
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
         dpd_marray(unsigned irrep, unsigned nirrep,
-                   matrix_view<U> len, dpd_layout layout)
-        {
-            reset(irrep, nirrep, len, Type(), layout);
-        }
-
-        dpd_marray(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len,
+                   initializer_matrix<U> len,
                    uninitialized_t, dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, uninitialized, layout);
@@ -137,17 +132,11 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset(irrep, nirrep, len, uninitialized, layout);
         }
 
-        template <typename U, typename=detail::enable_if_container_of_containers_of_t<U,len_type>>
+        template <typename U, typename=
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         dpd_marray(unsigned irrep, unsigned nirrep,
                    const U& len, uninitialized_t,
-                   dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, uninitialized, layout);
-        }
-
-        template <typename U>
-        dpd_marray(unsigned irrep, unsigned nirrep,
-                   matrix_view<U> len, uninitialized_t,
                    dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, uninitialized, layout);
@@ -235,11 +224,13 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             base::template operator=<>(other);
         }
 
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
         void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len, const Type& val=Type(),
+                   initializer_matrix<U> len, const Type& val=Type(),
                    dpd_layout layout = DEFAULT)
         {
-            reset<initializer_matrix<len_type>>(irrep, nirrep, len, val, layout);
+            reset<initializer_matrix<U>>(irrep, nirrep, len, val, layout);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -250,7 +241,9 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset<std::initializer_list<U>>(irrep, nirrep, len, val, layout);
         }
 
-        template <typename U, typename=detail::enable_if_container_of_containers_of_t<U,len_type>>
+        template <typename U, typename=
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         void reset(unsigned irrep, unsigned nirrep,
                    const U& len, const Type& val=Type(),
                    dpd_layout layout = DEFAULT)
@@ -259,17 +252,10 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             std::uninitialized_fill_n(data_, storage_.size, val);
         }
 
-        template <typename U>
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
         void reset(unsigned irrep, unsigned nirrep,
-                   matrix_view<U> len, const Type& val=Type(),
-                   dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, uninitialized, layout);
-            std::uninitialized_fill_n(data_, storage_.size, val);
-        }
-
-        void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len, dpd_layout layout)
+                   initializer_matrix<U> len, dpd_layout layout)
         {
             reset(irrep, nirrep, len, Type(), layout);
         }
@@ -281,25 +267,22 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset(irrep, nirrep, len, Type(), layout);
         }
 
-        template <typename U, typename=detail::enable_if_container_of_containers_of_t<U,len_type>>
+        template <typename U, typename=
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         void reset(unsigned irrep, unsigned nirrep,
                    const U& len, dpd_layout layout)
         {
             reset(irrep, nirrep, len, Type(), layout);
         }
 
-        template <typename U>
+        template <typename U, typename=
+            detail::enable_if_assignable_t<len_type&,U>>
         void reset(unsigned irrep, unsigned nirrep,
-                   matrix_view<U> len, dpd_layout layout)
-        {
-            reset(irrep, nirrep, len, Type(), layout);
-        }
-
-        void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len,
+                   initializer_matrix<U> len,
                    uninitialized_t, dpd_layout layout = DEFAULT)
         {
-            reset<initializer_matrix<len_type>>(irrep, nirrep, len, uninitialized, layout);
+            reset<initializer_matrix<U>>(irrep, nirrep, len, uninitialized, layout);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -310,7 +293,9 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset<std::initializer_list<U>>(irrep, nirrep, len, uninitialized, layout);
         }
 
-        template <typename U, typename=detail::enable_if_container_of_containers_of_t<U,len_type>>
+        template <typename U, typename=
+            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
+                                detail::is_matrix_of<U,len_type>::value>>
         void reset(unsigned irrep, unsigned nirrep,
                    const U& len, uninitialized_t,
                    dpd_layout layout = DEFAULT)
@@ -318,19 +303,6 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset();
 
             storage_.size = size(irrep, len);
-            base::reset(irrep, nirrep, len,
-                        alloc_traits::allocate(storage_, storage_.size),
-                        layout);
-        }
-
-        template <typename U>
-        void reset(unsigned irrep, unsigned nirrep,
-                   matrix_view<U> len, uninitialized_t,
-                   dpd_layout layout = DEFAULT)
-        {
-            reset();
-
-            storage_.size = size(len);
             base::reset(irrep, nirrep, len,
                         alloc_traits::allocate(storage_, storage_.size),
                         layout);
