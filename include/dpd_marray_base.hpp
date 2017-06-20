@@ -28,10 +28,18 @@ namespace detail
 {
 
 template <typename T, typename U, typename=void>
-struct is_matrix_of;
+struct is_matrix_of : std::false_type {};
 
 template <typename T, typename U, typename D, bool O>
 struct is_matrix_of<marray_base<T, 2, D, O>, U, enable_if_assignable_t<U&,T>>
+    : std::true_type {};
+
+template <typename T, typename U>
+struct is_matrix_of<marray_view<T, 2>, U, enable_if_assignable_t<U&,T>>
+    : std::true_type {};
+
+template <typename T, typename U, typename A>
+struct is_matrix_of<marray<T, 2, A>, U, enable_if_assignable_t<U&,T>>
     : std::true_type {};
 
 template <typename T, typename U, typename V=void>
@@ -45,8 +53,9 @@ length(const T& len, unsigned dim)
     else
     {
         auto it = len.begin();
+        if (it == len.end()) return 0;
         len_type l = it->size();
-        while (++it != len.end()) MARRAY_ASSERT(it->size() == l);
+        while (++it != len.end()) MARRAY_ASSERT((len_type)it->size() == l);
         return l;
     }
 }
@@ -123,24 +132,10 @@ set_len(const U& len_in, V& len, W& perm, dpd_layout layout)
 }
 
 template <typename U, typename V>
-void set_size(unsigned irrep, const U& len, V& size, dpd_layout layout)
-{
-    if (layout == BALANCED_ROW_MAJOR ||
-        layout == BALANCED_COLUMN_MAJOR)
-    {
-        set_size_balanced(irrep, len, size, 0, len.length(0), 0);
-    }
-    else
-    {
-        set_size_blocked(irrep, len, size);
-    }
-}
-
-template <typename U, typename V>
 void set_size_balanced(unsigned irrep, const U& len, V& size,
                        unsigned begin, unsigned end, unsigned idx)
 {
-    unsigned nirrep = len.length(1);
+    unsigned nirrep = length(len, 1);
     unsigned ndim = end-begin;
 
     if (ndim == 1)
@@ -166,10 +161,10 @@ void set_size_balanced(unsigned irrep, const U& len, V& size,
 }
 
 template <typename U, typename V>
-void set_size_blocked(unsigned irrep, const U& len, V& size)
+void set_size_blocked(unsigned, const U& len, V& size)
 {
-    unsigned ndim = len.length(0);
-    unsigned nirrep = len.length(1);
+    unsigned ndim = length(len, 0);
+    unsigned nirrep = length(len, 1);
 
     size[0] = len[0];
 
@@ -186,25 +181,17 @@ void set_size_blocked(unsigned irrep, const U& len, V& size)
     }
 }
 
-template <typename U, typename V, typename W, typename X, typename Y, typename Z, typename Q>
-void get_block(const U& iperm, const V& irreps, const W& len, const X& size,
-               dpd_layout layout, Y& blen, Z& bdata, Q& bstride,
-               stride_type size_before=1)
+template <typename U, typename V>
+void set_size(unsigned irrep, const U& len, V& size, dpd_layout layout)
 {
     if (layout == BALANCED_ROW_MAJOR ||
         layout == BALANCED_COLUMN_MAJOR)
     {
-        get_block_balanced(iperm, irreps, len, size, blen, bdata, bstride,
-                           size_before, 0, len.length(0), 0);
-    }
-    else if (layout == PREFIX_ROW_MAJOR ||
-             layout == PREFIX_COLUMN_MAJOR)
-    {
-        get_block_prefix(iperm, irreps, len, size, blen, bdata, bstride, size_before);
+        set_size_balanced(irrep, len, size, 0, length(len, 0), 0);
     }
     else
     {
-        get_block_blocked(iperm, irreps, len, size, blen, bdata, bstride, size_before);
+        set_size_blocked(irrep, len, size);
     }
 }
 
@@ -247,10 +234,10 @@ template <typename U, typename V, typename W, typename X, typename Y, typename Z
 void get_block_prefix(const U& iperm, const V& irreps, const W& len, const X& size,
                       Y& blen, Z& bdata, Q& bstride, stride_type size_before)
 {
-    unsigned ndim = len.length(0);
+    unsigned ndim = length(len, 0);
 
     unsigned lirrep = 0;
-    bstride[iperm[0]] = 1;
+    bstride[iperm[0]] = size_before;
     blen[iperm[0]] = len[0][irreps[iperm[0]]];
     for (unsigned i = 1;i < ndim;i++)
     {
@@ -275,10 +262,10 @@ template <typename U, typename V, typename W, typename X, typename Y, typename Z
 void get_block_blocked(const U& iperm, const V& irreps, const W& len, const X& size,
                        Y& blen, Z& bdata, Q& bstride, stride_type size_before)
 {
-    unsigned ndim = len.length(0);
+    unsigned ndim = length(len, 0);
 
     unsigned rirrep = 0;
-    stride_type lsize = 1;
+    stride_type lsize = size_before;
     for (unsigned i = 0;i < ndim;i++)
     {
         rirrep ^= irreps[iperm[i]];
@@ -296,12 +283,34 @@ void get_block_blocked(const U& iperm, const V& irreps, const W& len, const X& s
             offset += size[i-1][irr2]*len[i][irr1];
         }
         bdata += offset*rsize;
-        rsize *= len[iperm[i]];
+        rsize *= len[i][irreps[iperm[i]]];
         rirrep ^= irreps[iperm[i]];
     }
 }
 
-static unsigned num_sizes(unsigned ndim, dpd_layout layout)
+template <typename U, typename V, typename W, typename X, typename Y, typename Z, typename Q>
+void get_block(const U& iperm, const V& irreps, const W& len, const X& size,
+               dpd_layout layout, Y& blen, Z& bdata, Q& bstride,
+               stride_type size_before=1)
+{
+    if (layout == BALANCED_ROW_MAJOR ||
+        layout == BALANCED_COLUMN_MAJOR)
+    {
+        get_block_balanced(iperm, irreps, len, size, blen, bdata, bstride,
+                           size_before, 0, length(len, 0), 0);
+    }
+    else if (layout == PREFIX_ROW_MAJOR ||
+             layout == PREFIX_COLUMN_MAJOR)
+    {
+        get_block_prefix(iperm, irreps, len, size, blen, bdata, bstride, size_before);
+    }
+    else
+    {
+        get_block_blocked(iperm, irreps, len, size, blen, bdata, bstride, size_before);
+    }
+}
+
+inline unsigned num_sizes(unsigned ndim, dpd_layout layout)
 {
     if (layout == BALANCED_ROW_MAJOR ||
         layout == BALANCED_COLUMN_MAJOR) return 2*ndim-1;
@@ -380,13 +389,11 @@ class dpd_marray_base
             layout_ = other.layout_;
         }
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<len_type&,U>>
         void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<U> len, pointer ptr,
+                   initializer_matrix<len_type> len, pointer ptr,
                    dpd_layout layout = DEFAULT)
         {
-            reset<initializer_matrix<U>>(irrep, nirrep, len, ptr, layout);
+            reset<initializer_matrix<len_type>>(irrep, nirrep, len, ptr, layout);
         }
 
         template <typename U, typename=
@@ -408,7 +415,7 @@ class dpd_marray_base
                           nirrep == 4 || nirrep == 8);
 
             MARRAY_ASSERT(detail::length(len, 0) == NDim);
-            MARRAY_ASSERT(detail::length(len, 1) == nirrep);
+            MARRAY_ASSERT(detail::length(len, 1) >= nirrep);
 
             data_ = ptr;
             irrep_ = irrep;
@@ -503,10 +510,9 @@ class dpd_marray_base
          *
          **********************************************************************/
 
-        template <typename U, typename=detail::enable_if_assignable_t<len_type&,U>>
-        static stride_type size(unsigned irrep, initializer_matrix<U> len)
+        static stride_type size(unsigned irrep, initializer_matrix<len_type> len)
         {
-            return size<initializer_matrix<U>>(irrep, len);
+            return size<initializer_matrix<len_type>>(irrep, len);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
@@ -617,7 +623,7 @@ class dpd_marray_base
 
             if (layout_ == other.layout_ && perm_ == other.perm_)
             {
-                std::copy_n(other.data(), size(irrep_, len_.view()), data());
+                std::copy_n(other.data(), size(irrep_, len_), data());
             }
             else
             {
@@ -645,7 +651,7 @@ class dpd_marray_base
 
         Derived& operator=(const Type& value)
         {
-            std::fill_n(data(), size(irrep_, len_.view()));
+            std::fill_n(data(), size(irrep_, len_), value);
             return static_cast<Derived&>(*this);
         }
 
@@ -691,18 +697,14 @@ class dpd_marray_base
          *
          **********************************************************************/
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<unsigned&,U>>
-        dpd_marray_view<ctype,NDim> permuted(std::initializer_list<U> perm) const
+        dpd_marray_view<ctype,NDim> permuted(std::initializer_list<unsigned> perm) const
         {
             return const_cast<dpd_marray_base&>(*this).permuted(perm);
         }
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<unsigned&,U>>
-        dpd_marray_view<Type,NDim> permuted(std::initializer_list<U> perm)
+        dpd_marray_view<Type,NDim> permuted(std::initializer_list<unsigned> perm)
         {
-            return permuted<std::initializer_list<U>>(perm);
+            return permuted<std::initializer_list<unsigned>>(perm);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
@@ -772,7 +774,7 @@ class dpd_marray_base
 
         marray_view<Type, NDim> operator()(std::initializer_list<unsigned> irreps)
         {
-            return operator()<>(irreps);
+            return operator()<std::initializer_list<unsigned>>(irreps);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>

@@ -83,24 +83,20 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
             reset(other);
         }
 
-        template <typename U, typename V, typename=
-            detail::enable_if_t<std::is_assignable<len_type&,U>::value &&
-                                std::is_assignable<unsigned&,V>::value>>
         indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<U> len, row_view<const pointer> ptr,
-                   std::initializer_list<V> idx_irrep,
+                   initializer_matrix<len_type> len, row_view<const pointer> ptr,
+                   std::initializer_list<unsigned> idx_irrep,
                    matrix_view<const len_type> idx,
                    dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, ptr, idx_irrep, idx, layout);
         }
 
-        template <typename U, typename V, typename=
-            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
-                                std::is_assignable<unsigned&,V>::value>>
+        template <typename U, typename=
+            detail::enable_if_container_of_t<U,len_type>>
         indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
                    std::initializer_list<U> len, row_view<const pointer> ptr,
-                   std::initializer_list<V> idx_irrep,
+                   std::initializer_list<unsigned> idx_irrep,
                    matrix_view<const len_type> idx,
                    dpd_layout layout = DEFAULT)
         {

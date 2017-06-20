@@ -67,10 +67,8 @@ class dpd_varray_view : public dpd_varray_base<Type, dpd_varray_view<Type>, fals
             reset(other);
         }
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<len_type&,U>>
         dpd_varray_view(unsigned irrep, unsigned nirrep,
-                        initializer_matrix<U> len, pointer ptr,
+                        initializer_matrix<len_type> len, pointer ptr,
                         dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, ptr, layout);
@@ -129,7 +127,7 @@ class dpd_varray_view : public dpd_varray_base<Type, dpd_varray_view<Type>, fals
 
         void permute(std::initializer_list<unsigned> perm)
         {
-            permute<>(perm);
+            permute<std::initializer_list<unsigned>>(perm);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>

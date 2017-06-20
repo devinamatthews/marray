@@ -19,7 +19,7 @@ class indexed_varray;
 namespace detail
 {
 
-template <typename U, typename V, typename W>
+template <typename U, typename V>
 enable_if_container_of_containers_of_t<U,len_type>
 set_idx(const U& idx_in, V& idx)
 {
@@ -35,12 +35,12 @@ set_idx(const U& idx_in, V& idx)
     }
 }
 
-template <typename U, typename V, typename W>
+template <typename U, typename V>
 enable_if_matrix_of_t<U,len_type>
 set_idx(const U& idx_in, V& idx)
 {
-    unsigned ndim = idx_in.size();
-    unsigned nidx = idx_in.begin()->size();
+    unsigned ndim = idx_in.length(0);
+    unsigned nidx = idx_in.length(1);
 
     for (unsigned i = 0;i < ndim;i++)
     {
@@ -169,12 +169,12 @@ class indexed_varray_base
             typedef typename View::pointer Ptr;
 
             unsigned ndim = indexed_dimension();
-            std::vector<unsigned> indices(ndim);
+            std::vector<len_type> indices(ndim);
 
             for (len_type i = 0;i < num_indices();i++)
             {
                 std::copy_n(&idx_[i][0], ndim, indices.data());
-                f(View(dense_len_, data_[i], dense_stride_), indices);
+                f(View(dense_len_, const_cast<Ptr>(data_[i]), dense_stride_), indices);
             }
         }
 
@@ -188,7 +188,7 @@ class indexed_varray_base
 
             for (len_type i = 0;i < num_indices();i++)
             {
-                f(View(dense_len_, data_[i], dense_stride_), idx_[i][I]...);
+                f(View(dense_len_, const_cast<Ptr>(data_[i]), dense_stride_), idx_[i][I]...);
             }
         }
 
@@ -201,7 +201,7 @@ class indexed_varray_base
             unsigned dense_ndim = dense_dimension();
             unsigned ndim = dense_ndim + indexed_ndim;
 
-            std::vector<unsigned> indices(ndim);
+            std::vector<len_type> indices(ndim);
 
             for (len_type i = 0;i < num_indices();i++)
             {
@@ -238,14 +238,15 @@ class indexed_varray_base
             constexpr unsigned IdxNDim = sizeof...(J);
             typedef Tp* Ptr;
 
-            MARRAY_ASSERT(DenseNDim == indexed_dimension());
-            MARRAY_ASSERT(IdxNDim = indexed_dimension());
+            MARRAY_ASSERT(DenseNDim == dense_dimension());
+            MARRAY_ASSERT(IdxNDim == indexed_dimension());
+
+            miterator<DenseNDim,1> it(dense_len_, dense_stride_);
 
             for (len_type i = 0;i < num_indices();i++)
             {
-                miterator<DenseNDim,1> it(dense_len_, dense_stride_);
                 Ptr ptr = const_cast<Ptr>(data_[i]);
-                while (!it.next(ptr)) f(*ptr, it.position()[I]..., idx_[i][J]...);
+                while (it.next(ptr)) f(*ptr, it.position()[I]..., idx_[i][J]...);
             }
         }
 
@@ -265,7 +266,7 @@ class indexed_varray_base
             {
                 for (len_type i = 0;i < num_indices();i++)
                 {
-                    MARRAY_ASSERT(idx_[i] == other.idx_[i]);
+                    MARRAY_ASSERT(indices(i) == other.indices(i));
 
                     pointer a = const_cast<pointer>(data(i));
                     auto b = other.data(i);
@@ -280,7 +281,7 @@ class indexed_varray_base
 
                 for (len_type i = 0;i < num_indices();i++)
                 {
-                    MARRAY_ASSERT(idx_[i] == other.idx_[i]);
+                    MARRAY_ASSERT(indices(i) == other.indices(i));
 
                     pointer a = const_cast<pointer>(data(i));
                     auto b = other.data(i);

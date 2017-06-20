@@ -192,13 +192,9 @@ TEST(dpd_marray, reset)
 TEST(dpd_marray, permute)
 {
     unsigned perm_irreps[8] = {1, 0, 2, 3, 4, 5, 7, 6};
-    unsigned perm_irreps2[8] = {4, 1, 0, 5, 2, 7, 6, 3};
 
     arrays<unsigned,6,4> perms2 =
         {{{2,3,1,0}, {1,0,2,3}, {2,3,1,0}, {1,0,2,3}, {2,3,1,0}, {1,0,2,3}}};
-
-    arrays<unsigned,6,4> perms3 =
-        {{{1,2,0,3}, {2,1,3,0}, {1,2,0,3}, {2,1,3,0}, {1,2,0,3}, {2,1,3,0}}};
 
     for (unsigned j = 0;j < 6;j++)
     {

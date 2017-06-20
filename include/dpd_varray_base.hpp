@@ -75,13 +75,11 @@ class dpd_varray_base
             layout_ = other.layout_;
         }
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<len_type&,U>>
         void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<U> len, pointer ptr,
+                   initializer_matrix<len_type> len, pointer ptr,
                    dpd_layout layout = DEFAULT)
         {
-            reset<initializer_matrix<U>>(irrep, nirrep, len, ptr, layout);
+            reset<initializer_matrix<len_type>>(irrep, nirrep, len, ptr, layout);
         }
 
         template <typename U, typename=
@@ -104,7 +102,7 @@ class dpd_varray_base
 
             unsigned ndim = detail::length(len, 0);
             MARRAY_ASSERT(ndim > 0);
-            MARRAY_ASSERT(detail::length(len, 1) == nirrep);
+            MARRAY_ASSERT(detail::length(len, 1) >= nirrep);
 
             irrep_ = irrep;
             nirrep_ = nirrep;
@@ -235,11 +233,9 @@ class dpd_varray_base
          *
          **********************************************************************/
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<len_type&,U>>
-        static stride_type size(unsigned irrep, initializer_matrix<U> len)
+        static stride_type size(unsigned irrep, initializer_matrix<len_type> len)
         {
-            return size<initializer_matrix<U>>(irrep, len);
+            return size<initializer_matrix<len_type>>(irrep, len);
         }
 
         template <typename U, typename=
@@ -285,7 +281,7 @@ class dpd_varray_base
 
             if (layout_ == other.layout_ && perm_ == other.perm_)
             {
-                std::copy_n(other.data(), size(irrep_, len_.view()), data());
+                std::copy_n(other.data(), size(irrep_, len_), data());
             }
             else
             {
@@ -313,7 +309,7 @@ class dpd_varray_base
 
         Derived& operator=(const Type& value)
         {
-            std::fill_n(data(), size(irrep_, len_.view()));
+            std::fill_n(data(), size(irrep_, len_), value);
             return static_cast<Derived&>(*this);
         }
 
@@ -359,18 +355,14 @@ class dpd_varray_base
          *
          **********************************************************************/
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<unsigned&,U>>
-        dpd_varray_view<ctype> permuted(std::initializer_list<U> perm) const
+        dpd_varray_view<ctype> permuted(std::initializer_list<unsigned> perm) const
         {
             return const_cast<dpd_varray_base&>(*this).permuted(perm);
         }
 
-        template <typename U, typename=
-            detail::enable_if_assignable_t<unsigned&,U>>
-        dpd_varray_view<Type> permuted(std::initializer_list<U> perm)
+        dpd_varray_view<Type> permuted(std::initializer_list<unsigned> perm)
         {
-            return permuted<std::initializer_list<U>>(perm);
+            return permuted<std::initializer_list<unsigned>>(perm);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
@@ -425,7 +417,7 @@ class dpd_varray_base
 
         varray_view<Type> operator()(std::initializer_list<unsigned> irreps)
         {
-            return operator()<>(irreps);
+            return operator()<std::initializer_list<unsigned>>(irreps);
         }
 
         template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
