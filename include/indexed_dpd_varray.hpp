@@ -35,6 +35,7 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         using base::dense_irrep_;
         using base::nirrep_;
         using base::layout_;
+        using base::factor_;
         row<pointer> real_data_;
         matrix<len_type> real_idx_;
         struct : Allocator { stride_type size = 0; } storage_;
@@ -198,7 +199,10 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         using base::operator[];
         using base::cdata;
         using base::data;
+        using base::factors;
+        using base::factor;
         using base::indices;
+        using base::index;
         using base::dense_length;
         using base::dense_lengths;
         using base::indexed_length;
@@ -208,6 +212,7 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         using base::indexed_irrep;
         using base::indexed_irreps;
         using base::irrep;
+        using base::dense_irrep;
         using base::num_irreps;
         using base::num_indices;
         using base::permutation;
@@ -276,7 +281,8 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
                            const Type& value = Type(), dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-            std::uninitialized_fill_n(real_data_[0], storage_.size, value);
+            if (storage_.size > 0)
+                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
         }
 
         template <typename U, typename V, typename=
@@ -289,7 +295,8 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
                            const Type& value = Type(), dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-            std::uninitialized_fill_n(real_data_[0], storage_.size, value);
+            if (storage_.size > 0)
+                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
         }
 
         template <typename U, typename V, typename W, typename=
@@ -303,7 +310,8 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
                            const Type& value = Type(), dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-            std::uninitialized_fill_n(real_data_[0], storage_.size, value);
+            if (storage_.size > 0)
+                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
         }
 
         void reset(unsigned irrep, unsigned nirrep,
@@ -377,8 +385,7 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         {
             len_type idx_ndim = detail::length(idx, 0);
             len_type nidx = detail::length(idx, 1);
-            MARRAY_ASSERT((idx_ndim > 0 && nidx > 0) ||
-                          (idx_ndim == 0 && nidx == 0));
+            MARRAY_ASSERT(idx_ndim > 0 || nidx == 1);
 
             real_data_.reset({idx_ndim});
             real_idx_.reset({idx_ndim, nidx}, ROW_MAJOR);
@@ -390,9 +397,12 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
 
             stride_type size = dpd_varray_view<Type>::size(dense_irrep_, dense_lengths());
             storage_.size = size*idx_ndim;
-            real_data_[0] = alloc_traits::allocate(storage_, storage_.size);
-            for (len_type i = 1;i < idx_ndim;i++)
-                real_data_[i] = real_data_[i-1] + size;
+            if (storage_.size > 0)
+            {
+                real_data_[0] = alloc_traits::allocate(storage_, storage_.size);
+                for (len_type i = 1;i < idx_ndim;i++)
+                    real_data_[i] = real_data_[i-1] + size;
+            }
         }
 
         /***********************************************************************
