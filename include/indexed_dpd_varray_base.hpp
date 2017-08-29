@@ -306,10 +306,6 @@ class indexed_dpd_varray_base : detail::dpd_base<indexed_dpd_varray_base<Type, D
                     for (auto l : len) if (l == 0) skip = true;
                     if (skip) continue;
 
-                    bool skip = false;
-                    for (auto l : len) if (l == 0) skip = true;
-                    if (skip) continue;
-
                     Ptr ptr = const_cast<Ptr>(cptr);
                     for (bool done = false;!done;)
                     {
