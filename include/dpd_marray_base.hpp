@@ -545,6 +545,8 @@ class dpd_marray_base : protected detail::dpd_base<dpd_marray_base<Type, NDim, D
         static detail::enable_if_2d_container_of_t<U,len_type,stride_type>
         size(unsigned irrep, const U& len)
         {
+            if (len.size() == 0) return 1;
+
             //TODO: add alignment option
 
             unsigned ndim = detail::length(len, 0);

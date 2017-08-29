@@ -197,6 +197,11 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
             return const_cast<Type&>(const_cast<const indexed_dpd_varray_view&>(*this).factor(idx));
         }
 
+        Type& factor(len_type idx)
+        {
+            return const_cast<Type&>(const_cast<const indexed_dpd_varray_view&>(*this).factor(idx));
+        }
+
         /***********************************************************************
          *
          * Swap
