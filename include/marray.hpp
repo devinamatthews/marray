@@ -129,6 +129,14 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         using base::operator/=;
         using base::cview;
         using base::view;
+        using base::cbegin;
+        using base::begin;
+        using base::cend;
+        using base::end;
+        using base::crbegin;
+        using base::rbegin;
+        using base::crend;
+        using base::rend;
         using base::shifted;
         using base::shifted_up;
         using base::shifted_down;

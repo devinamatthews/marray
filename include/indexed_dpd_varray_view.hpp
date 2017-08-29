@@ -16,16 +16,20 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
     protected:
         typedef indexed_dpd_varray_base<Type, indexed_dpd_varray_view, false> base;
 
-        using base::len_;
-        using base::dense_size_;
+        using base::size_;
         using base::idx_irrep_;
+        using base::leaf_;
+        using base::parent_;
         using base::perm_;
+        using base::depth_;
         using base::data_;
+        using base::idx_len_;
         using base::idx_;
         using base::irrep_;
         using base::dense_irrep_;
         using base::nirrep_;
         using base::layout_;
+        using base::factor_;
 
         template <typename U> using initializer_matrix =
             std::initializer_list<std::initializer_list<U>>;
@@ -114,6 +118,40 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
             reset(irrep, nirrep, len, ptr, idx_irrep, idx, layout);
         }
 
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
+        indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
+                   initializer_matrix<len_type> len, row_view<const pointer> ptr,
+                   std::initializer_list<unsigned> idx_irrep,
+                   matrix_view<const len_type> idx,
+                   const U& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, idx_irrep, idx, depth, layout);
+        }
+
+        template <typename U, typename V, typename=
+            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
+                                detail::is_container_of<V,unsigned>::value>>
+        indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
+                   std::initializer_list<U> len, row_view<const pointer> ptr,
+                   std::initializer_list<unsigned> idx_irrep,
+                   matrix_view<const len_type> idx,
+                   const V& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, idx_irrep, idx, depth, layout);
+        }
+
+        template <typename U, typename V, typename W, typename=
+            detail::enable_if_t<detail::is_2d_container_of<U,len_type>::value &&
+                                detail::is_container_of<V,unsigned>::value &&
+                                detail::is_container_of<W,unsigned>::value>>
+        indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
+                   const U& len, row_view<const pointer> ptr,
+                   const V& idx_irrep, matrix_view<const len_type> idx,
+                   const W& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, idx_irrep, idx, depth, layout);
+        }
+
         /***********************************************************************
          *
          * Base operations
@@ -132,7 +170,10 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
         using base::operator[];
         using base::cdata;
         using base::data;
+        using base::factors;
+        using base::factor;
         using base::indices;
+        using base::index;
         using base::dense_length;
         using base::dense_lengths;
         using base::indexed_length;
@@ -142,12 +183,19 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
         using base::indexed_irrep;
         using base::indexed_irreps;
         using base::irrep;
+        using base::dense_irrep;
         using base::num_irreps;
         using base::num_indices;
         using base::permutation;
         using base::dimension;
         using base::dense_dimension;
         using base::indexed_dimension;
+        using base::dense_size;
+
+        Type& factor(len_type idx)
+        {
+            return const_cast<Type&>(const_cast<const indexed_dpd_varray_view&>(*this).factor(idx));
+        }
 
         /***********************************************************************
          *

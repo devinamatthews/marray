@@ -111,6 +111,14 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         using base::reset;
         using base::cview;
         using base::view;
+        using base::cbegin;
+        using base::begin;
+        using base::cend;
+        using base::end;
+        using base::crbegin;
+        using base::rbegin;
+        using base::crend;
+        using base::rend;
         using base::shifted;
         using base::shifted_up;
         using base::shifted_down;

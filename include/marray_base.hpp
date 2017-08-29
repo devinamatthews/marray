@@ -31,15 +31,6 @@ class varray;
 template <typename Expr>
 struct is_expression_arg_or_scalar;
 
-}
-
-#include "expression.hpp"
-#include "marray_slice.hpp"
-#include "miterator.hpp"
-
-namespace MArray
-{
-
 namespace detail
 {
 
@@ -47,9 +38,9 @@ template <typename Type, unsigned NDim>
 struct initializer_type;
 
 template <typename Type>
-struct initializer_type<Type, 1u>
+struct initializer_type<Type, 0u>
 {
-    typedef std::initializer_list<Type> type;
+    typedef Type type;
 };
 
 template <typename Type, unsigned NDim>
@@ -72,7 +63,138 @@ auto call(Func&& f, Arg&& arg, Args&&... args)
     f(std::forward<Arg>(arg));
 }
 
+template <typename Array>
+class marray_iterator
+{
+    protected:
+        Array* array_ = nullptr;
+        len_type i_ = 0;
+
+    public:
+        typedef std::random_access_iterator_tag iterator_category;
+        typedef decltype((*array_)[0]) value_type;
+        typedef len_type difference_type;
+        typedef typename std::remove_reference<value_type>::type* pointer;
+        typedef value_type& reference;
+
+        marray_iterator(Array& array, len_type i)
+        : array_(&array), i_(i) {}
+
+        bool operator==(const marray_iterator& other) const
+        {
+            return i_ == other.i_;
+        }
+
+        bool operator!=(const marray_iterator& other) const
+        {
+            return !(*this == other);
+        }
+
+        value_type operator*() const
+        {
+            return (*array_)[i_];
+        }
+
+        marray_iterator& operator++()
+        {
+            i_++;
+            return *this;
+        }
+
+        marray_iterator operator++(int)
+        {
+            marray_iterator old(*this);
+            i_++;
+            return old;
+        }
+
+        marray_iterator& operator--()
+        {
+            i_--;
+            return *this;
+        }
+
+        marray_iterator operator--(int)
+        {
+            marray_iterator old(*this);
+            i_--;
+            return old;
+        }
+
+        marray_iterator& operator+=(difference_type n)
+        {
+            i_ += n;
+            return *this;
+        }
+
+        marray_iterator operator+(difference_type n) const
+        {
+            return marray_iterator(*array_, i_+n);
+        }
+
+        friend marray_iterator operator+(difference_type n, const marray_iterator& i)
+        {
+            return marray_iterator(*i.array_, i.i_+n);
+        }
+
+        marray_iterator& operator-=(difference_type n)
+        {
+            i_ -= n;
+            return *this;
+        }
+
+        marray_iterator operator-(difference_type n) const
+        {
+            return iterator(*array_, i_-n);
+        }
+
+        difference_type operator-(const marray_iterator& other) const
+        {
+            return i_ - other.i_;
+        }
+
+        bool operator<(const marray_iterator& other) const
+        {
+            return i_ < other.i_;
+        }
+
+        bool operator<=(const marray_iterator& other) const
+        {
+            return !(other < *this);
+        }
+
+        bool operator>(const marray_iterator& other) const
+        {
+            return other < *this;
+        }
+
+        bool operator>=(const marray_iterator& other) const
+        {
+            return !(*this < other);
+        }
+
+        value_type operator[](difference_type n) const
+        {
+            return (*array_)[i_+n];
+        }
+
+        friend void swap(marray_iterator& a, marray_iterator& b)
+        {
+            using std::swap;
+            swap(a.array_, b.array_);
+            swap(a.i_, b.i_);
+        }
+};
+
 }
+}
+
+#include "expression.hpp"
+#include "marray_slice.hpp"
+#include "miterator.hpp"
+
+namespace MArray
+{
 
 template <typename Type, unsigned NDim, typename Derived, bool Owner>
 class marray_base
@@ -94,6 +216,10 @@ class marray_base
         typedef const Type& const_reference;
         typedef typename detail::initializer_type<Type, NDim>::type
             initializer_type;
+        typedef detail::marray_iterator<marray_base> iterator;
+        typedef detail::marray_iterator<const marray_base> const_iterator;
+        typedef std::reverse_iterator<iterator> reverse_iterator;
+        typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
         typedef typename std::conditional<Owner,const Type,Type>::type ctype;
         typedef ctype& cref;
@@ -113,8 +239,8 @@ class marray_base
         void reset()
         {
             data_ = nullptr;
-            len_.fill(0);
-            stride_.fill(0);
+            len_ = {};
+            stride_ = {};
         }
 
         template <typename U, bool O, typename D,
@@ -462,6 +588,72 @@ class marray_base
         friend marray_view<Type, NDim> view(marray_base& x)
         {
             return x.view();
+        }
+
+        /***********************************************************************
+         *
+         * Iterators
+         *
+         **********************************************************************/
+
+        const_iterator cbegin() const
+        {
+            return const_iterator{*this, 0};
+        }
+
+        const_iterator begin() const
+        {
+            return const_iterator{*this, 0};
+        }
+
+        iterator begin()
+        {
+            return iterator{*this, 0};
+        }
+
+        const_iterator cend() const
+        {
+            return const_iterator{*this, len_[0]};
+        }
+
+        const_iterator end() const
+        {
+            return const_iterator{*this, len_[0]};
+        }
+
+        iterator end()
+        {
+            return iterator{*this, len_[0]};
+        }
+
+        const_reverse_iterator crbegin() const
+        {
+            return const_reverse_iterator{end()};
+        }
+
+        const_reverse_iterator rbegin() const
+        {
+            return const_reverse_iterator{end()};
+        }
+
+        reverse_iterator rbegin()
+        {
+            return reverse_iterator{end()};
+        }
+
+        const_reverse_iterator crend() const
+        {
+            return const_reverse_iterator{begin()};
+        }
+
+        const_reverse_iterator rend() const
+        {
+            return const_reverse_iterator{begin()};
+        }
+
+        reverse_iterator rend()
+        {
+            return reverse_iterator{begin()};
         }
 
         /***********************************************************************
@@ -1013,8 +1205,9 @@ class marray_base
         marray_slice<ctype, NDim, 1, slice_dim>
         operator[](const range_t<I>& x) const
         {
-            MARRAY_ASSERT(x.front() <= x.back());
-            MARRAY_ASSERT(x.front() >= 0 && x.back() <= len_[0]);
+            MARRAY_ASSERT(x.size() >= 0);
+            MARRAY_ASSERT(x.front() >= 0);
+            MARRAY_ASSERT(x.front()+x.size() <= len_[0]);
             return {*this, x};
         }
 
@@ -1022,8 +1215,9 @@ class marray_base
         marray_slice<Type, NDim, 1, slice_dim>
         operator[](const range_t<I>& x)
         {
-            MARRAY_ASSERT(x.front() <= x.back());
-            MARRAY_ASSERT(x.front() >= 0 && x.back() <= len_[0]);
+            MARRAY_ASSERT(x.size() >= 0);
+            MARRAY_ASSERT(x.front() >= 0);
+            MARRAY_ASSERT(x.front()+x.size() <= len_[0]);
             return {*this, x};
         }
 
@@ -1179,7 +1373,6 @@ class marray_base
 
         friend std::ostream& operator<<(std::ostream& os, const marray_base& x)
         {
-
             for (unsigned i = 0;i < NDim-1;i++)
             {
                 for (unsigned j = 0;j < i;j++) os << ' ';
@@ -1194,9 +1387,13 @@ class marray_base
                 for (unsigned i = 0;i < NDim-1;i++) os << ' ';
                 os << '{';
                 len_type n = x.len_[NDim-1];
-                for (len_type i = 0;i < n-1;i++)
-                    os << data[i*x.stride_[NDim-1]] << ", ";
-                os << data[(n-1)*x.stride_[NDim-1]] << "}";
+                if (n > 0)
+                {
+                    for (len_type i = 0;i < n-1;i++)
+                        os << data[i*x.stride_[NDim-1]] << ", ";
+                    os << data[(n-1)*x.stride_[NDim-1]];
+                }
+                os << "}";
 
                 for (unsigned i = NDim-1;i --> 0;)
                 {
@@ -1223,6 +1420,8 @@ class marray_base
                         break;
                     }
                 }
+
+                if (NDim == 1) break;
             }
 
             return os;

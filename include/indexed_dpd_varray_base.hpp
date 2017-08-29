@@ -18,8 +18,9 @@ template <typename Type, typename Allocator=std::allocator<Type>>
 class indexed_dpd_varray;
 
 template <typename Type, typename Derived, bool Owner>
-class indexed_dpd_varray_base
+class indexed_dpd_varray_base : detail::dpd_base<indexed_dpd_varray_base<Type, Derived, Owner>>
 {
+    template <typename> friend struct detail::dpd_base;
     template <typename, typename, bool> friend class indexed_dpd_varray_base;
     template <typename> friend class indexed_dpd_varray_view;
     template <typename, typename> friend class indexed_dpd_varray;
@@ -38,16 +39,20 @@ class indexed_dpd_varray_base
             std::initializer_list<std::initializer_list<U>>;
 
     protected:
-        matrix<len_type> len_;
-        matrix<stride_type> dense_size_;
-        std::vector<unsigned> idx_irrep_;
-        std::vector<unsigned> perm_;
+        matrix<stride_type> size_;
+        irrep_vector idx_irrep_;
+        dim_vector leaf_;
+        dim_vector parent_;
+        dim_vector perm_;
+        dim_vector depth_;
         row_view<const pointer> data_;
+        matrix<len_type> idx_len_;
         matrix_view<const len_type> idx_;
         unsigned irrep_ = 0;
         unsigned dense_irrep_ = 0;
         unsigned nirrep_ = 0;
-        dpd_layout layout_ = DEFAULT;
+        layout layout_ = DEFAULT;
+        std::vector<typename std::remove_const<Type>::type> factor_;
 
         /***********************************************************************
          *
@@ -57,16 +62,20 @@ class indexed_dpd_varray_base
 
         void reset()
         {
-            len_.reset();
-            dense_size_.reset();
+            size_.reset();
             idx_irrep_.clear();
+            leaf_.clear();
+            parent_.clear();
             perm_.clear();
+            depth_.clear();
             data_.reset();
+            idx_len_.reset();
             idx_.reset();
             irrep_ = 0;
             dense_irrep_ = 0;
             nirrep_ = 0;
             layout_ = DEFAULT;
+            factor_.clear();
         }
 
         template <typename U, bool O, typename D,
@@ -82,16 +91,20 @@ class indexed_dpd_varray_base
                 typename indexed_dpd_varray_base<U, D, O>::pointer,pointer>>
         void reset(indexed_dpd_varray_base<U, D, O>& other)
         {
-            len_.reset(other.len_);
-            dense_size_.reset(other.dense_size_);
+            size_.reset(other.size_);
             idx_irrep_ = other.idx_irrep_;
+            leaf_ = other.leaf_;
+            parent_ = other.parent_;
             perm_ = other.perm_;
+            depth_ = other.depth_;
             data_.reset(other.data_);
+            idx_len_.reset(other.idx_len_);
             idx_.reset(other.idx_);
             irrep_ = other.irrep_;
             dense_irrep_ = other.dense_irrep_;
             nirrep_ = other.nirrep_;
             layout_ = other.layout_;
+            factor_ = other.factor_;
         }
 
         void reset(unsigned irrep, unsigned nirrep,
@@ -117,26 +130,65 @@ class indexed_dpd_varray_base
         }
 
         template <typename U, typename V, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
+            detail::enable_if_t<detail::is_2d_container_of<U,len_type>::value &&
                                 detail::is_container_of<V,unsigned>::value>>
         void reset(unsigned irrep, unsigned nirrep,
                    const U& len, row_view<const pointer> ptr,
                    const V& idx_irrep, matrix_view<const len_type> idx,
                    dpd_layout layout = DEFAULT)
         {
+            unsigned total_ndim = detail::length(len, 0);
+            unsigned idx_ndim = idx_irrep.size();
+            unsigned dense_ndim = total_ndim - idx_ndim;
+
+            reset(irrep, nirrep, len, ptr, idx_irrep, idx,
+                  this->default_depth(layout, dense_ndim), layout.base());
+        }
+
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
+        void reset(unsigned irrep, unsigned nirrep,
+                   initializer_matrix<len_type> len, row_view<const pointer> ptr,
+                   std::initializer_list<unsigned> idx_irrep,
+                   matrix_view<const len_type> idx,
+                   const U& depth, layout layout = DEFAULT)
+        {
+            reset<initializer_matrix<len_type>,
+                std::initializer_list<unsigned>>(irrep, nirrep, len, ptr, idx_irrep, idx, depth, layout);
+        }
+
+        template <typename U, typename V, typename=
+            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
+                                detail::is_container_of<V,unsigned>::value>>
+        void reset(unsigned irrep, unsigned nirrep,
+                   std::initializer_list<U> len, row_view<const pointer> ptr,
+                   std::initializer_list<unsigned> idx_irrep,
+                   matrix_view<const len_type> idx,
+                   const V& depth, layout layout = DEFAULT)
+        {
+            reset<std::initializer_list<U>,
+                  std::initializer_list<unsigned>>(irrep, nirrep, len, ptr, idx_irrep, idx, depth, layout);
+        }
+
+        template <typename U, typename V, typename W, typename=
+            detail::enable_if_t<detail::is_2d_container_of<U,len_type>::value &&
+                                detail::is_container_of<V,unsigned>::value &&
+                                detail::is_container_of<W,unsigned>::value>>
+        void reset(unsigned irrep, unsigned nirrep,
+                   const U& len, row_view<const pointer> ptr,
+                   const V& idx_irrep, matrix_view<const len_type> idx,
+                   const W& depth, layout layout = DEFAULT)
+        {
             MARRAY_ASSERT(nirrep == 1 || nirrep == 2 ||
                           nirrep == 4 || nirrep == 8);
 
             unsigned num_idx = ptr.length();
-            MARRAY_ASSERT(num_idx > 0);
             MARRAY_ASSERT(idx.length(0) == num_idx);
 
             unsigned total_ndim = detail::length(len, 0);
             unsigned idx_ndim = idx_irrep.size();
             unsigned dense_ndim = total_ndim - idx_ndim;
             MARRAY_ASSERT(total_ndim > idx_ndim);
-            MARRAY_ASSERT(idx_ndim > 0);
+            MARRAY_ASSERT(idx_ndim > 0 || num_idx == 1);
             MARRAY_ASSERT(idx.length(1) == idx_ndim);
             MARRAY_ASSERT(detail::length(len, 1) == nirrep);
 
@@ -147,18 +199,27 @@ class indexed_dpd_varray_base
             idx_.reset(idx);
             layout_ = layout;
             idx_irrep_.resize(idx_ndim);
-            len_.reset({total_ndim, nirrep}, ROW_MAJOR);
-            dense_size_.reset({2*dense_ndim, nirrep}, ROW_MAJOR);
+            idx_len_.reset({idx_ndim, nirrep}, ROW_MAJOR);
+            size_.reset({2*dense_ndim-1, nirrep}, ROW_MAJOR);
+            leaf_.resize(dense_ndim);
+            parent_.resize(2*dense_ndim-1);
             perm_.resize(dense_ndim);
+            depth_.resize(dense_ndim);
+            factor_.assign(num_idx, Type(1));
 
-            detail::set_len(len, len_, perm_, layout_);
-            detail::set_size(irrep_, len_, dense_size_, layout_);
+            this->set_tree(depth);
+            this->set_size(len);
 
-            unsigned i = 0;
-            for (unsigned irrep : idx_irrep)
+            auto irrep_it = idx_irrep.begin();
+            auto len_it = std::next(len.begin(), dense_ndim);
+            for (unsigned i = 0;i < idx_ndim;i++)
             {
-                MARRAY_ASSERT(irrep < nirrep);
-                dense_irrep_ ^= idx_irrep_[i++] = irrep;
+                MARRAY_ASSERT(*irrep_it < nirrep);
+                dense_irrep_ ^= idx_irrep_[i] = *irrep_it;
+                auto&& inner = *len_it;
+                std::copy_n(inner.begin(), nirrep, &idx_len_[i][0]);
+                ++irrep_it;
+                ++len_it;
             }
         }
 
@@ -174,14 +235,14 @@ class indexed_dpd_varray_base
             typedef typename View::pointer Ptr;
 
             unsigned ndim = indexed_dimension();
-            std::vector<len_type> indices(ndim);
+            index_vector indices(ndim);
             auto len = dense_lengths();
 
             for (len_type i = 0;i < num_indices();i++)
             {
-                std::copy_n(&idx_[i][0], ndim, indices.data());
+                std::copy_n(idx_[i].data(), ndim, indices.data());
                 detail::call(std::forward<Func>(f),
-                             View(dense_irrep_, nirrep_, len, const_cast<Ptr>(data_[i]), layout_),
+                             View(dense_irrep_, nirrep_, len, const_cast<Ptr>(data_[i]), depth_, layout_),
                              indices);
             }
         }
@@ -199,7 +260,7 @@ class indexed_dpd_varray_base
             for (len_type i = 0;i < num_indices();i++)
             {
                 detail::call(std::forward<Func>(f),
-                             View(dense_irrep_, nirrep_, len, const_cast<Ptr>(data_[i]), layout_),
+                             View(dense_irrep_, nirrep_, len, const_cast<Ptr>(data_[i]), depth_, layout_),
                              idx_[i][I]...);
             }
         }
@@ -213,14 +274,13 @@ class indexed_dpd_varray_base
             unsigned dense_ndim = dense_dimension();
             unsigned ndim = dense_ndim + indexed_ndim;
 
-            std::vector<len_type> indices(ndim);
-            std::vector<unsigned> irreps(ndim);
-            std::vector<len_type> len(dense_ndim);
-            std::vector<stride_type> stride(dense_ndim);
+            index_vector indices(ndim);
+            irrep_vector irreps(ndim);
+            len_vector len(dense_ndim);
+            stride_vector stride(dense_ndim);
             const_pointer cptr;
 
-            auto iperm = detail::inverse_permutation(perm_);
-            std::vector<unsigned> nirrep(dense_ndim-1, nirrep_);
+            irrep_vector nirrep(dense_ndim-1, nirrep_);
             viterator<0> it1(nirrep);
 
             for (unsigned j = 0;j < indexed_ndim;j++)
@@ -233,15 +293,18 @@ class indexed_dpd_varray_base
 
                 while (it1.next())
                 {
-                    irreps[0] = irrep_;
+                    irreps[0] = dense_irrep_;
                     for (unsigned i = 1;i < dense_ndim;i++)
                     {
                         irreps[0] ^= irreps[i] = it1.position()[i-1];
                     }
 
                     cptr = data_[i];
-                    detail::get_block(iperm, irreps, len_, dense_size_,
-                                      layout_, len, cptr, stride);
+                    this->get_block(irreps, len, cptr, stride);
+
+                    bool skip = false;
+                    for (auto l : len) if (l == 0) skip = true;
+                    if (skip) continue;
 
                     Ptr ptr = const_cast<Ptr>(cptr);
                     for (bool done = false;!done;)
@@ -282,7 +345,6 @@ class indexed_dpd_varray_base
             std::array<stride_type, DenseNDim> stride;
             const_pointer cptr;
 
-            auto iperm = detail::inverse_permutation(perm_);
             std::array<unsigned, DenseNDim-1> nirrep;
             nirrep.fill(nirrep_);
 
@@ -292,15 +354,14 @@ class indexed_dpd_varray_base
             {
                 while (it1.next())
                 {
-                    irreps[0] = irrep_;
+                    irreps[0] = dense_irrep_;
                     for (unsigned i = 1;i < DenseNDim;i++)
                     {
                         irreps[0] ^= irreps[i] = it1.position()[i-1];
                     }
 
                     cptr = data_[i];
-                    detail::get_block(iperm, irreps, len_, dense_size_,
-                                      layout_, len, cptr, stride);
+                    this->get_block(irreps, len, cptr, stride);
 
                     miterator<DenseNDim, 1> it2(len, stride);
                     Ptr ptr = const_cast<Ptr>(cptr);
@@ -323,9 +384,7 @@ class indexed_dpd_varray_base
             for (unsigned i = 0;i < dense_dimension();i++)
                 MARRAY_ASSERT(dense_lengths(i) == other.dense_lengths(i));
 
-            stride_type size = dpd_varray_view<Type>::size(dense_irrep_, dense_lengths());
-
-            if (layout_ == other.layout_)
+            if (layout_ == other.layout_ && depth_ == other.depth_)
             {
                 for (len_type i = 0;i < num_indices();i++)
                 {
@@ -334,7 +393,7 @@ class indexed_dpd_varray_base
                     pointer a = const_cast<pointer>(data(i));
                     auto b = other.data(i);
 
-                    std::copy_n(b, size, a);
+                    std::copy_n(b, dense_size(), a);
                 }
             }
             else
@@ -350,22 +409,25 @@ class indexed_dpd_varray_base
 
         void copy(const Type& value) const
         {
-            stride_type size = dpd_varray_view<Type>::size(dense_irrep_, dense_lengths());
-            std::fill_n(const_cast<pointer>(data(0)), size*num_indices(), value);
+            std::fill_n(const_cast<pointer>(data(0)), dense_size()*num_indices(), value);
         }
 
         void swap(indexed_dpd_varray_base& other)
         {
             using std::swap;
-            swap(len_, other.len_);
-            swap(dense_size_, other.dense_size_);
+            swap(size_, other.size_);
             swap(idx_irrep_, other.idx_irrep_);
+            swap(leaf_, other.leaf_);
+            swap(parent_, other.parent_);
             swap(perm_, other.perm_);
+            swap(depth_, other.depth_);
             swap(data_, other.data_);
+            swap(idx_len_, other.idx_len_);
             swap(idx_, other.idx_);
             swap(irrep_, other.irrep_);
             swap(dense_irrep_, other.dense_irrep_);
             swap(nirrep_, other.nirrep_);
+            swap(factor_, other.factor_);
             swap(layout_, other.layout_);
         }
 
@@ -461,7 +523,7 @@ class indexed_dpd_varray_base
         dpd_varray_view<Type> operator[](len_type idx)
         {
             MARRAY_ASSERT(0 <= idx && idx < num_indices());
-            return {dense_irrep_, nirrep_, dense_lengths(), data_[idx], layout_};
+            return dpd_varray_view<Type>{dense_irrep_, nirrep_, dense_lengths(), data_[idx], depth_, layout_};
         }
 
         /***********************************************************************
@@ -563,6 +625,17 @@ class indexed_dpd_varray_base
             return data_[idx];
         }
 
+        const std::vector<Type>& factors() const
+        {
+            return factor_;
+        }
+
+        const Type& factor(len_type idx) const
+        {
+            MARRAY_ASSERT(0 <= idx && idx < num_indices());
+            return factor_[idx];
+        }
+
         const matrix_view<const len_type>& indices() const
         {
             return idx_;
@@ -574,42 +647,46 @@ class indexed_dpd_varray_base
             return idx_[idx];
         }
 
+        len_type index(len_type idx, len_type dim) const
+        {
+            MARRAY_ASSERT(0 <= idx && idx < num_indices());
+            MARRAY_ASSERT(dim < indexed_dimension());
+            return idx_[idx][dim];
+        }
+
         len_type dense_length(unsigned dim, unsigned irrep) const
         {
             MARRAY_ASSERT(dim < dense_dimension());
             MARRAY_ASSERT(irrep < nirrep_);
-            return len_[perm_[dim]][irrep];
+            return size_[leaf_[perm_[dim]]][irrep];
         }
 
         row_view<const len_type> dense_lengths(unsigned dim) const
         {
             MARRAY_ASSERT(dim < dense_dimension());
-            return len_[perm_[dim]];
+            return size_[leaf_[perm_[dim]]];
         }
 
         matrix<len_type> dense_lengths() const
         {
             unsigned ndim = dense_dimension();
             matrix<len_type> len({ndim, nirrep_}, ROW_MAJOR);
-            for (unsigned i = 0;i < ndim;i++) len[i] = len_[perm_[i]];
+            for (unsigned i = 0;i < ndim;i++) len[i] = size_[leaf_[perm_[i]]];
             return len;
         }
 
         len_type indexed_length(unsigned dim) const
         {
-            unsigned dense_ndim = dense_dimension();
-            unsigned idx_ndim = indexed_dimension();
-            MARRAY_ASSERT(dim < idx_ndim);
-            return len_[dense_ndim+dim][idx_irrep_[dim]];
+            MARRAY_ASSERT(dim < indexed_dimension());
+            return idx_len_[dim][idx_irrep_[dim]];
         }
 
-        std::vector<len_type> indexed_lengths() const
+        len_vector indexed_lengths() const
         {
-            unsigned dense_ndim = dense_dimension();
             unsigned idx_ndim = indexed_dimension();
-            std::vector<len_type> len(idx_ndim);
+            len_vector len(idx_ndim);
             for (unsigned dim = 0;dim < idx_ndim;dim++)
-                len[dim] = len_[dense_ndim+dim][idx_irrep_[dim]];
+                len[dim] = idx_len_[dim][idx_irrep_[dim]];
             return len;
         }
 
@@ -624,28 +701,24 @@ class indexed_dpd_varray_base
             }
             else
             {
-                return len_[dim][irrep];
+                return idx_len_[dim-dense_dimension()][irrep];
             }
 
             return 0;
         }
 
-        std::vector<len_type> lengths(unsigned dim) const
+        row_view<const len_type> lengths(unsigned dim) const
         {
             MARRAY_ASSERT(dim < dimension());
 
-            std::vector<len_type> len(nirrep_);
-
             if (dim < dense_dimension())
             {
-                std::copy_n(&len_[perm_[dim]][0], nirrep_, len.data());
+                return size_[leaf_[perm_[dim]]];
             }
             else
             {
-                std::copy_n(&len_[dim][0], nirrep_, len.data());
+                return idx_len_[dim-dense_dimension()];
             }
-
-            return len;
         }
 
         matrix<len_type> lengths() const
@@ -656,10 +729,10 @@ class indexed_dpd_varray_base
             matrix<len_type> len({dense_ndim + idx_ndim, nirrep_}, ROW_MAJOR);
 
             for (unsigned i = 0;i < dense_ndim;i++)
-                len[i] = len_[perm_[i]];
+                len[i] = size_[leaf_[perm_[i]]];
 
-            for (unsigned i = dense_ndim;i < dense_ndim+idx_ndim;i++)
-                len[i] = len_[i];
+            for (unsigned i = 0;i < idx_ndim;i++)
+                len[i+dense_ndim] = idx_len_[i];
 
             return len;
         }
@@ -670,7 +743,7 @@ class indexed_dpd_varray_base
             return idx_irrep_[dim];
         }
 
-        const std::vector<unsigned>& indexed_irreps() const
+        const irrep_vector& indexed_irreps() const
         {
             return idx_irrep_;
         }
@@ -680,9 +753,14 @@ class indexed_dpd_varray_base
             return irrep_;
         }
 
+        unsigned dense_irrep() const
+        {
+            return dense_irrep_;
+        }
+
         unsigned num_irreps() const
         {
-            return len_.length(1);
+            return nirrep_;
         }
 
         len_type num_indices() const
@@ -690,7 +768,7 @@ class indexed_dpd_varray_base
             return idx_.length(0);
         }
 
-        const std::vector<unsigned>& permutation() const
+        const dim_vector& permutation() const
         {
             return perm_;
         }
@@ -708,6 +786,11 @@ class indexed_dpd_varray_base
         unsigned indexed_dimension() const
         {
             return idx_irrep_.size();
+        }
+
+        stride_type dense_size() const
+        {
+            return size_[2*dense_dimension()-2][dense_irrep_];
         }
 };
 

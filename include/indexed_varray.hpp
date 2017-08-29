@@ -30,6 +30,7 @@ class indexed_varray : public indexed_varray_base<Type, indexed_varray<Type, All
         using base::dense_len_;
         using base::idx_len_;
         using base::dense_stride_;
+        using base::factor_;
         row<pointer> real_data_;
         matrix<len_type> real_idx_;
         layout layout_ = DEFAULT;
@@ -172,7 +173,10 @@ class indexed_varray : public indexed_varray_base<Type, indexed_varray<Type, All
         using base::operator[];
         using base::cdata;
         using base::data;
+        using base::factors;
+        using base::factor;
         using base::indices;
+        using base::index;
         using base::dense_length;
         using base::dense_lengths;
         using base::indexed_length;
@@ -244,7 +248,8 @@ class indexed_varray : public indexed_varray_base<Type, indexed_varray<Type, All
                    const Type& value = Type(), layout layout = DEFAULT)
         {
             reset(len, idx, uninitialized, layout);
-            std::uninitialized_fill_n(real_data_[0], storage_.size, value);
+            if (storage_.size > 0)
+                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
         }
 
         template <typename U,
@@ -254,7 +259,8 @@ class indexed_varray : public indexed_varray_base<Type, indexed_varray<Type, All
                    const Type& value = Type(), layout layout = DEFAULT)
         {
             reset(len, idx, uninitialized, layout);
-            std::uninitialized_fill_n(real_data_[0], storage_.size, value);
+            if (storage_.size > 0)
+                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
         }
 
         template <typename U, typename V,
@@ -266,7 +272,8 @@ class indexed_varray : public indexed_varray_base<Type, indexed_varray<Type, All
                    const Type& value = Type(), layout layout = DEFAULT)
         {
             reset(len, idx, uninitialized, layout);
-            std::uninitialized_fill_n(real_data_[0], storage_.size, value);
+            if (storage_.size > 0)
+                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
         }
 
         void reset(std::initializer_list<len_type> len,
@@ -323,8 +330,7 @@ class indexed_varray : public indexed_varray_base<Type, indexed_varray<Type, All
         {
             len_type idx_ndim = detail::length(idx, 0);
             len_type nidx = detail::length(idx, 1);
-            MARRAY_ASSERT((idx_ndim > 0 && nidx > 0) ||
-                          (idx_ndim == 0 && nidx == 0));
+            MARRAY_ASSERT(idx_ndim > 0 || nidx == 1);
 
             real_data_.reset({idx_ndim});
             real_idx_.reset({idx_ndim, nidx}, ROW_MAJOR);
@@ -336,9 +342,12 @@ class indexed_varray : public indexed_varray_base<Type, indexed_varray<Type, All
 
             stride_type size = varray_view<Type>::size(dense_len_);
             storage_.size = size*idx_ndim;
-            real_data_[0] = alloc_traits::allocate(storage_, storage_.size);
-            for (len_type i = 1;i < idx_ndim;i++)
-                real_data_[i] = real_data_[i-1] + size;
+            if (storage_.size > 0)
+            {
+                real_data_[0] = alloc_traits::allocate(storage_, storage_.size);
+                for (len_type i = 1;i < idx_ndim;i++)
+                    real_data_[i] = real_data_[i-1] + size;
+            }
         }
 
         /***********************************************************************

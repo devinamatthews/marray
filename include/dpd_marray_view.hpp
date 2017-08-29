@@ -12,9 +12,11 @@ class dpd_marray_view : public dpd_marray_base<Type, NDim, dpd_marray_view<Type,
     protected:
         typedef dpd_marray_base<Type, NDim, dpd_marray_view, false> base;
 
-        using base::len_;
         using base::size_;
+        using base::leaf_;
+        using base::parent_;
         using base::perm_;
+        using base::depth_;
         using base::data_;
         using base::irrep_;
         using base::nirrep_;
@@ -90,6 +92,33 @@ class dpd_marray_view : public dpd_marray_base<Type, NDim, dpd_marray_view<Type,
                         dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, ptr, layout);
+        }
+
+        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
+        dpd_marray_view(unsigned irrep, unsigned nirrep,
+                        initializer_matrix<len_type> len, pointer ptr,
+                        const U& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, depth, layout);
+        }
+
+        template <typename U, typename V, typename=
+            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
+                                detail::is_container_of<V,unsigned>::value>>
+        dpd_marray_view(unsigned irrep, unsigned nirrep,
+                        std::initializer_list<U> len, pointer ptr,
+                        const V& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, depth, layout);
+        }
+
+        template <typename U, typename V, typename=
+            detail::enable_if_t<detail::is_2d_container_of<U,len_type>::value &&
+                                detail::is_container_of<V,unsigned>::value>>
+        dpd_marray_view(unsigned irrep, unsigned nirrep, const U& len, pointer ptr,
+                        const V& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, depth, layout);
         }
 
         /***********************************************************************
