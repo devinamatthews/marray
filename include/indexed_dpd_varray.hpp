@@ -36,12 +36,7 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         using base::nirrep_;
         using base::layout_;
         using base::factor_;
-        row<pointer> real_data_;
-        matrix<len_type> real_idx_;
         struct : Allocator { stride_type size = 0; } storage_;
-
-        template <typename U> using initializer_matrix =
-            std::initializer_list<std::initializer_list<U>>;
 
     public:
 
@@ -81,102 +76,27 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         }
 
         indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           initializer_matrix<len_type> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           initializer_matrix<len_type> idx,
-                           const Type& value = Type(), dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, value, layout);
-        }
-
-        template <typename U, typename V, typename=
-            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
-                                detail::is_container_of<V,len_type>::value>>
-        indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           std::initializer_list<U> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           std::initializer_list<V> idx,
-                           const Type& value = Type(), dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, value, layout);
-        }
-
-        template <typename U, typename V, typename W, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
-                                detail::is_container_of<V,unsigned>::value &&
-                                (detail::is_container_of_containers_of<W,len_type>::value ||
-                                 detail::is_matrix_of<W,len_type>::value)>>
-        indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           const U& len, const V& idx_irrep, const W& idx,
+                           const detail::array_2d<len_type>& len,
+                           const detail::array_1d<unsigned>& idx_irrep,
+                           const detail::array_2d<len_type>& idx,
                            const Type& value = Type(), dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, value, layout);
         }
 
         indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           initializer_matrix<len_type> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           initializer_matrix<len_type> idx,
-                           dpd_layout layout)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, Type(), layout);
-        }
-
-        template <typename U, typename V, typename=
-            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
-                                detail::is_container_of<V,len_type>::value>>
-        indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           std::initializer_list<U> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           std::initializer_list<V> idx,
-                           dpd_layout layout)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, Type(), layout);
-        }
-
-        template <typename U, typename V, typename W, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
-                                detail::is_container_of<V,unsigned>::value &&
-                                (detail::is_container_of_containers_of<W,len_type>::value ||
-                                 detail::is_matrix_of<W,len_type>::value)>>
-        indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           const U& len, const V& idx_irrep, const W& idx,
+                           const detail::array_2d<len_type>& len,
+                           const detail::array_1d<unsigned>& idx_irrep,
+                           const detail::array_2d<len_type>& idx,
                            dpd_layout layout)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, Type(), layout);
         }
 
         indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           initializer_matrix<len_type> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           initializer_matrix<len_type> idx,
-                           uninitialized_t, dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-        }
-
-        template <typename U, typename V, typename=
-            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
-                                detail::is_container_of<V,len_type>::value>>
-        indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           std::initializer_list<U> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           std::initializer_list<V> idx,
-                           uninitialized_t, dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-        }
-
-        template <typename U, typename V, typename W, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
-                                detail::is_container_of<V,unsigned>::value &&
-                                (detail::is_container_of_containers_of<W,len_type>::value ||
-                                 detail::is_matrix_of<W,len_type>::value)>>
-        indexed_dpd_varray(unsigned irrep, unsigned nirrep,
-                           const U& len, const V& idx_irrep, const W& idx,
+                           const detail::array_2d<len_type>& len,
+                           const detail::array_1d<unsigned>& idx_irrep,
+                           const detail::array_2d<len_type>& idx,
                            uninitialized_t, dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
@@ -230,17 +150,14 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         {
             if (storage_.size > 0)
             {
-                pointer data_ = real_data_[0];
                 for (stride_type i = storage_.size;i --> 0;)
                 {
-                    alloc_traits::destroy(storage_, data_+i);
+                    alloc_traits::destroy(storage_, data_[i]);
                 }
-                alloc_traits::deallocate(storage_, data_, storage_.size);
+                alloc_traits::deallocate(storage_, data_[0], storage_.size);
                 storage_.size = 0;
             }
 
-            real_data_.reset();
-            real_idx_.reset();
             base::reset();
         }
 
@@ -274,135 +191,85 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
             base::template operator=<>(other);
         }
 
-        void reset(unsigned irrep, unsigned nirrep,
-                           initializer_matrix<len_type> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           initializer_matrix<len_type> idx,
-                           const Type& value = Type(), dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-            if (storage_.size > 0)
-                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
-        }
-
-        template <typename U, typename V, typename=
-            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
-                                detail::is_container_of<V,len_type>::value>>
-        void reset(unsigned irrep, unsigned nirrep,
-                           std::initializer_list<U> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           std::initializer_list<V> idx,
-                           const Type& value = Type(), dpd_layout layout = DEFAULT)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-            if (storage_.size > 0)
-                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
-        }
-
-        template <typename U, typename V, typename W, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
-                                detail::is_container_of<V,unsigned>::value &&
-                                (detail::is_container_of_containers_of<W,len_type>::value ||
-                                 detail::is_matrix_of<W,len_type>::value)>>
          void reset(unsigned irrep, unsigned nirrep,
-                           const U& len, const V& idx_irrep, const W& idx,
-                           const Type& value = Type(), dpd_layout layout = DEFAULT)
+                    const detail::array_2d<len_type>& len,
+                    const detail::array_1d<unsigned>& idx_irrep,
+                    const detail::array_2d<len_type>& idx,
+                    const Type& value = Type(), dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
             if (storage_.size > 0)
-                std::uninitialized_fill_n(real_data_[0], storage_.size, value);
+                std::uninitialized_fill_n(data_[0], storage_.size, value);
         }
 
-        void reset(unsigned irrep, unsigned nirrep,
-                           initializer_matrix<len_type> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           initializer_matrix<len_type> idx,
-                           dpd_layout layout)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, Type(), layout);
-        }
-
-        template <typename U, typename V, typename=
-            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
-                                detail::is_container_of<V,len_type>::value>>
-        void reset(unsigned irrep, unsigned nirrep,
-                           std::initializer_list<U> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           std::initializer_list<V> idx,
-                           dpd_layout layout)
-        {
-            reset(irrep, nirrep, len, idx_irrep, idx, Type(), layout);
-        }
-
-        template <typename U, typename V, typename W, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
-                                detail::is_container_of<V,unsigned>::value &&
-                                (detail::is_container_of_containers_of<W,len_type>::value ||
-                                 detail::is_matrix_of<W,len_type>::value)>>
          void reset(unsigned irrep, unsigned nirrep,
-                           const U& len, const V& idx_irrep, const W& idx,
-                           dpd_layout layout)
+                    const detail::array_2d<len_type>& len,
+                    const detail::array_1d<unsigned>& idx_irrep,
+                    const detail::array_2d<len_type>& idx,
+                    dpd_layout layout)
         {
             reset(irrep, nirrep, len, idx_irrep, idx, Type(), layout);
         }
 
         void reset(unsigned irrep, unsigned nirrep,
-                           initializer_matrix<len_type> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           initializer_matrix<len_type> idx,
-                           uninitialized_t, dpd_layout layout = DEFAULT)
-        {
-            reset<initializer_matrix<len_type>,
-                  std::initializer_list<unsigned>,
-                  initializer_matrix<len_type>>(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-        }
-
-        template <typename U, typename V, typename=
-            detail::enable_if_t<detail::is_container_of<U,len_type>::value &&
-                                detail::is_container_of<V,len_type>::value>>
-        void reset(unsigned irrep, unsigned nirrep,
-                           std::initializer_list<U> len,
-                           std::initializer_list<unsigned> idx_irrep,
-                           std::initializer_list<V> idx,
-                           uninitialized_t, dpd_layout layout = DEFAULT)
-        {
-            reset<std::initializer_list<U>,
-                  std::initializer_list<unsigned>,
-                  std::initializer_list<V>>(irrep, nirrep, len, idx_irrep, idx, uninitialized, layout);
-        }
-
-        template <typename U, typename V, typename W, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
-                                detail::is_container_of<V,unsigned>::value &&
-                                (detail::is_container_of_containers_of<W,len_type>::value ||
-                                 detail::is_matrix_of<W,len_type>::value)>>
-        void reset(unsigned irrep, unsigned nirrep,
-                   const U& len, const V& idx_irrep, const W& idx,
+                   const detail::array_2d<len_type>& len,
+                   const detail::array_1d<unsigned>& idx_irrep,
+                   const detail::array_2d<len_type>& idx,
                    uninitialized_t, dpd_layout layout = DEFAULT)
         {
-            len_type idx_ndim = detail::length(idx, 0);
-            len_type nidx = detail::length(idx, 1);
-            MARRAY_ASSERT(idx_ndim > 0 || nidx == 1);
+            MARRAY_ASSERT(nirrep == 1 || nirrep == 2 ||
+                          nirrep == 4 || nirrep == 8);
 
-            real_data_.reset({idx_ndim});
-            real_idx_.reset({idx_ndim, nidx}, ROW_MAJOR);
+            unsigned total_ndim = len.length(0);
+            unsigned idx_ndim = idx_irrep.size();
+            unsigned dense_ndim = total_ndim - idx_ndim;
+            MARRAY_ASSERT(total_ndim > idx_ndim);
+            MARRAY_ASSERT(idx.length(1) == idx_ndim);
+            MARRAY_ASSERT(len.length(1) == nirrep);
+
+            unsigned num_idx = idx_ndim == 0 ? 1 : idx.length(0);
+            MARRAY_ASSERT(num_idx > 0);
+
+            irrep_ = irrep;
+            dense_irrep_ = irrep;
+            nirrep_ = nirrep;
+            idx.slurp(idx_, ROW_MAJOR);
             layout_ = layout;
+            idx_irrep.slurp(idx_irrep_);
+            len.slurp(len_, ROW_MAJOR);
+            dense_size_.reset({2*dense_ndim, nirrep}, ROW_MAJOR);
+            perm_.resize(dense_ndim);
+            factor_.assign(num_idx, Type(1));
 
-            detail::set_idx(idx, real_idx_);
+            detail::set_len(len_, perm_, layout_);
+            detail::set_size(irrep_, len_, dense_size_, layout_);
 
-            base::reset(irrep, nirrep, len, real_data_.cview(), idx_irrep, real_idx_.cview(), layout);
+            unsigned i = 0;
+            for (unsigned irrep : idx_irrep_)
+            {
+                MARRAY_ASSERT(irrep < nirrep);
+                dense_irrep_ ^= irrep;
+            }
 
+            data_.resize(num_idx);
             stride_type size = dpd_varray_view<Type>::size(dense_irrep_, dense_lengths());
-            storage_.size = size*idx_ndim;
+            storage_.size = size*num_idx;
             if (storage_.size > 0)
             {
-                real_data_[0] = alloc_traits::allocate(storage_, storage_.size);
-                for (len_type i = 1;i < idx_ndim;i++)
-                    real_data_[i] = real_data_[i-1] + size;
+                data_[0] = alloc_traits::allocate(storage_, storage_.size);
+                for (len_type i = 1;i < num_idx;i++)
+                    data_[i] = data_[i-1] + size;
             }
+        }
+
+        stride_type size() const
+        {
+            return storage_.size;
+        }
+
+        stride_type dense_size() const
+        {
+            return size()/num_indices();
         }
 
         /***********************************************************************
@@ -414,9 +281,7 @@ class indexed_dpd_varray : public indexed_dpd_varray_base<Type, indexed_dpd_varr
         void swap(indexed_dpd_varray& other)
         {
             using std::swap;
-            swap(real_data_, other.real_data_);
-            swap(real_idx_,  other.real_idx_);
-            swap(storage_,   other.storage_);
+            swap(storage_, other.storage_);
             base::swap(other);
         }
 

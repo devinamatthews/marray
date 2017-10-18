@@ -17,7 +17,7 @@
 #include <ostream>
 
 #ifdef MARRAY_ENABLE_ASSERTS
-#define MARRAY_ASSERT(e) std::assert(e)
+#define MARRAY_ASSERT(e) assert(e)
 #else
 #define MARRAY_ASSERT(e)
 #endif
@@ -274,6 +274,13 @@ namespace detail
 
     template <typename C, typename T, typename U=void>
     using enable_if_container_of_t = typename std::enable_if<is_container_of<C, T>::value,U>::type;
+
+    template <typename C, typename=void>
+    struct is_container_of_containers : std::false_type {};
+
+    template <typename C>
+    struct is_container_of_containers<C, enable_if_t<is_container<C>::value>> :
+        is_container<typename C::value_type> {};
 
     template <typename C, typename T, typename=void>
     struct is_container_of_containers_of : std::false_type {};

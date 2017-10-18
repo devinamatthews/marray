@@ -28,9 +28,6 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
         using base::layout_;
         using base::factor_;
 
-        template <typename U> using initializer_matrix =
-            std::initializer_list<std::initializer_list<U>>;
-
     public:
         using typename base::value_type;
         using typename base::pointer;
@@ -83,33 +80,35 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
             reset(other);
         }
 
-        indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len, row_view<const pointer> ptr,
-                   std::initializer_list<unsigned> idx_irrep,
-                   matrix_view<const len_type> idx,
-                   dpd_layout layout = DEFAULT)
+        template <typename U, bool O, typename D,
+            typename=detail::enable_if_convertible_t<
+            typename dpd_varray_base<U, D, O>::cptr,pointer>>
+        indexed_dpd_varray_view(const dpd_varray_base<U, D, O>& other)
         {
-            reset(irrep, nirrep, len, ptr, idx_irrep, idx, layout);
+            reset(other);
         }
 
-        template <typename U, typename=
-            detail::enable_if_container_of_t<U,len_type>>
-        indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
-                   std::initializer_list<U> len, row_view<const pointer> ptr,
-                   std::initializer_list<unsigned> idx_irrep,
-                   matrix_view<const len_type> idx,
-                   dpd_layout layout = DEFAULT)
+        template <typename U, bool O, typename D,
+            typename=detail::enable_if_convertible_t<
+            typename dpd_varray_base<U, D, O>::pointer,pointer>>
+        indexed_dpd_varray_view(dpd_varray_base<U, D, O>&& other)
         {
-            reset(irrep, nirrep, len, ptr, idx_irrep, idx, layout);
+            reset(other);
         }
 
-        template <typename U, typename V, typename=
-            detail::enable_if_t<(detail::is_container_of_containers_of<U,len_type>::value ||
-                                 detail::is_matrix_of<U,len_type>::value) &&
-                                detail::is_container_of<V,unsigned>::value>>
+        template <typename U, bool O, typename D,
+            typename=detail::enable_if_convertible_t<
+            typename dpd_varray_base<U, D, O>::pointer,pointer>>
+        indexed_dpd_varray_view(dpd_varray_base<U, D, O>& other)
+        {
+            reset(other);
+        }
+
         indexed_dpd_varray_view(unsigned irrep, unsigned nirrep,
-                   const U& len, row_view<const pointer> ptr,
-                   const V& idx_irrep, matrix_view<const len_type> idx,
+                   const detail::array_2d<len_type>& len,
+                   const detail::array_1d<pointer>& ptr,
+                   const detail::array_1d<unsigned>& idx_irrep,
+                   const detail::array_2d<len_type>& idx,
                    dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, ptr, idx_irrep, idx, layout);
@@ -157,6 +156,18 @@ class indexed_dpd_varray_view : public indexed_dpd_varray_base<Type, indexed_dpd
         Type& factor(len_type idx)
         {
             return const_cast<Type&>(const_cast<const indexed_dpd_varray_view&>(*this).factor(idx));
+        }
+
+        void data(const detail::array_1d<pointer>& x)
+        {
+            MARRAY_ASSERT(x.size() == num_indices());
+            x.slurp(data_);
+        }
+
+        void data(len_type idx, pointer x)
+        {
+            MARRAY_ASSERT(0 <= idx && idx < num_indices());
+            data_[idx] = x;
         }
 
         /***********************************************************************

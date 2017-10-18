@@ -24,8 +24,6 @@ class dpd_varray_base
         typedef typename std::conditional<Owner,const Type,Type>::type ctype;
         typedef ctype& cref;
         typedef ctype* cptr;
-        template <typename U> using initializer_matrix =
-            std::initializer_list<std::initializer_list<U>>;
 
     protected:
         matrix<len_type> len_;
@@ -76,43 +74,25 @@ class dpd_varray_base
         }
 
         void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len, pointer ptr,
-                   dpd_layout layout = DEFAULT)
-        {
-            reset<initializer_matrix<len_type>>(irrep, nirrep, len, ptr, layout);
-        }
-
-        template <typename U, typename=
-            detail::enable_if_container_of_t<U,len_type>>
-        void reset(unsigned irrep, unsigned nirrep,
-                   std::initializer_list<U> len, pointer ptr,
-                   dpd_layout layout = DEFAULT)
-        {
-            reset<std::initializer_list<U>>(irrep, nirrep, len, ptr, layout);
-        }
-
-        template <typename U, typename=
-            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
-                                detail::is_matrix_of<U,len_type>::value>>
-        void reset(unsigned irrep, unsigned nirrep, const U& len, pointer ptr,
+                   const detail::array_2d<len_type>& len, pointer ptr,
                    dpd_layout layout = DEFAULT)
         {
             MARRAY_ASSERT(nirrep == 1 || nirrep == 2 ||
                           nirrep == 4 || nirrep == 8);
 
-            unsigned ndim = detail::length(len, 0);
+            unsigned ndim = len.length(0);
             MARRAY_ASSERT(ndim > 0);
-            MARRAY_ASSERT(detail::length(len, 1) >= nirrep);
+            MARRAY_ASSERT(len.length(1) >= nirrep);
 
             irrep_ = irrep;
             nirrep_ = nirrep;
             data_ = ptr;
             layout_ = layout;
-            len_.reset({ndim, nirrep}, ROW_MAJOR);
+            len.slurp(len_, ROW_MAJOR);
             size_.reset({2*ndim, nirrep}, ROW_MAJOR);
             perm_.resize(ndim);
 
-            detail::set_len(len, len_, perm_, layout_);
+            detail::set_len(len_, perm_, layout_);
             detail::set_size(irrep_, len_, size_, layout_);
         }
 
@@ -296,22 +276,7 @@ class dpd_varray_base
          *
          **********************************************************************/
 
-        static stride_type size(unsigned irrep, initializer_matrix<len_type> len)
-        {
-            return size<initializer_matrix<len_type>>(irrep, len);
-        }
-
-        template <typename U, typename=
-            detail::enable_if_container_of_t<U,len_type>>
-        static stride_type size(unsigned irrep, std::initializer_list<U> len)
-        {
-            return size<std::initializer_list<U>>(irrep, len);
-        }
-
-        template <typename U, typename=
-            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
-                                detail::is_matrix_of<U,len_type>::value>>
-        static stride_type size(unsigned irrep, const U& len)
+        static stride_type size(unsigned irrep, const detail::array_2d<len_type>& len)
         {
             return dpd_marray_base<Type,1,dpd_marray_view<Type,1>,false>::size(irrep, len);
         }
@@ -418,24 +383,12 @@ class dpd_varray_base
          *
          **********************************************************************/
 
-        dpd_varray_view<ctype> permuted(std::initializer_list<unsigned> perm) const
+        dpd_varray_view<ctype> permuted(const detail::array_1d<unsigned>& perm) const
         {
             return const_cast<dpd_varray_base&>(*this).permuted(perm);
         }
 
-        dpd_varray_view<Type> permuted(std::initializer_list<unsigned> perm)
-        {
-            return permuted<std::initializer_list<unsigned>>(perm);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        dpd_varray_view<ctype> permuted(const U& perm) const
-        {
-            return const_cast<dpd_varray_base&>(*this).permuted<U>(perm);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        dpd_varray_view<Type> permuted(const U& perm)
+        dpd_varray_view<Type> permuted(const detail::array_1d<unsigned>& perm)
         {
             dpd_varray_view<Type> r(*this);
             r.permute(perm);
@@ -473,28 +426,18 @@ class dpd_varray_base
             return marray_view<Type, NDim>(len, data, stride);
         }
 
-        varray_view<ctype> operator()(std::initializer_list<unsigned> irreps) const
+        varray_view<ctype> operator()(const detail::array_1d<unsigned>& irreps) const
         {
             return const_cast<dpd_varray_base&>(*this)(irreps);
         }
 
-        varray_view<Type> operator()(std::initializer_list<unsigned> irreps)
-        {
-            return operator()<std::initializer_list<unsigned>>(irreps);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        varray_view<ctype> operator()(const U& irreps) const
-        {
-            return const_cast<dpd_varray_base&>(*this)(irreps);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        varray_view<Type> operator()(const U& irreps_)
+        varray_view<Type> operator()(const detail::array_1d<unsigned>& irreps_)
         {
             unsigned ndim = dimension();
 
-            irrep_vector irreps(irreps_.begin(), irreps_.end());
+            irrep_vector irreps;
+            irreps_.slurp(irreps);
+
             len_vector len(ndim);
             stride_vector stride(ndim);
 

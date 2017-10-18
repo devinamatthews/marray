@@ -27,31 +27,85 @@ class dpd_varray;
 namespace detail
 {
 
+template <typename T>
+struct is_row : std::false_type {};
+
+template <typename T, typename D, bool O>
+struct is_row<marray_base<T, 1, D, O>> : std::true_type {};
+
+template <typename T>
+struct is_row<marray_view<T, 1>> : std::true_type {};
+
+template <typename T, typename A>
+struct is_row<marray<T, 1, A>> : std::true_type {};
+
+template <typename T, typename U, typename=void>
+struct is_row_of : std::false_type {};
+
+template <typename T, typename U>
+struct is_row_of<T, U, enable_if_t<is_row<T>::value &&
+    std::is_assignable<U&,typename T::value_type>::value>> : std::true_type {};
+
+template <typename T>
+struct is_matrix : std::false_type {};
+
+template <typename T, typename D, bool O>
+struct is_matrix<marray_base<T, 2, D, O>> : std::true_type {};
+
+template <typename T>
+struct is_matrix<marray_view<T, 2>> : std::true_type {};
+
+template <typename T, typename A>
+struct is_matrix<marray<T, 2, A>> : std::true_type {};
+
 template <typename T, typename U, typename=void>
 struct is_matrix_of : std::false_type {};
 
-template <typename T, typename U, typename D, bool O>
-struct is_matrix_of<marray_base<T, 2, D, O>, U, enable_if_assignable_t<U&,T>>
-    : std::true_type {};
-
 template <typename T, typename U>
-struct is_matrix_of<marray_view<T, 2>, U, enable_if_assignable_t<U&,T>>
-    : std::true_type {};
-
-template <typename T, typename U, typename A>
-struct is_matrix_of<marray<T, 2, A>, U, enable_if_assignable_t<U&,T>>
-    : std::true_type {};
+struct is_matrix_of<T, U, enable_if_t<is_matrix<T>::value &&
+    std::is_assignable<U&,typename T::value_type>::value>> : std::true_type {};
 
 template <typename T, typename U, typename V=void>
 using enable_if_matrix_of_t = enable_if_t<is_matrix_of<T,U>::value, V>;
 
+template <typename T, typename U>
+struct is_1d_container_of :
+    std::integral_constant<bool, is_row_of<T,U>::value ||
+                                 is_container_of<T,U>::value> {};
+
+template <typename T, typename U, typename V=void>
+using enable_if_1d_container_of_t = enable_if_t<is_1d_container_of<T,U>::value, V>;
+
+template <typename T, typename U>
+struct is_2d_container_of :
+    std::integral_constant<bool, is_matrix_of<T,U>::value ||
+                                 is_container_of_containers_of<T,U>::value> {};
+
+template <typename T, typename U, typename V=void>
+using enable_if_2d_container_of_t = enable_if_t<is_2d_container_of<T,U>::value, V>;
+
 template <typename T>
-enable_if_container_of_containers_of_t<T,len_type,len_type>
+enable_if_t<is_container<T>::value,len_type>
+length(const T& len)
+{
+    return len.size();
+}
+
+template <typename T>
+enable_if_t<is_row<T>::value,len_type>
+length(const T& len)
+{
+    return len.length(0);
+}
+
+template <typename T>
+enable_if_t<is_container_of_containers<T>::value,len_type>
 length(const T& len, unsigned dim)
 {
     if (dim == 0) return len.size();
     else
     {
+        MARRAY_ASSERT(dim == 1);
         auto it = len.begin();
         if (it == len.end()) return 0;
         len_type l = it->size();
@@ -61,70 +115,222 @@ length(const T& len, unsigned dim)
 }
 
 template <typename T>
-enable_if_matrix_of_t<T,len_type,len_type>
+enable_if_t<is_matrix<T>::value,len_type>
 length(const T& len, unsigned dim)
 {
     return len.length(dim);
 }
 
-template <typename U, typename V, typename W>
-enable_if_container_of_containers_of_t<U,len_type>
-set_len(const U& len_in, V& len, W& perm, dpd_layout layout)
+template <typename T>
+class array_1d
 {
-    unsigned ndim1 = perm.size();
-    unsigned ndim2 = len_in.size();
-    unsigned nirrep = len_in.begin()->size();
+    protected:
+        struct adaptor_base
+        {
+            len_type len;
 
-    auto it = len_in.begin();
+            adaptor_base(len_type len) : len(len) {}
+
+            virtual ~adaptor_base() {}
+
+            virtual void slurp(T*) const = 0;
+        };
+
+        template <typename U>
+        struct adaptor : adaptor_base
+        {
+            U data;
+
+            adaptor(U data)
+            : data(data), adaptor_base(detail::length(data)) {}
+
+            virtual void slurp(T* x) const override
+            {
+                std::copy_n(data.begin(), this->len, x);
+            }
+        };
+
+        std::unique_ptr<adaptor_base> adaptor_;
+
+    public:
+        template <typename U, typename=detail::enable_if_assignable_t<T&,U>>
+        array_1d(std::initializer_list<U> data)
+        : adaptor_(new adaptor<std::initializer_list<U>>(data)) {}
+
+        template <typename U, typename=detail::enable_if_1d_container_of_t<U,T>>
+        array_1d(const U& data)
+        : adaptor_(new adaptor<const U&>(data)) {}
+
+        template <size_t N>
+        void slurp(std::array<T, N>& x) const
+        {
+            MARRAY_ASSERT(N >= size());
+            adaptor_->slurp(x.data());
+        }
+
+        void slurp(std::vector<T>& x) const
+        {
+            x.resize(size());
+            adaptor_->slurp(x.data());
+        }
+
+        template <size_t N>
+        void slurp(short_vector<T, N>& x) const
+        {
+            x.resize(size());
+            adaptor_->slurp(x.data());
+        }
+
+        void slurp(row<T>& x) const
+        {
+            x.reset({size()});
+            adaptor_->slurp(x.data());
+        }
+
+        len_type size() const { return adaptor_->len; }
+};
+
+template <typename T>
+class array_2d
+{
+    protected:
+        struct adaptor_base
+        {
+            std::array<len_type,2> len;
+
+            adaptor_base(len_type len0, len_type len1) : len{len0, len1} {}
+
+            virtual ~adaptor_base() {}
+
+            virtual void slurp(T* x, len_type rs, len_type cs) const = 0;
+
+            virtual void slurp(std::vector<std::vector<T>>&) const = 0;
+        };
+
+        template <typename U, typename=void> struct adaptor;
+
+        std::unique_ptr<adaptor_base> adaptor_;
+
+    public:
+        template <typename U, typename=detail::enable_if_assignable_t<T&,U>>
+        array_2d(std::initializer_list<std::initializer_list<U>> data)
+        : adaptor_(new adaptor<std::initializer_list<std::initializer_list<U>>>(data)) {}
+
+        template <typename U, typename=detail::enable_if_1d_container_of_t<U,T>>
+        array_2d(std::initializer_list<U> data)
+        : adaptor_(new adaptor<std::initializer_list<U>>(data)) {}
+
+        template <typename U, typename=detail::enable_if_2d_container_of_t<U,T>>
+        array_2d(const U& data)
+        : adaptor_(new adaptor<const U&>(data)) {}
+
+        void slurp(std::vector<std::vector<T>>& x) const { adaptor_->slurp(x); }
+
+        template <size_t M, size_t N>
+        void slurp(std::array<std::array<T, N>, M>& x) const
+        {
+            MARRAY_ASSERT(M >= length(0));
+            MARRAY_ASSERT(N >= length(1));
+            adaptor_->slurp(&x[0][0], N, 1);
+        }
+
+        void slurp(matrix<T>& x, layout layout = DEFAULT) const
+        {
+            x.reset({length(0), length(1)}, layout);
+            adaptor_->slurp(x.data(), x.stride(0), x.stride(1));
+        }
+
+        len_type length(unsigned dim) const
+        {
+            MARRAY_ASSERT(dim < 2);
+            return adaptor_->len[dim];
+        }
+};
+
+template <typename T>
+template <typename U>
+struct array_2d<T>::adaptor<U, enable_if_t<!is_matrix<typename std::decay<U>::type>::value>> : array_2d<T>::adaptor_base
+{
+    U data;
+
+    adaptor(U data)
+    : data(data), array_2d<T>::adaptor_base(detail::length(data, 0),
+                                            detail::length(data, 1)) {}
+
+    virtual void slurp(T* x, len_type rs, len_type cs) const override
+    {
+        int i = 0;
+        for (auto it = data.begin(), end = data.end();it != end;++it)
+        {
+            int j = 0;
+            for (auto it2 = it->begin(), end2 = it->end();it2 != end2;++it2)
+            {
+                x[i*rs + j*cs] = *it2;
+                j++;
+            }
+            i++;
+        }
+    }
+
+    virtual void slurp(std::vector<std::vector<T>>& x) const override
+    {
+        x.clear();
+        for (auto it = data.begin(), end = data.end();it != end;++it)
+        {
+            x.emplace_back(it->begin(), it->end());
+        }
+    }
+};
+
+template <typename T>
+template <typename U>
+struct array_2d<T>::adaptor<U, enable_if_t<is_matrix<typename std::decay<U>::type>::value>> : array_2d<T>::adaptor_base
+{
+    U data;
+    using array_2d<T>::adaptor_base::len;
+
+    adaptor(U data)
+    : data(data), array_2d<T>::adaptor_base(detail::length(data, 0),
+                                            detail::length(data, 1)) {}
+
+    virtual void slurp(T* x, len_type rs, len_type cs) const override
+    {
+        for (len_type i = 0;i < len[0];i++)
+        {
+            for (len_type j = 0;j < len[1];j++)
+            {
+                x[i*rs + j*cs] = data[i][j];
+            }
+        }
+    }
+
+    virtual void slurp(std::vector<std::vector<T>>& x) const override
+    {
+        x.resize(len[0]);
+        for (len_type i = 0;i < len[0];i++)
+        {
+            x[i].resize(len[1]);
+            for (len_type j = 0;j < len[1];j++)
+            {
+                x[i][j] = data[i][j];
+            }
+        }
+    }
+};
+
+template <typename U, typename V>
+void set_len(U& len, V& perm, dpd_layout layout)
+{
+    unsigned ndim = perm.size();
+    unsigned nirrep = detail::length(len, 1);
 
     if (layout == BLOCKED_COLUMN_MAJOR ||
         layout == PREFIX_COLUMN_MAJOR ||
         layout == BALANCED_COLUMN_MAJOR)
     {
         // Column major
-        for (unsigned i = 0;i < ndim1;i++)
+        for (unsigned i = 0;i < ndim;i++)
         {
-            std::copy_n(it->begin(), nirrep, &len[i][0]);
-            perm[i] = i;
-            ++it;
-        }
-    }
-    else
-    {
-        // Row major: reverse the dimensions and treat as
-        // permuted column major
-        for (unsigned i = 0;i < ndim1;i++)
-        {
-            std::copy_n(it->begin(), nirrep, &len[ndim1-1-i][0]);
-            perm[i] = ndim1-1-i;
-            ++it;
-        }
-    }
-
-    for (unsigned i = ndim1;i < ndim2;i++)
-    {
-        std::copy_n(it->begin(), nirrep, &len[i][0]);
-        ++it;
-    }
-}
-
-template <typename U, typename V, typename W>
-enable_if_matrix_of_t<U,len_type>
-set_len(const U& len_in, V& len, W& perm, dpd_layout layout)
-{
-    unsigned ndim1 = perm.size();
-    unsigned ndim2 = len_in.length(0);
-    unsigned nirrep = len_in.length(1);
-
-    if (layout == BLOCKED_COLUMN_MAJOR ||
-        layout == PREFIX_COLUMN_MAJOR ||
-        layout == BALANCED_COLUMN_MAJOR)
-    {
-        // Column major
-        for (unsigned i = 0;i < ndim1;i++)
-        {
-            for (unsigned j = 0;j < nirrep;j++)
-                len[i][j] = len_in[i][j];
             perm[i] = i;
         }
     }
@@ -132,18 +338,16 @@ set_len(const U& len_in, V& len, W& perm, dpd_layout layout)
     {
         // Row major: reverse the dimensions and treat as
         // permuted column major
-        for (unsigned i = 0;i < ndim1;i++)
+        for (unsigned i = 0;i < ndim;i++)
+        {
+            perm[i] = ndim-1-i;
+        }
+
+        for (unsigned i = 0;i < ndim/2;i++)
         {
             for (unsigned j = 0;j < nirrep;j++)
-                len[ndim1-1-i][j] = len_in[i][j];
-            perm[i] = ndim1-1-i;
+                std::swap(len[ndim-1-i][j], len[i][j]);
         }
-    }
-
-    for (unsigned i = ndim1;i < ndim2;i++)
-    {
-        for (unsigned j = 0;j < nirrep;j++)
-            len[i][j] = len_in[i][j];
     }
 }
 
@@ -347,8 +551,6 @@ class dpd_marray_base
         typedef typename std::conditional<Owner,const Type,Type>::type ctype;
         typedef ctype& cref;
         typedef ctype* cptr;
-        template <typename U> using initializer_matrix =
-            std::initializer_list<std::initializer_list<U>>;
 
     protected:
         std::array<std::array<len_type,8>, NDim> len_ = {};
@@ -399,40 +601,22 @@ class dpd_marray_base
         }
 
         void reset(unsigned irrep, unsigned nirrep,
-                   initializer_matrix<len_type> len, pointer ptr,
-                   dpd_layout layout = DEFAULT)
-        {
-            reset<initializer_matrix<len_type>>(irrep, nirrep, len, ptr, layout);
-        }
-
-        template <typename U, typename=
-            detail::enable_if_container_of_t<U,len_type>>
-        void reset(unsigned irrep, unsigned nirrep,
-                   std::initializer_list<U> len, pointer ptr,
-                   dpd_layout layout = DEFAULT)
-        {
-            reset<std::initializer_list<U>>(irrep, nirrep, len, ptr, layout);
-        }
-
-        template <typename U, typename=
-            detail::enable_if_t<detail::is_container_of_containers_of<U,len_type>::value ||
-                                detail::is_matrix_of<U,len_type>::value>>
-        void reset(unsigned irrep, unsigned nirrep, const U& len, pointer ptr,
+                   const detail::array_2d<len_type>& len, pointer ptr,
                    dpd_layout layout = DEFAULT)
         {
             MARRAY_ASSERT(nirrep == 1 || nirrep == 2 ||
                           nirrep == 4 || nirrep == 8);
 
-            MARRAY_ASSERT(detail::length(len, 0) == NDim);
-            MARRAY_ASSERT(detail::length(len, 1) >= nirrep);
+            MARRAY_ASSERT(len.length(0) == NDim);
+            MARRAY_ASSERT(len.length(1) >= nirrep);
 
             data_ = ptr;
             irrep_ = irrep;
             nirrep_ = nirrep;
             layout_ = layout;
-            len_ = {};
+            len.slurp(len_);
 
-            detail::set_len(len, len_, perm_, layout_);
+            detail::set_len(len_, perm_, layout_);
             detail::set_size(irrep_, len_, size_, layout_);
         }
 
@@ -537,66 +721,14 @@ class dpd_marray_base
          *
          **********************************************************************/
 
-        static stride_type size(unsigned irrep, initializer_matrix<len_type> len)
+        static stride_type size(unsigned irrep, const detail::array_2d<len_type>& len_)
         {
-            return size<initializer_matrix<len_type>>(irrep, len);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,len_type>>
-        static stride_type size(unsigned irrep, std::initializer_list<U> len)
-        {
-            return size<std::initializer_list<U>>(irrep, len);
-        }
-
-        template <typename U>
-        static detail::enable_if_container_of_containers_of_t<U,len_type,stride_type>
-        size(unsigned irrep, const U& len)
-        {
-            if (len.size() == 0) return 1;
+            if (len_.length(0) == 0) return 1;
 
             //TODO: add alignment option
 
-            auto it = len.begin();
-            unsigned nirrep = it->size();
-            unsigned ndim = len.size();
-
-            MARRAY_ASSERT(nirrep == 1 || nirrep == 2 ||
-                          nirrep == 4 || nirrep == 8);
-
-            std::array<stride_type, 8> size;
-            std::copy_n(it->begin(), nirrep, size.begin());
-            ++it;
-
-            for (unsigned i = 1;i < ndim;i++)
-            {
-                MARRAY_ASSERT(it->size() == nirrep);
-
-                std::array<stride_type, 8> new_size = {};
-
-                for (unsigned irr1 = 0;irr1 < nirrep;irr1++)
-                {
-                    auto it2 = it->begin();
-                    for (unsigned irr2 = 0;irr2 < nirrep;irr2++)
-                    {
-                        new_size[irr1] += size[irr1^irr2]*(*it2);
-                        ++it2;
-                    }
-                }
-
-                size = new_size;
-                ++it;
-            }
-
-            return size[irrep];
-        }
-
-        template <typename U>
-        static detail::enable_if_matrix_of_t<U,len_type,stride_type>
-        size(unsigned irrep, const U& len)
-        {
-            if (len.length(0) == 0) return 1;
-
-            //TODO: add alignment option
+            matrix<len_type> len;
+            len_.slurp(len);
 
             unsigned nirrep = len.length(1);
             unsigned ndim = len.length(0);
@@ -605,8 +737,9 @@ class dpd_marray_base
                           nirrep == 4 || nirrep == 8);
 
             std::array<stride_type, 8> size;
-            for (unsigned irr1 = 0;irr1 < nirrep;irr1++)
-                size[irr1] = len[0][irr1];
+
+            for (unsigned irr = 0;irr < nirrep;irr++)
+                size[irr] = len[0][irr];
 
             for (unsigned i = 1;i < ndim;i++)
             {
@@ -725,24 +858,12 @@ class dpd_marray_base
          *
          **********************************************************************/
 
-        dpd_marray_view<ctype,NDim> permuted(std::initializer_list<unsigned> perm) const
+        dpd_marray_view<ctype,NDim> permuted(const detail::array_1d<unsigned>& perm) const
         {
             return const_cast<dpd_marray_base&>(*this).permuted(perm);
         }
 
-        dpd_marray_view<Type,NDim> permuted(std::initializer_list<unsigned> perm)
-        {
-            return permuted<std::initializer_list<unsigned>>(perm);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        dpd_marray_view<ctype,NDim> permuted(const U& perm) const
-        {
-            return const_cast<dpd_marray_base&>(*this).permuted<U>(perm);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        dpd_marray_view<Type,NDim> permuted(const U& perm)
+        dpd_marray_view<Type,NDim> permuted(const detail::array_1d<unsigned>& perm)
         {
             dpd_marray_view<Type,NDim> r(*this);
             r.permute(perm);
@@ -795,24 +916,12 @@ class dpd_marray_base
             return operator()({(unsigned)irreps...});
         }
 
-        marray_view<ctype, NDim> operator()(std::initializer_list<unsigned> irreps) const
+        marray_view<ctype, NDim> operator()(const detail::array_1d<unsigned>& irreps) const
         {
             return const_cast<dpd_marray_base&>(*this)(irreps);
         }
 
-        marray_view<Type, NDim> operator()(std::initializer_list<unsigned> irreps)
-        {
-            return operator()<std::initializer_list<unsigned>>(irreps);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        marray_view<ctype, NDim> operator()(const U& irreps) const
-        {
-            return const_cast<dpd_marray_base&>(*this)(irreps);
-        }
-
-        template <typename U, typename=detail::enable_if_container_of_t<U,unsigned>>
-        marray_view<Type, NDim> operator()(const U& irreps_)
+        marray_view<Type, NDim> operator()(const detail::array_1d<unsigned>& irreps_)
         {
             MARRAY_ASSERT(irreps_.size() == NDim);
 
@@ -820,7 +929,7 @@ class dpd_marray_base
             std::array<len_type, NDim> len;
             std::array<stride_type, NDim> stride;
 
-            std::copy_n(irreps_.begin(), NDim, irreps.begin());
+            irreps_.slurp(irreps);
 
             pointer data;
             get_block(irreps, len, data, stride);
