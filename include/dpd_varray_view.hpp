@@ -12,9 +12,11 @@ class dpd_varray_view : public dpd_varray_base<Type, dpd_varray_view<Type>, fals
     protected:
         typedef dpd_varray_base<Type, dpd_varray_view, false> base;
 
-        using base::len_;
         using base::size_;
+        using base::leaf_;
+        using base::parent_;
         using base::perm_;
+        using base::depth_;
         using base::data_;
         using base::irrep_;
         using base::nirrep_;
@@ -69,6 +71,13 @@ class dpd_varray_view : public dpd_varray_base<Type, dpd_varray_view<Type>, fals
                         dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, ptr, layout);
+        }
+
+        dpd_varray_view(unsigned irrep, unsigned nirrep,
+                        const detail::array_2d<len_type>& len, pointer ptr,
+                        const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, depth, layout);
         }
 
         /***********************************************************************

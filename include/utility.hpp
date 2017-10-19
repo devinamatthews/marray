@@ -52,11 +52,15 @@ typedef MARRAY_LEN_TYPE len_type;
 
 typedef MARRAY_STRIDE_TYPE stride_type;
 
-typedef short_vector<len_type,8> len_vector;
-typedef short_vector<stride_type,8> stride_vector;
-typedef short_vector<unsigned,8> dim_vector;
-typedef short_vector<len_type,8> index_vector;
-typedef short_vector<unsigned,8> irrep_vector;
+#ifndef MARRAY_OPT_NDIM
+#define MARRAY_OPT_NDIM 6
+#endif
+
+typedef short_vector<len_type,MARRAY_OPT_NDIM> len_vector;
+typedef short_vector<stride_type,MARRAY_OPT_NDIM> stride_vector;
+typedef short_vector<unsigned,MARRAY_OPT_NDIM> dim_vector;
+typedef short_vector<len_type,MARRAY_OPT_NDIM> index_vector;
+typedef short_vector<unsigned,MARRAY_OPT_NDIM> irrep_vector;
 
 #ifndef MARRAY_DEFAULT_LAYOUT
 #define MARRAY_DEFAULT_LAYOUT ROW_MAJOR
@@ -109,6 +113,8 @@ struct dpd_layout
 
     dpd_layout(layout layout);
 
+    layout base() const;
+
     bool operator==(dpd_layout other) const { return type == other.type; }
     bool operator!=(dpd_layout other) const { return type != other.type; }
 };
@@ -145,6 +151,20 @@ inline dpd_layout::dpd_layout(layout layout)
 : type(layout == DEFAULT   ? MARRAY_DEFAULT_DPD_LAYOUT.type :
        layout == ROW_MAJOR ? MARRAY_PASTE(MARRAY_DEFAULT_DPD_LAYOUT,_ROW_MAJOR).type
                            : MARRAY_PASTE(MARRAY_DEFAULT_DPD_LAYOUT,_COLUMN_MAJOR).type) {}
+
+inline layout dpd_layout::base() const
+{
+    if (*this == BALANCED_COLUMN_MAJOR ||
+        *this == BLOCKED_COLUMN_MAJOR ||
+        *this == PREFIX_COLUMN_MAJOR)
+    {
+        return COLUMN_MAJOR;
+    }
+    else
+    {
+        return ROW_MAJOR;
+    }
+}
 
 template <typename I> class range_t;
 

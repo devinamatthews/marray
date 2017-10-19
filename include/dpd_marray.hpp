@@ -13,9 +13,11 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
         typedef dpd_marray_base<Type, NDim, dpd_marray, true> base;
         typedef std::allocator_traits<Allocator> alloc_traits;
 
-        using base::len_;
         using base::size_;
+        using base::leaf_;
+        using base::parent_;
         using base::perm_;
+        using base::depth_;
         using base::data_;
         using base::irrep_;
         using base::nirrep_;
@@ -61,6 +63,13 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             reset(other, layout);
         }
 
+        template <typename U, typename D, bool O>
+        dpd_marray(const dpd_marray_base<U, NDim, D, O>& other,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(other, depth, layout);
+        }
+
         dpd_marray(unsigned irrep, unsigned nirrep,
                    const detail::array_2d<len_type>& len,
                    const Type& val = Type(), dpd_layout layout = DEFAULT)
@@ -69,9 +78,24 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
         }
 
         dpd_marray(unsigned irrep, unsigned nirrep,
-                   const detail::array_2d<len_type>& len, dpd_layout layout)
+                   const detail::array_2d<len_type>& len, const Type& val,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, val, depth, layout);
+        }
+
+        dpd_marray(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len,
+                   dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, Type(), layout);
+        }
+
+        dpd_marray(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, Type(), depth, layout);
         }
 
         dpd_marray(unsigned irrep, unsigned nirrep,
@@ -79,6 +103,13 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
                    dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, uninitialized, layout);
+        }
+
+        dpd_marray(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len, uninitialized_t,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, uninitialized, depth, layout);
         }
 
         /***********************************************************************
@@ -139,17 +170,14 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             typename=detail::enable_if_assignable_t<reference, U>>
         void reset(const dpd_marray<U, NDim, A>& other)
         {
-            reset(other, other.layout_);
+            reset(other, other.depth_, other.layout_);
         }
 
         template <typename U, typename D, bool O,
             typename=detail::enable_if_assignable_t<reference, U>>
         void reset(const dpd_marray_base<U, NDim, D, O>& other, dpd_layout layout = DEFAULT)
         {
-            std::array<std::array<len_type,8>,NDim> len;
-
-            for (unsigned i = 0;i < NDim;i++)
-                len[i] = other.len_[other.perm_[i]];
+            auto len = other.lengths();
 
             if (std::is_scalar<Type>::value)
             {
@@ -158,6 +186,24 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             else
             {
                 reset(other.irrep_, other.nirrep_, len, layout);
+            }
+
+            base::template operator=<>(other);
+        }
+
+        template <typename U, typename D, bool O>
+        void reset(const dpd_marray_base<U, NDim, D, O>& other,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            auto len = other.lengths();
+
+            if (std::is_scalar<Type>::value)
+            {
+                reset(other.irrep_, other.nirrep_, len, uninitialized, depth, layout);
+            }
+            else
+            {
+                reset(other.irrep_, other.nirrep_, len, depth, layout);
             }
 
             base::template operator=<>(other);
@@ -172,9 +218,24 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
         }
 
         void reset(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len, const Type& val,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, uninitialized, depth, layout);
+            std::uninitialized_fill_n(data_, storage_.size, val);
+        }
+
+        void reset(unsigned irrep, unsigned nirrep,
                    const detail::array_2d<len_type>& len, dpd_layout layout)
         {
             reset(irrep, nirrep, len, Type(), layout);
+        }
+
+        void reset(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, Type(), depth, layout);
         }
 
         void reset(unsigned irrep, unsigned nirrep,
@@ -187,6 +248,18 @@ class dpd_marray : public dpd_marray_base<Type, NDim, dpd_marray<Type, NDim, All
             base::reset(irrep, nirrep, len,
                         alloc_traits::allocate(storage_, storage_.size),
                         layout);
+        }
+
+        void reset(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len, uninitialized_t,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset();
+
+            storage_.size = size(irrep, len);
+            base::reset(irrep, nirrep, len,
+                        alloc_traits::allocate(storage_, storage_.size),
+                        depth, layout);
         }
 
         /***********************************************************************

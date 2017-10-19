@@ -44,8 +44,8 @@ static stride_type offsets[6][8] =
 {
      {126, 20,  4,152,  0,148,129, 23},
      {  0,  2,  8, 14, 72, 78, 80, 82},
-     {126, 60, 24,156,  0,148,132, 78},
-     {  0,  6, 24, 60, 72, 96,104,120},
+     {162,144, 96,132,  0, 24, 80, 32},
+     {  0, 42,108, 22,144, 34,  6, 60},
      { 80+66, 80   ,     0+4,  0+60+4,
         0   ,  0+60, 80+66+3, 80   +3},
      {  0   ,  0   +2, 88   , 88   +6,
@@ -85,6 +85,7 @@ static stride_type offsets[6][8] =
             EXPECT_EQ(v.data(m) + offsets[j][0], vs.data()); \
             for (unsigned k = 0;k < 4;k++) \
             { \
+                SCOPED_TRACE(k); \
                 EXPECT_EQ(lengths[0][k], vs.length(k)); \
                 EXPECT_EQ(strides[j][0][k], vs.stride(k)); \
             } \
@@ -523,6 +524,30 @@ TEST(indexed_dpd_varray, swap)
 
     auto data1 = v1.data();
     auto data2 = v2.data();
+
+    EXPECT_EQ(6u, v1.dimension());
+    EXPECT_EQ(4u, v1.dense_dimension());
+    EXPECT_EQ(2u, v1.indexed_dimension());
+    EXPECT_EQ((matrix<len_type>{{3, 1}, {2, 2}, {1, 2}, {3, 4}, {2, 2}, {4, 5}}), v1.lengths());
+    EXPECT_EQ((matrix<len_type>{{3, 1}, {2, 2}, {1, 2}, {3, 4}}), v1.dense_lengths());
+    EXPECT_EQ((len_vector{2, 5}), v1.indexed_lengths());
+    EXPECT_EQ(3u, v1.num_indices());
+    EXPECT_EQ((irrep_vector{1, 1}), v1.indexed_irreps());
+    EXPECT_EQ((matrix<len_type>{{0, 0}, {1, 3}, {0, 3}}), v1.indices());
+    EXPECT_EQ(1u, v1.irrep());
+    EXPECT_EQ(2u, v1.num_irreps());
+
+    EXPECT_EQ(5u, v2.dimension());
+    EXPECT_EQ(3u, v2.dense_dimension());
+    EXPECT_EQ(2u, v2.indexed_dimension());
+    EXPECT_EQ((matrix<len_type>{{2, 3}, {1, 2}, {3, 1}, {2, 2}, {4, 5}}), v2.lengths());
+    EXPECT_EQ((matrix<len_type>{{2, 3}, {1, 2}, {3, 1}}), v2.dense_lengths());
+    EXPECT_EQ((len_vector{2, 4}), v2.indexed_lengths());
+    EXPECT_EQ(3u, v2.num_indices());
+    EXPECT_EQ((irrep_vector{1, 0}), v2.indexed_irreps());
+    EXPECT_EQ((matrix<len_type>{{0, 0}, {1, 0}, {1, 2}}), v2.indices());
+    EXPECT_EQ(0u, v2.irrep());
+    EXPECT_EQ(2u, v2.num_irreps());
 
     v1.swap(v2);
 

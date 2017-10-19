@@ -13,9 +13,11 @@ class dpd_varray : public dpd_varray_base<Type, dpd_varray<Type, Allocator>, tru
         typedef dpd_varray_base<Type, dpd_varray, true> base;
         typedef std::allocator_traits<Allocator> alloc_traits;
 
-        using base::len_;
         using base::size_;
+        using base::leaf_;
+        using base::parent_;
         using base::perm_;
+        using base::depth_;
         using base::data_;
         using base::irrep_;
         using base::nirrep_;
@@ -61,11 +63,26 @@ class dpd_varray : public dpd_varray_base<Type, dpd_varray<Type, Allocator>, tru
             reset(other, layout);
         }
 
+        template <typename U, typename D, bool O,
+            typename=detail::enable_if_assignable_t<reference,U>>
+        dpd_varray(const dpd_varray_base<U, D, O>& other,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(other, depth, layout);
+        }
+
         dpd_varray(unsigned irrep, unsigned nirrep,
                    const detail::array_2d<len_type>& len,
                    const Type& val = Type(), dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, val, layout);
+        }
+
+        dpd_varray(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len, const Type& val,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, val, depth, layout);
         }
 
         dpd_varray(unsigned irrep, unsigned nirrep,
@@ -75,10 +92,24 @@ class dpd_varray : public dpd_varray_base<Type, dpd_varray<Type, Allocator>, tru
         }
 
         dpd_varray(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len,
+                   const detail::array_1d<unsigned>& depth, layout layout)
+        {
+            reset(irrep, nirrep, len, Type(), depth, layout);
+        }
+
+        dpd_varray(unsigned irrep, unsigned nirrep,
                    const detail::array_2d<len_type>& len, uninitialized_t,
                    dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, uninitialized, layout);
+        }
+
+        dpd_varray(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len, uninitialized_t,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, uninitialized, depth, layout);
         }
 
         /***********************************************************************
@@ -137,17 +168,14 @@ class dpd_varray : public dpd_varray_base<Type, dpd_varray<Type, Allocator>, tru
             typename=detail::enable_if_assignable_t<reference, U>>
         void reset(const dpd_varray<U, A>& other)
         {
-            reset(other, other.layout_);
+            reset(other, other.depth_, other.layout_);
         }
 
         template <typename U, typename D, bool O,
             typename=detail::enable_if_assignable_t<reference, U>>
         void reset(const dpd_varray_base<U, D, O>& other, dpd_layout layout = DEFAULT)
         {
-            matrix<len_type> len({other.dimension(), other.num_irreps()}, ROW_MAJOR);
-
-            for (unsigned i = 0;i < other.dimension();i++)
-                len[i] = other.len_[other.perm_[i]];
+            auto len = other.lengths();
 
             if (std::is_scalar<Type>::value)
             {
@@ -156,6 +184,25 @@ class dpd_varray : public dpd_varray_base<Type, dpd_varray<Type, Allocator>, tru
             else
             {
                 reset(other.irrep_, other.nirrep_, len.view(), layout);
+            }
+
+            *this = other;
+        }
+
+        template <typename U, typename D, bool O,
+            typename=detail::enable_if_assignable_t<reference, U>>
+        void reset(const dpd_varray_base<U, D, O>& other,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            auto len = other.lengths();
+
+            if (std::is_scalar<Type>::value)
+            {
+                reset(other.irrep_, other.nirrep_, len.view(), uninitialized, depth, layout);
+            }
+            else
+            {
+                reset(other.irrep_, other.nirrep_, len.view(), depth, layout);
             }
 
             *this = other;
@@ -170,9 +217,24 @@ class dpd_varray : public dpd_varray_base<Type, dpd_varray<Type, Allocator>, tru
         }
 
         void reset(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len, const Type& val,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, uninitialized, depth, layout);
+            std::uninitialized_fill_n(data_, storage_.size, val);
+        }
+
+        void reset(unsigned irrep, unsigned nirrep,
                    const detail::array_2d<len_type>& len, dpd_layout layout)
         {
             reset(irrep, nirrep, len, Type(), layout);
+        }
+
+        void reset(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len,
+                   const detail::array_1d<unsigned>& depth, layout layout)
+        {
+            reset(irrep, nirrep, len, Type(), depth, layout);
         }
 
         void reset(unsigned irrep, unsigned nirrep,
@@ -187,9 +249,16 @@ class dpd_varray : public dpd_varray_base<Type, dpd_varray<Type, Allocator>, tru
                         layout);
         }
 
-        stride_type size() const
+        void reset(unsigned irrep, unsigned nirrep,
+                   const detail::array_2d<len_type>& len, uninitialized_t,
+                   const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
         {
-            return storage_.size;
+            reset();
+
+            storage_.size = size(irrep, len);
+            base::reset(irrep, nirrep, len,
+                        alloc_traits::allocate(storage_, storage_.size),
+                        depth, layout);
         }
 
         /***********************************************************************

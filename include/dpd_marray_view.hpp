@@ -12,9 +12,11 @@ class dpd_marray_view : public dpd_marray_base<Type, NDim, dpd_marray_view<Type,
     protected:
         typedef dpd_marray_base<Type, NDim, dpd_marray_view, false> base;
 
-        using base::len_;
         using base::size_;
+        using base::leaf_;
+        using base::parent_;
         using base::perm_;
+        using base::depth_;
         using base::data_;
         using base::irrep_;
         using base::nirrep_;
@@ -69,6 +71,13 @@ class dpd_marray_view : public dpd_marray_base<Type, NDim, dpd_marray_view<Type,
                         dpd_layout layout = DEFAULT)
         {
             reset(irrep, nirrep, len, ptr, layout);
+        }
+
+        dpd_marray_view(unsigned irrep, unsigned nirrep,
+                        const detail::array_2d<len_type>& len, pointer ptr,
+                        const detail::array_1d<unsigned>& depth, layout layout = DEFAULT)
+        {
+            reset(irrep, nirrep, len, ptr, depth, layout);
         }
 
         /***********************************************************************
