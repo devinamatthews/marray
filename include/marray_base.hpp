@@ -678,7 +678,7 @@ class marray_base
         strides(const detail::array_1d<len_type>& len_, layout layout = DEFAULT)
         {
             //TODO: add alignment option
-            
+
             MARRAY_ASSERT(len_.size() == NDim);
 
             std::array<len_type, NDim> len;
@@ -704,7 +704,7 @@ class marray_base
         static stride_type size(const detail::array_1d<len_type>& len_)
         {
             //TODO: add alignment option
-            
+
             len_vector len;
             len_.slurp(len);
 
