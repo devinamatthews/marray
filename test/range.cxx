@@ -146,6 +146,48 @@ TEST(range, range_t)
     EXPECT_EQ(range_t<int>::iterator(3,1), r2.begin());
     EXPECT_EQ(range_t<int>::iterator(7,1), r2.end());
     EXPECT_EQ(6, r2[3]);
+
+    range_t<int> r5(4);
+    EXPECT_EQ(0, r5.front());
+    EXPECT_EQ(3, r5.back());
+    EXPECT_EQ(1, r5.step());
+    EXPECT_EQ(4, r5.size());
+
+    r5 += 2;
+    EXPECT_EQ(2, r5.front());
+    EXPECT_EQ(5, r5.back());
+    EXPECT_EQ(1, r5.step());
+    EXPECT_EQ(4, r5.size());
+
+    r5 -= 1;
+    EXPECT_EQ(1, r5.front());
+    EXPECT_EQ(4, r5.back());
+    EXPECT_EQ(1, r5.step());
+    EXPECT_EQ(4, r5.size());
+
+    auto r6 = r5+4;
+    EXPECT_EQ(5, r6.front());
+    EXPECT_EQ(9, r6.back());
+    EXPECT_EQ(1, r6.step());
+    EXPECT_EQ(4, r6.size());
+
+    auto r7 = 4+r5;
+    EXPECT_EQ(5, r7.front());
+    EXPECT_EQ(9, r7.back());
+    EXPECT_EQ(1, r7.step());
+    EXPECT_EQ(4, r7.size());
+
+    auto r8 = r1-5;
+    EXPECT_EQ(0, r8.front());
+    EXPECT_EQ(3, r8.back());
+    EXPECT_EQ(1, r8.step());
+    EXPECT_EQ(4, r8.size());
+
+    auto r9 = 6-r5;
+    EXPECT_EQ(5, r9.front());
+    EXPECT_EQ(2, r9.back());
+    EXPECT_EQ(-1, r9.step());
+    EXPECT_EQ(4, r9.size());
 }
 
 TEST(range, vector)
@@ -173,4 +215,22 @@ TEST(range, range)
     EXPECT_EQ((vector<int>{0,1,2,3}), v1);
     EXPECT_EQ((vector<int>{1,2,3}), v2);
     EXPECT_EQ((vector<int>{2,4,6,8}), v3);
+}
+
+TEST(range, reversed_range)
+{
+    vector<int> v1 = reversed_range(4);
+    vector<int> v2 = reversed_range(1,4);
+    vector<int> v3 = reversed_range(2,9,2);
+    EXPECT_EQ((vector<int>{3,2,1,0}), v1);
+    EXPECT_EQ((vector<int>{3,2,1}), v2);
+    EXPECT_EQ((vector<int>{8,6,4,2}), v3);
+}
+
+TEST(range, rangeN)
+{
+    vector<int> v2 = rangeN(1,4);
+    vector<int> v3 = rangeN(2,9,2);
+    EXPECT_EQ((vector<int>{1,2,3,4}), v2);
+    EXPECT_EQ((vector<int>{2,4,6,8,10,12,14,16,18}), v3);
 }
