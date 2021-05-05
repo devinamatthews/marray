@@ -230,6 +230,15 @@ class range_t
         }
 };
 
+/**
+ * The range `[0,to)`.
+ *
+ * @param to    The value one higher than the last element in the range.
+ *              This is equal to the number of elements in the range. Must be
+ *              an integral or enum type.
+ *
+ * @return      Range object, of the same type as `to`, that can be used to index a tensor.
+ */
 template <typename T>
 auto range(T to)
 {
@@ -237,6 +246,18 @@ auto range(T to)
     return range_t<U>{U(to)};
 }
 
+/**
+ * The range `[from,from+N)`.
+ *
+ * @param from  The value of the first element in the range. Must be
+ *              an integral or enum type.
+ *
+ * @param N     The number of elements in the range. Must be
+ *              an integral or enum type.
+ *
+ * @return      Range object, whose type is the common arithmetic type of `from`
+ *              and `N`, that can be used to index a tensor.
+ */
 template <typename T, typename U>
 auto rangeN(T from, U N)
 {
@@ -245,6 +266,19 @@ auto rangeN(T from, U N)
     return range_t<V>{V(from), V(from+N)};
 }
 
+/**
+ * The range `[from,to)`.
+ *
+ * @param from  The value of the first element in the range. Must be
+ *              an integral or enum type.
+ *
+ * @param to    The value one higher than the last element in the range.
+ *              The number of elements is equal to `to-from`. Must be
+ *              an integral or enum type.
+ *
+ * @return      Range object, whose type is the common arithmetic type of `from`
+ *              and `to`, that can be used to index a tensor.
+ */
 template <typename T, typename U>
 auto range(T from, U to)
 {
@@ -255,6 +289,22 @@ auto range(T from, U to)
     return range_t<V>{(V)from, (V)to};
 }
 
+/**
+ * The range in `[from,to)` with spacing `delta`.
+ *
+ * @param from  The value of the first element in the range. Must be
+ *              an integral or enum type.
+ *
+ * @param to    The value higher than all elements in the range. Must be
+ *              an integral or enum type.
+ *
+ * @param delta The distance between consecutive elements in the range.
+ *              The number of elements is equal to `(to-from)/delta`. Must be
+ *              an integral or enum type.
+ *
+ * @return      Range object, whose type is the common arithmetic type of `from`,
+ *              `to`, and `delta`, that can be used to index a tensor.
+ */
 template <typename T, typename U, typename V>
 auto range(T from, U to, V delta)
 {
@@ -266,18 +316,52 @@ auto range(T from, U to, V delta)
     return range_t<W>{(W)from, (W)to, (W)delta};
 }
 
+/**
+ * The range `[0,to)` in reverse order.
+ *
+ * @param to    The value one higher than the first element in the range.
+ *              This is equal to the number of elements in the range. Must be
+ *              an integral or enum type.
+ *
+ * @return      Range object, of the same type as `to`, that can be used to index a tensor.
+ */
 template <typename T>
 auto reversed_range(T to)
 {
     return range(to-1, -1, -1);
 }
 
+/**
+ * The range `[to-N,to)` in reverse order.
+ *
+ * @param to    The value one larger than the first element in the range. Must be
+ *              an integral or enum type.
+ *
+ * @param N     The number of elements in the range. Must be
+ *              an integral or enum type.
+ *
+ * @return      Range object, whose type is the common arithmetic type of `from`
+ *              and `N`, that can be used to index a tensor.
+ */
 template <typename T, typename U>
-auto reversed_rangeN(T from, U N)
+auto reversed_rangeN(T to, U N)
 {
-    return range(from-1, from-N-1, -1);
+    return range(to-1, to-N-1, -1);
 }
 
+/**
+ * The range `[from,to)` in reverse order.
+ *
+ * @param from  The value of the last element in the range. Must be
+ *              an integral or enum type.
+ *
+ * @param to    The value one higher than the first element in the range.
+ *              The number of elements is equal to `to-from`. Must be
+ *              an integral or enum type.
+ *
+ * @return      Range object, whose type is the common arithmetic type of `from`
+ *              and `to`, that can be used to index a tensor.
+ */
 template <typename T, typename U>
 auto reversed_range(T from, U to)
 {

@@ -569,6 +569,20 @@ class varray_base
             return r;
         }
 
+        template <int NDimNew>
+        marray_view<ctype,NDimNew> lowered(detail::array_1d<int> split) const
+        {
+            return const_cast<varray_base&>(*this).template lowered<NDimNew>(split);
+        }
+
+        template <int NDimNew>
+        marray_view<Type,NDimNew> lowered(detail::array_1d<int> split)
+        {
+            varray_view<Type> r(*this);
+            r.lower(split);
+            return r.template fix<NDimNew>();
+        }
+
         /***********************************************************************
          *
          * Reversal
