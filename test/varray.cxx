@@ -80,7 +80,7 @@ TEST(varray, constructor)
     EXPECT_EQ((len_vector{4, 2, 5}), v54.lengths());
     EXPECT_EQ((stride_vector{10, 5, 1}), v54.strides());
 
-    varray<double> v51(v21);
+    varray<double> v51(v31);
     EXPECT_EQ(3u, v51.dimension());
     EXPECT_EQ((len_vector{4, 2, 5}), v51.lengths());
     EXPECT_EQ((stride_vector{10, 5, 1}), v51.strides());

@@ -3,6 +3,7 @@
 
 #include "utility.hpp"
 #include "range.hpp"
+#include "expression.hpp"
 
 namespace MArray
 {
@@ -345,25 +346,26 @@ class array_1d
 
             virtual void slurp(T*) const = 0;
 
-            virtual adaptor_base& move(adaptor_base& other) = 0;
+            virtual adaptor_base& copy(adaptor_base& other) = 0;
         };
 
         template <typename U>
         struct adaptor : adaptor_base
         {
             U data;
+            using adaptor_base::len;
 
             adaptor(U data)
             : adaptor_base(detail::length(data)), data(std::move(data)) {}
 
             virtual void slurp(T* x) const override
             {
-                std::copy_n(data.begin(), this->len, x);
+                std::copy_n(data.begin(), len, x);
             }
 
-            virtual adaptor_base& move(adaptor_base& other) override
+            virtual adaptor_base& copy(adaptor_base& other) override
             {
-            	return *(new (static_cast<adaptor*>(&other)) adaptor(std::move(*this)));
+            	return *(new (static_cast<adaptor*>(&other)) adaptor(*this));
             }
         };
 
@@ -385,7 +387,7 @@ class array_1d
         : adaptor_(adapt(std::array<T,0>{})) {}
 
         array_1d(const array_1d& other)
-        : adaptor_(other.adaptor_.move(reinterpret_cast<adaptor_base&>(raw_adaptor_))) {}
+        : adaptor_(other.adaptor_.copy(reinterpret_cast<adaptor_base&>(raw_adaptor_))) {}
 
         template <typename... Args, typename =
             detail::enable_if_t<detail::are_convertible<T,Args...>::value>>
@@ -450,6 +452,7 @@ class array_2d
             static constexpr bool IsMatrix = is_matrix<typename std::decay<U>::type>::value;
 
             U data;
+            using adaptor_base::len;
 
             adaptor(U data)
             : adaptor_base(detail::length(data, 0), detail::length(data, 1)),
@@ -460,7 +463,7 @@ class array_2d
             do_slurp(T* x, len_type rs, len_type cs) const
             {
                 int i = 0;
-                for (auto it = this->data.begin(), end = this->data.end();it != end;++it)
+                for (auto it = data.begin(), end = data.end();it != end;++it)
                 {
                     int j = 0;
                     for (auto it2 = it->begin(), end2 = it->end();it2 != end2;++it2)
@@ -477,7 +480,7 @@ class array_2d
             do_slurp(std::vector<std::vector<T>>& x) const
             {
                 x.clear();
-                for (auto it = this->data.begin(), end = this->data.end();it != end;++it)
+                for (auto it = data.begin(), end = data.end();it != end;++it)
                 {
                     x.emplace_back(it->begin(), it->end());
                 }
@@ -487,11 +490,11 @@ class array_2d
             typename std::enable_if<IsMatrix_>::type
             do_slurp(T* x, len_type rs, len_type cs) const
             {
-                for (len_type i = 0;i < this->len[0];i++)
+                for (len_type i = 0;i < len[0];i++)
                 {
-                    for (len_type j = 0;j < this->len[1];j++)
+                    for (len_type j = 0;j < len[1];j++)
                     {
-                        x[i*rs + j*cs] = this->data[i][j];
+                        x[i*rs + j*cs] = data[i][j];
                     }
                 }
             }
@@ -500,13 +503,13 @@ class array_2d
             typename std::enable_if<IsMatrix_>::type
             do_slurp(std::vector<std::vector<T>>& x) const
             {
-                x.resize(this->len[0]);
-                for (len_type i = 0;i < this->len[0];i++)
+                x.resize(len[0]);
+                for (len_type i = 0;i < len[0];i++)
                 {
-                    x[i].resize(this->len[1]);
-                    for (len_type j = 0;j < this->len[1];j++)
+                    x[i].resize(len[1]);
+                    for (len_type j = 0;j < len[1];j++)
                     {
-                        x[i][j] = this->data[i][j];
+                        x[i][j] = data[i][j];
                     }
                 }
             }
@@ -2463,9 +2466,7 @@ class marray_base
         marray_slice<ctype, NDim, 1, slice_dim>
         operator[](const range_t<I>& x) const
         {
-            MARRAY_ASSERT(x.size() >= 0);
-            MARRAY_ASSERT(x.front() >= 0);
-            MARRAY_ASSERT(x.front()+x.size() <= len_[0]);
+            MARRAY_ASSERT_RANGE_IN(x, 0, len_[0]);
             return {*this, x};
         }
 
@@ -2502,9 +2503,7 @@ class marray_base
 #endif
         operator[](const range_t<I>& x)
         {
-            MARRAY_ASSERT(x.size() >= 0);
-            MARRAY_ASSERT(x.front() >= 0);
-            MARRAY_ASSERT(x.front()+x.size() <= len_[0]);
+            MARRAY_ASSERT_RANGE_IN(x, 0, len_[0]);
             return {*this, x};
         }
 
@@ -2553,7 +2552,7 @@ class marray_base
         marray_slice<Type, NDim, 0, bcast_dim>
         operator[](bcast_t)
         {
-            return {*this, slice::bcast, len_[0]};
+            return {*this, slice::bcast};
         }
 
         cref operator()(detail::array_1d<len_type> idx) const

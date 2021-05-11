@@ -79,9 +79,12 @@ typedef short_vector<len_type,MARRAY_OPT_NDIM> len_vector;
 typedef short_vector<stride_type,MARRAY_OPT_NDIM> stride_vector;
 typedef short_vector<std::array<len_type,8>,MARRAY_OPT_NDIM> dpd_len_vector;
 typedef short_vector<std::array<stride_type,8>,MARRAY_OPT_NDIM> dpd_stride_vector;
+typedef short_vector<std::array<len_type,8>,2*MARRAY_OPT_NDIM> dpd_len_vector2;
 typedef short_vector<std::array<stride_type,8>,2*MARRAY_OPT_NDIM> dpd_stride_vector2;
 typedef short_vector<int,MARRAY_OPT_NDIM> dim_vector;
 typedef short_vector<int,2*MARRAY_OPT_NDIM> dim_vector2;
+typedef short_vector<len_type,2*MARRAY_OPT_NDIM> len_vector2;
+typedef short_vector<stride_type,2*MARRAY_OPT_NDIM> stride_vector2;
 typedef short_vector<len_type,MARRAY_OPT_NDIM> index_vector;
 typedef short_vector<int,MARRAY_OPT_NDIM> irrep_vector;
 template <typename T>

@@ -2,7 +2,6 @@
 #define _MARRAY_MARRAY_HPP_
 
 #include "marray_view.hpp"
-#include "expression.hpp"
 
 namespace MArray
 {
@@ -27,11 +26,6 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         struct : Allocator { stride_type size = 0; } storage_;
         layout layout_ = DEFAULT;
 
-        struct initializer
-        {
-            typename base::initializer_type init;
-        };
-
     public:
         using typename base::value_type;
         using typename base::pointer;
@@ -51,6 +45,11 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          */
         marray() {}
 
+        /**
+         * Copy constructor.
+         *
+         * @param other The tensor to copy from.
+         */
         marray(const marray& other)
         {
             reset(other);
@@ -64,20 +63,6 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         marray(marray&& other)
         {
             reset(std::move(other));
-        }
-
-        template <typename U, typename A,
-            typename=detail::enable_if_assignable_t<reference,U>>
-        marray(const marray<U, NDim, A>& other)
-        {
-            reset(other);
-        }
-
-        template <typename U, typename D, bool O,
-            typename=detail::enable_if_assignable_t<reference,U>>
-        marray(const marray_base<U, NDim, D, O>& other, layout layout = DEFAULT)
-        {
-            reset(other, layout);
         }
 
         /**
@@ -98,6 +83,22 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
             typename=detail::enable_if_assignable_t<reference,U>>
         marray(const marray_slice<U, OldNDim, NIndexed, Dims...>& other, layout layout = DEFAULT)
 #endif
+        {
+            reset(other, layout);
+        }
+
+        /* Inherit docs */
+        template <typename U, typename A,
+            typename=detail::enable_if_assignable_t<reference,U>>
+        marray(const marray<U, NDim, A>& other)
+        {
+            reset(other);
+        }
+
+        /* Inherit docs */
+        template <typename U, typename D, bool O,
+            typename=detail::enable_if_assignable_t<reference,U>>
+        marray(const marray_base<U, NDim, D, O>& other, layout layout = DEFAULT)
         {
             reset(other, layout);
         }
@@ -191,7 +192,12 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param layout    The layout to use, either #ROW_MAJOR or #COLUMN_MAJOR.
          *                  If not specified, use the default layout.
          */
+#if MARRAY_DOXYGEN
         marray(initializer data, layout layout = DEFAULT)
+#else
+        template <int NDim_=NDim>
+        marray(initializer_type data, layout layout = DEFAULT, std::enable_if_t<(NDim_>1)>* = nullptr)
+#endif
         {
             reset(data, layout);
         }
@@ -237,9 +243,9 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
             return base::operator=(other);
         }
 
-        marray& operator=(initializer other)
+        marray& operator=(initializer_type other)
         {
-            return base::operator=(other.init);
+            return base::operator=(other);
         }
 
 #if !MARRAY_DOXYGEN
@@ -299,11 +305,6 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * Reset
          *
          **********************************************************************/
-
-        static initializer init(initializer_type data)
-        {
-            return initializer{data};
-        }
 
         /**
          * Reset the tensor to an empty state, with all lengths zero.
@@ -456,16 +457,22 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param layout    The layout to use, either #ROW_MAJOR or #COLUMN_MAJOR.
          *                  If not specified, use the default layout.
          */
-        void reset(initializer data, layout layout = DEFAULT)
+#if MARRAY_DOXYGEN
+        void
+#else
+        template <int NDim_=NDim>
+        std::enable_if_t<(NDim_>1)>
+#endif
+        reset(initializer_type data, layout layout = DEFAULT)
         {
             reset();
 
             layout_ = layout;
-            base::set_lengths(0, len_, data.init);
+            base::set_lengths(0, len_, data);
             storage_.size = size(len_);
             data_ = alloc_traits::allocate(storage_, storage_.size);
             stride_ = base::strides(len_, layout);
-            base::set_data(0, data_, data.init);
+            base::set_data(0, data_, data);
         }
 
         /***********************************************************************
