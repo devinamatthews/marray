@@ -1,0 +1,22 @@
+site_name: MArray
+
+nav:
+  - Introduction: index.md
+  - 'API Documentation': api.md
+
+repo_url: https://github.com/devinamatthews/marray/
+
+edit_uri: ''
+
+use_directory_urls: false
+
+theme:
+  name: readthedocs
+  highlightjs: true
+
+plugins:
+  - doxygen:
+      packages:
+        - doxygen:
+            url : ../doxygen
+

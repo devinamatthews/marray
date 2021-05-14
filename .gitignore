@@ -16,13 +16,12 @@ config.h
 *.swp
 gtest-config
 *~
-.project
-.cproject
 .deps
 Makefile
 autom4te.cache
 config.log
 config.status
-.ptp-sync
-.ptp-sync-folder
-.settings
+doc/doxygen/html
+doc/doxygen/xml
+doc/doxygen/latex
+doc/mkdocs/site
