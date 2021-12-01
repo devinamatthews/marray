@@ -14,7 +14,7 @@ jobs:
           command: './configure CC=gcc-10 CXX=g++-10'
       - run:
           name: Building
-          command: 'make'
+          command: 'make -j2'
       - run:
           name: Unit Testing
           command: './bin/test'
