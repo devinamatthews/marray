@@ -18,5 +18,5 @@ plugins:
   - doxygen:
       packages:
         - doxygen:
-            url : ../doxygen
+            url : doc/doxygen
 
