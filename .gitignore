@@ -21,7 +21,7 @@ Makefile
 autom4te.cache
 config.log
 config.status
-doc/doxygen/html
-doc/doxygen/xml
-doc/doxygen/latex
-doc/mkdocs/site
+docs/doxygen/html
+docs/doxygen/xml
+docs/doxygen/latex
+site
