@@ -6,6 +6,7 @@
 #include <memory>
 #include <limits>
 #include <stdexcept>
+#include <algorithm>
 
 #ifndef MARRAY_ASSERT
 #ifdef MARRAY_ENABLE_ASSERTS
