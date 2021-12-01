@@ -10,6 +10,10 @@ edit_uri: ''
 
 use_directory_urls: false
 
+docs_dir: doc/mkdocs/docs
+
+site_dir: doc/mkdocs/site
+
 theme:
   name: readthedocs
   highlightjs: true
@@ -18,5 +22,5 @@ plugins:
   - doxygen:
       packages:
         - doxygen:
-            url : ../doxygen
+            url : doc/doxygen
 
