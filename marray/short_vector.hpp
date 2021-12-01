@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <memory>
 #include <limits>
-#include <error>
+#include <stdexcept>
 
 #ifndef MARRAY_ASSERT
 #ifdef MARRAY_ENABLE_ASSERTS
