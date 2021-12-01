@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run:
           name: Installing Dependencies
-          command: 'sudo apt-get update && apt-get install -y gcc-10 g++-10 make'
+          command: 'sudo apt-get update && sudo apt-get install -y gcc-10 g++-10 make'
       - run:
           name: Configuring
           command: './configure CC=gcc-10 CXX=g++-10'
