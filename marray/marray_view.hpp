@@ -121,7 +121,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *
          * @param base  One of @ref BASE_ZERO, @ref BASE_ONE, @ref FORTRAN, or @ref MATLAB.
          */
-        marray_view(const array_1d<len_type>& len, pointer ptr, const base& base)
+        marray_view(const array_1d<len_type>& len, pointer ptr, const index_base& base)
         {
             reset(len, ptr, base);
         }

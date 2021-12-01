@@ -151,19 +151,19 @@ constexpr row_major_layout ROW_MAJOR;
  */
 constexpr decltype(MARRAY_DEFAULT_LAYOUT) DEFAULT_LAYOUT;
 
-struct base
+struct index_base
 {
     struct construct {};
 
     int type;
 
-    constexpr explicit base(int type, construct) : type(type) {}
+    constexpr explicit index_base(int type, construct) : type(type) {}
 
-    bool operator==(base other) const { return type == other.type; }
-    bool operator!=(base other) const { return type != other.type; }
+    bool operator==(index_base other) const { return type == other.type; }
+    bool operator!=(index_base other) const { return type != other.type; }
 };
 
-struct base_zero : base { constexpr base_zero() : base(0, construct{}) {} };
+struct base_zero : index_base { constexpr base_zero() : index_base(0, construct{}) {} };
 
 /**
  * Specifies that indices should start at 0.
@@ -172,7 +172,7 @@ struct base_zero : base { constexpr base_zero() : base(0, construct{}) {} };
  */
 constexpr base_zero BASE_ZERO;
 
-struct base_one : base { constexpr base_one() : base(1, construct{}) {} };
+struct base_one : index_base { constexpr base_one() : index_base(1, construct{}) {} };
 
 /**
  * Specifies that indices should start at 1.
@@ -184,7 +184,7 @@ constexpr base_one BASE_ONE;
 struct fortran_t
 {
     operator layout() { return COLUMN_MAJOR; }
-    operator base() { return BASE_ONE; }
+    operator index_base() { return BASE_ONE; }
 };
 
 /**

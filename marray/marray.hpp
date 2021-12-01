@@ -23,7 +23,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         using base_class::stride_;
         using base_class::data_;
         struct : Allocator { stride_type size = 0; } storage_;
-        base initial_base_ = DEFAULT_BASE;
+        index_base initial_base_ = DEFAULT_BASE;
         layout layout_ = DEFAULT_LAYOUT;
 
     public:
@@ -132,21 +132,21 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         marray(tensor_or_view other, base base);
 #else
         template <typename U, int N, int I, typename... D>
-        marray(const marray_slice<U, N, I, D...>& other, base base)
+        marray(const marray_slice<U, N, I, D...>& other, index_base base)
         {
             reset(other, base);
         }
 
         /* Inherit docs */
         template <typename U, int N, typename D, bool O>
-        marray(const marray_base<U, N, D, O>& other, base base)
+        marray(const marray_base<U, N, D, O>& other, index_base base)
         {
             reset(other, base);
         }
 
         /* Inherit docs */
         template <typename U, int N, typename A>
-        marray(const marray<U, N, A>& other, base base)
+        marray(const marray<U, N, A>& other, index_base base)
         {
             reset(other, base);
         }
@@ -165,14 +165,14 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         marray(tensor_or_view other, base base, layout layout);
 #else
         template <typename U, int N, int I, typename... D>
-        marray(const marray_slice<U, N, I, D...>& other, base base, layout layout)
+        marray(const marray_slice<U, N, I, D...>& other, index_base base, layout layout)
         {
             reset(other, base, layout);
         }
 
         /* Inherit docs */
         template <typename U, int N, typename D, bool O>
-        marray(const marray_base<U, N, D, O>& other, base base, layout layout)
+        marray(const marray_base<U, N, D, O>& other, index_base base, layout layout)
         {
             reset(other, base, layout);
         }
@@ -331,7 +331,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
          *                @ref MATLAB).
          */
-        marray(const array_1d<len_type>& len, base base)
+        marray(const array_1d<len_type>& len, index_base base)
         {
             reset(len, base);
         }
@@ -348,7 +348,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
          *                @ref MATLAB).
          */
-        marray(const array_1d<len_type>& len, const Type& val, base base)
+        marray(const array_1d<len_type>& len, const Type& val, index_base base)
         {
             reset(len, val, base);
         }
@@ -369,7 +369,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, uninitialized_t uninitialized, base base)
 #else
-        marray(const array_1d<len_type>& len, uninitialized_t, base base)
+        marray(const array_1d<len_type>& len, uninitialized_t, index_base base)
 #endif
         {
             reset(len, uninitialized, base);
@@ -387,7 +387,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
          */
-        marray(const array_1d<len_type>& len, base base, layout layout)
+        marray(const array_1d<len_type>& len, index_base base, layout layout)
         {
             reset(len, base, layout);
         }
@@ -406,7 +406,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
          */
-        marray(const array_1d<len_type>& len, const Type& val, base base, layout layout)
+        marray(const array_1d<len_type>& len, const Type& val, index_base base, layout layout)
         {
             reset(len, val, base, layout);
         }
@@ -429,7 +429,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, uninitialized_t uninitialized, base base, layout layout)
 #else
-        marray(const array_1d<len_type>& len, uninitialized_t, base base, layout layout)
+        marray(const array_1d<len_type>& len, uninitialized_t, index_base base, layout layout)
 #endif
         {
             reset(len, uninitialized, base, layout);
@@ -717,21 +717,21 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         void reset(tensor_or_view other, base base);
 #else
         template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other, MArray::base base)
+        void reset(const marray_slice<U, N, I, D...>& other, MArray::index_base base)
         {
             reset(other.view(), base, DEFAULT_LAYOUT);
         }
 
         /* Inherit docs */
         template <typename U, int N, typename D, bool O>
-        void reset(const marray_base<U, N, D, O>& other, MArray::base base)
+        void reset(const marray_base<U, N, D, O>& other, MArray::index_base base)
         {
             reset(other, base, DEFAULT_LAYOUT);
         }
 
         /* Inherit docs */
         template <typename U, int N, typename A>
-        void reset(const marray<U, N, A>& other, MArray::base base)
+        void reset(const marray<U, N, A>& other, MArray::index_base base)
         {
             reset(other, base, other.layout_);
         }
@@ -750,14 +750,14 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         void reset(tensor_or_view other, base base, layout layout);
 #else
         template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other, MArray::base base, layout layout)
+        void reset(const marray_slice<U, N, I, D...>& other, MArray::index_base base, layout layout)
         {
             reset(other.view(), base, layout);
         }
 
         /* Inherit docs */
         template <typename U, int N, typename D, bool O>
-        void reset(const marray_base<U, N, D, O>& other, MArray::base base, layout layout)
+        void reset(const marray_base<U, N, D, O>& other, MArray::index_base base, layout layout)
         {
             if (std::is_scalar<Type>::value)
             {
@@ -892,7 +892,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
          *                @ref MATLAB).
          */
-        void reset(const array_1d<len_type>& len, MArray::base base)
+        void reset(const array_1d<len_type>& len, MArray::index_base base)
         {
             reset(len, Type(), base, DEFAULT_LAYOUT);
         }
@@ -909,7 +909,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
          *                @ref MATLAB).
          */
-        void reset(const array_1d<len_type>& len, const Type& val, MArray::base base)
+        void reset(const array_1d<len_type>& len, const Type& val, MArray::index_base base)
         {
             reset(len, val, base, DEFAULT_LAYOUT);
         }
@@ -930,7 +930,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, uninitialized_t uninitialized, base base)
 #else
-        void reset(const array_1d<len_type>& len, uninitialized_t, MArray::base base)
+        void reset(const array_1d<len_type>& len, uninitialized_t, MArray::index_base base)
 #endif
         {
             reset(len, uninitialized, base, DEFAULT_LAYOUT);
@@ -948,7 +948,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
          */
-        void reset(const array_1d<len_type>& len, MArray::base base, layout layout)
+        void reset(const array_1d<len_type>& len, MArray::index_base base, layout layout)
         {
             reset(len, Type(), base, layout);
         }
@@ -967,7 +967,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
          */
-        void reset(const array_1d<len_type>& len, const Type& val, MArray::base base, layout layout)
+        void reset(const array_1d<len_type>& len, const Type& val, MArray::index_base base, layout layout)
         {
             reset(len, uninitialized, base, layout);
             std::uninitialized_fill_n(data(), size(), val);
@@ -991,7 +991,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, uninitialized_t uninitialized, base base, layout layout)
 #else
-        void reset(const array_1d<len_type>& len, uninitialized_t, MArray::base base, layout layout)
+        void reset(const array_1d<len_type>& len, uninitialized_t, MArray::index_base base, layout layout)
 #endif
         {
             reset();
@@ -1014,7 +1014,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
          *                @ref MATLAB).
          */
-        void reset(const array_1d<len_type>& len, layout layout, MArray::base base)
+        void reset(const array_1d<len_type>& len, layout layout, MArray::index_base base)
         {
             reset(len, Type(), base, layout);
         }
@@ -1033,7 +1033,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
          *                @ref MATLAB).
          */
-        void reset(const array_1d<len_type>& len, const Type& val, layout layout, MArray::base base)
+        void reset(const array_1d<len_type>& len, const Type& val, layout layout, MArray::index_base base)
         {
             reset(len, val, base, layout);
         }

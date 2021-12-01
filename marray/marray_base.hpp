@@ -80,11 +80,11 @@ class marray_base
 
         struct base_like : protected array_1d<len_type>
         {
-            struct no_base : base { constexpr no_base() : base(-1, construct{}) {} };
+            struct no_base : index_base { constexpr no_base() : index_base(-1, construct{}) {} };
 
-            base base_ = no_base{};
+            index_base base_ = no_base{};
 
-            base_like(base base) : base_(base) {}
+            base_like(index_base base) : base_(base) {}
 
             using array_1d<len_type>::array_1d;
             using array_1d<len_type>::size;
@@ -243,7 +243,7 @@ class marray_base
          *
          * @param base  One of @ref BASE_ZERO, @ref BASE_ONE, @ref FORTRAN, or @ref MATLAB.
          */
-        void reset(const array_1d<len_type>& len, pointer ptr, const base& base)
+        void reset(const array_1d<len_type>& len, pointer ptr, const index_base& base)
         {
             reset(len, ptr, base, DEFAULT_LAYOUT);
         }

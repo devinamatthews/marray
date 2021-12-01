@@ -4,6 +4,8 @@
 #include "../marray.hpp"
 #include "../array_2d.hpp"
 #include "dpd_range.hpp"
+#include <limits>
+#include <climits>
 
 namespace MArray
 {
@@ -122,7 +124,7 @@ class irrep_iterator
 
         void reset()
         {
-            block_ = UINT_MAX;
+            block_ = std::numeric_limits<unsigned int>::max();
         }
 
         int irrep(int dim)
