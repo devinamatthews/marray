@@ -1567,6 +1567,47 @@ class marray_base
 #endif
 
         /**
+         * Return a permuted view.
+         *
+         * Indexing into dimension `i` of the permuted view is equivalent to
+         * indexing into dimension `perm[i]` of the original tensor or tensor
+         * view.
+         *
+         * @param perm  The permutation vector. May be any
+         *              set of integral types convertible
+         *              to `int`. The values must form
+         *              a permutation of `[0,NDim)`, where `NDim` is the number of
+         *              tensor dimensions.
+         *
+         * @return      A possibly-mutable tensor view. For a tensor
+         *              ([marray](@ref MArray::marray)), the returned view is
+         *              mutable if the instance is not const-qualified.
+         *              For a tensor view (marray_view),
+         *              the returned view is mutable if the value type is not
+         *              const-qualified.
+         */
+#if MARRAY_DOXYGEN
+        possibly_mutable_view permuted(const Perm&... perm);
+#else
+        template <typename... Perm>
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value,marray_view<Type,NDim>>
+        permuted(const Perm&... perm)
+        {
+            marray_view<Type,NDim> r(*this);
+            r.permute(perm...);
+            return r;
+        }
+
+        /* Inherit docs */
+        template <typename... Perm>
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value,marray_view<ctype,NDim>>
+        permuted(const Perm&... perm) const
+        {
+            return const_cast<marray_base&>(*this).permuted(perm...);
+        }
+#endif
+
+        /**
          * Return a transposed view.
          *
          * This overload is only available for matrices and matrix views (`NDim == 2`).

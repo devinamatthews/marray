@@ -526,6 +526,30 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         }
 
         /**
+         * Permute this view.
+         *
+         * Indexing into dimension `i` of the permuted view is equivalent to
+         * indexing into dimension `perm[i]` of the original view.
+         *
+         * @param perm  The permutation vector. May be any
+         *              set of integral types convertible
+         *              to `int`. The values must form
+         *              a permutation of `[0,NDim)`, where `NDim` is the number of
+         *              tensor dimensions.
+         */
+#if MARRAY_DOXYGEN
+        void permute(const Perm&... perm)
+#else
+        template <typename... Perm>
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value>
+        permute(const Perm&... perm)
+#endif
+        {
+            static_assert(sizeof...(Perm) == NDim);
+            permute({(int)perm...});
+        }
+
+        /**
          * Transpose this view.
          *
          * This overload is only available for matrix views.
