@@ -2,6 +2,7 @@
 #define _MARRAY_RANGE_HPP_
 
 #include "utility.hpp"
+#include <type_traits>
 
 #define MARRAY_ASSERT_RANGE_IN(x, from, to) \
 MARRAY_ASSERT((x).size() >= 0); \
@@ -48,6 +49,8 @@ template <typename T>
 class range_t
 {
     static_assert(std::is_integral<T>::value, "The type must be integral.");
+
+    template <typename U> friend class range_t;
 
     protected:
         T from_;
@@ -201,9 +204,22 @@ class range_t
 
         range_t(const range_t&) = default;
 
+        template <typename U>
+        range_t(const range_t<U>& other)
+        : from_(other.from_), to_(other.to_), delta_(other.delta_) {}
+
         range_t(range_t&&) = default;
 
         range_t& operator=(const range_t&) = default;
+
+        template <typename U>
+        range_t& operator=(const range_t<U>& other)
+        {
+            from_ = other.from_;
+            to_ = other.to_;
+            delta_ = other.delta_;
+            return *this;
+        }
 
         range_t& operator=(range_t&&) = default;
 
