@@ -365,7 +365,7 @@ class array_1d
 
             virtual adaptor_base& copy(adaptor_base& other) override
             {
-            	return *(new (static_cast<adaptor*>(&other)) adaptor(*this));
+                return *(new (static_cast<adaptor*>(&other)) adaptor(*this));
             }
         };
 
@@ -1693,6 +1693,46 @@ class marray_base
             return r;
         }
 
+        template <typename... Perm>
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value,marray_view<ctype,NDim>>
+        permuted(const Perm&... perm) const
+        {
+            return const_cast<marray_base&>(*this).permuted(perm...);
+        }
+
+        /**
+         * Return a permuted view.
+         *
+         * Indexing into dimension `i` of the permuted view is equivalent to
+         * indexing into dimension `perm[i]` of the original tensor or tensor
+         * view.
+         *
+         * @param perm  The permutation vector. May be any
+         *              one-dimensional container type whose elements are convertible
+         *              to `int`, including initializer lists. The values must form
+         *              a permutation of `[0,NDim)`, where `NDim` is the number of
+         *              tensor dimensions.
+         *
+         * @return      A possibly-mutable tensor view. For a tensor
+         *              ([marray](@ref MArray::marray)), the returned view is
+         *              mutable if the instance is not const-qualified.
+         *              For a tensor view (marray_view),
+         *              the returned view is mutable if the value type is not
+         *              const-qualified.
+         */
+        template <typename... Perm>
+#if MARRAY_DOXYGEN
+        possibly_mutable_view
+#else
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value,marray_view<Type,NDim>>
+#endif
+        permuted(const Perm&... perm)
+        {
+            marray_view<Type,NDim> r(*this);
+            r.permute(perm...);
+            return r;
+        }
+
         template <int N=NDim, typename=detail::enable_if_t<N==2>>
         marray_view<ctype, NDim> transposed() const
         {
@@ -1823,7 +1863,8 @@ class marray_base
                 auto end = (i == NSplit ? NDim-1 : split_[i]-1);
                 if (begin > end) continue;
 
-                if (stride_[begin] < stride_[end] ||
+                if ((stride_[begin] < stride_[end] && stride_[begin] != 0) ||
+                    stride_[end] == 0 ||
                     (stride_[begin] == stride_[end] && len_[begin] == 1))
                 {
                     newlen[i] = len_[end];

@@ -355,7 +355,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          **********************************************************************/
 
         /**
-         * Permuted this view.
+         * Permute this view.
          *
          * Indexing into dimension `i` of the permuted view is equivalent to
          * indexing into dimension `perm[i]` of the original view.
@@ -384,6 +384,30 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
                 len_[i] = len[perm_[i]];
                 stride_[i] = stride[perm_[i]];
             }
+        }
+
+        /**
+         * Permute this view.
+         *
+         * Indexing into dimension `i` of the permuted view is equivalent to
+         * indexing into dimension `perm[i]` of the original view.
+         *
+         * @param perm  The permutation vector. May be any
+         *              one-dimensional container type whose elements are convertible
+         *              to `int`, including initializer lists. The values must form
+         *              a permutation of `[0,NDim)`, where `NDim` is the number of
+         *              tensor dimensions.
+         */
+        template <typename... Perm>
+#if MARRAY_DOXYGEN
+        void
+#else
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value>
+#endif
+        permute(const Perm&... perm)
+        {
+            static_assert(sizeof...(Perm) == NDim);
+            permute({(int)perm...});
         }
 
         /**
