@@ -1,7 +1,9 @@
 #include "gtest/gtest.h"
 #include "marray.hpp"
+#include "expression.hpp"
 
 #include <typeinfo>
+#include <complex>
 
 using namespace std;
 using namespace MArray;
@@ -78,6 +80,10 @@ TYPED_TEST_CASE(expression_vector, pair_types_all);
 //typedef pair_types<types<double>, types<std::complex<double>>> tmp_types;
 //TYPED_TEST_CASE(expression_vector, tmp_types);
 
+/*
+ * These are handled outside of the expression framework now.
+ *
+
 TYPED_TEST(expression_vector, vector_assign)
 {
     typedef typename TypeParam::first_type T;
@@ -116,6 +122,8 @@ TYPED_TEST(expression_vector, vector_set)
         EXPECT_EQ(U(3), b[i]);
     }
 }
+
+*/
 
 TYPED_TEST(expression_vector, vector_add)
 {
