@@ -615,7 +615,7 @@ struct is_marray
 
     static std::false_type check(...);
 
-    static constexpr bool value = decltype(check((Array*)0))::value;
+    static constexpr bool value = decltype(check((Array*)nullptr))::value;
 };
 
 template <typename Expr>
@@ -635,7 +635,7 @@ struct expression_type<Expr, detail::enable_if_t<is_marray<Expr>::value>>
 
     static void check(...);
 
-    typedef decltype(check((Expr*)0)) type;
+    typedef decltype(check((Expr*)nullptr)) type;
 };
 
 template <typename Expr>
