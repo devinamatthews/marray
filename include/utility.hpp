@@ -161,21 +161,17 @@ struct layout
     bool operator!=(layout other) const { return type != other.type; }
 };
 
-struct column_major_layout : layout { constexpr column_major_layout() : layout(0, construct{}) {} };
-
 /**
  * Specifies that elements should be laid out in column-major order.
  */
-constexpr column_major_layout COLUMN_MAJOR;
-
-struct row_major_layout : layout { constexpr row_major_layout() : layout(1, construct{}) {} };
+constexpr layout COLUMN_MAJOR{0, layout::construct{}};
 
 /**
  * Specifies that elements should be laid out in row-major order.
  */
-constexpr row_major_layout ROW_MAJOR;
+constexpr layout ROW_MAJOR{1, layout::construct{}};
 
-constexpr decltype(MARRAY_DEFAULT_LAYOUT) DEFAULT;
+constexpr layout DEFAULT{MARRAY_DEFAULT_LAYOUT};
 
 struct dpd_layout
 {
