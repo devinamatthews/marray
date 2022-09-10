@@ -620,6 +620,11 @@ TEST(marray, permuted)
     EXPECT_EQ((array<len_type,3>{2, 4, 5}), v4.lengths());
     EXPECT_EQ((array<stride_type,3>{5, 10, 1}), v4.strides());
     EXPECT_EQ(v1.data(), v4.data());
+
+    auto v5 = v1.permuted(1, 0, 2);
+    EXPECT_EQ((array<len_type,3>{2, 4, 5}), v5.lengths());
+    EXPECT_EQ((array<stride_type,3>{5, 10, 1}), v5.strides());
+    EXPECT_EQ(v1.data(), v5.data());
 }
 
 TEST(varray, permuted)
@@ -640,6 +645,11 @@ TEST(varray, permuted)
     EXPECT_EQ((len_vector{2, 4, 5}), v4.lengths());
     EXPECT_EQ((stride_vector{5, 10, 1}), v4.strides());
     EXPECT_EQ(v1.data(), v4.data());
+
+    auto v5 = v1.permuted(1, 0, 2);
+    EXPECT_EQ((len_vector{2, 4, 5}), v5.lengths());
+    EXPECT_EQ((stride_vector{5, 10, 1}), v5.strides());
+    EXPECT_EQ(v1.data(), v5.data());
 }
 
 TEST(marray, transposed)

@@ -107,7 +107,7 @@ static stride_type offsets[6][8] =
         EXPECT_EQ(strides[j][i], vs.strides()); \
     }
 
-TEST(dpd_varray_view, constructor)
+TEST(dpd_marray_view, constructor)
 {
     double tmp;
     double* data = &tmp;
@@ -163,7 +163,7 @@ TEST(dpd_varray_view, constructor)
     CHECK_DPD_MARRAY_VIEW(v16, data, 0)
 }
 
-TEST(dpd_varray_view, reset)
+TEST(dpd_marray_view, reset)
 {
     double tmp;
     double* data = &tmp;
@@ -221,7 +221,7 @@ TEST(dpd_varray_view, reset)
     CHECK_DPD_MARRAY_VIEW_RESET(v2)
 }
 
-TEST(dpd_varray_view, permute)
+TEST(dpd_marray_view, permute)
 {
     double tmp;
     double* data = &tmp;
@@ -312,7 +312,7 @@ TEST(dpd_varray_view, permute)
     }
 }
 
-TEST(dpd_varray_view, block_iteration)
+TEST(dpd_marray_view, block_iteration)
 {
     array<array<int,2>,2> visited;
     double tmp;
@@ -427,7 +427,7 @@ TEST(dpd_varray_view, block_iteration)
     }
 }
 
-TEST(dpd_varray_view, element_iteration)
+TEST(dpd_marray_view, element_iteration)
 {
     array<int,31> visited;
     double tmp;
@@ -555,7 +555,7 @@ TEST(dpd_varray_view, element_iteration)
     }
 }
 
-TEST(dpd_varray_view, swap)
+TEST(dpd_marray_view, swap)
 {
     double tmp1, tmp2;
     double* data1 = &tmp1;
@@ -593,7 +593,7 @@ TEST(dpd_varray_view, swap)
     EXPECT_EQ((matrix<len_type>{{1, 1}, {6, 3}, {2, 4}}), v2.lengths());
 }
 
-TEST(dpd_varray_view, slice)
+TEST(dpd_marray_view, slice)
 {
     double tmp;
     double* data = &tmp;

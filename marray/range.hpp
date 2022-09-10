@@ -64,18 +64,18 @@ class range_t
         typedef T size_type;
 
     public:
-        class iterator : std::iterator<std::random_access_iterator_tag,T>
+        class iterator
         {
             protected:
                 T val_;
                 T delta_;
 
             public:
-                using typename std::iterator<std::random_access_iterator_tag,T>::iterator_category;
-                using typename std::iterator<std::random_access_iterator_tag,T>::value_type;
-                using typename std::iterator<std::random_access_iterator_tag,T>::difference_type;
-                using typename std::iterator<std::random_access_iterator_tag,T>::pointer;
-                using typename std::iterator<std::random_access_iterator_tag,T>::reference;
+                using iterator_category = std::random_access_iterator_tag;
+                using value_type = T;
+                using difference_type = std::ptrdiff_t;
+                using pointer = T*;
+                using reference = T&;
 
                 constexpr iterator() : val_(0), delta_(0) {}
 

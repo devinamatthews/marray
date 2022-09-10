@@ -489,12 +489,23 @@ class indexed_marray_base
             return data_[idx];
         }
 
-        const std::vector<Type>& factors() const
+        const std::vector<typename std::remove_const<Type>::type>& factors() const
         {
             return factor_;
         }
 
+        row_view<Type> factors()
+        {
+            return {{factor_.size()}, factor_.data()};
+        }
+
         const Type& factor(len_type idx) const
+        {
+            MARRAY_ASSERT(0 <= idx && idx < num_indices());
+            return factor_[idx];
+        }
+
+        Type& factor(len_type idx)
         {
             MARRAY_ASSERT(0 <= idx && idx < num_indices());
             return factor_[idx];

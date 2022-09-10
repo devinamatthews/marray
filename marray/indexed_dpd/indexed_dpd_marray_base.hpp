@@ -510,6 +510,11 @@ class indexed_dpd_marray_base : detail::dpd_base
             return factor_;
         }
 
+        row_view<Type> factors()
+        {
+            return {{factor_.size()}, factor_.data()};
+        }
+
         const Type& factor(len_type idx) const
         {
             MARRAY_ASSERT(0 <= idx && idx < num_indices());

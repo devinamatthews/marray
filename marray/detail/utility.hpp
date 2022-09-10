@@ -6,10 +6,12 @@
 #include <array>
 #include <type_traits>
 
+#ifndef MARRAY_ASSERT
 #ifdef MARRAY_ENABLE_ASSERTS
 #define MARRAY_ASSERT(e) assert(e)
 #else
 #define MARRAY_ASSERT(e) ((void)0)
+#endif
 #endif
 
 #define MARRAY_LIKELY(x) __builtin_expect((x),1)
@@ -23,7 +25,7 @@ namespace MArray
 
 struct all_t;
 struct bcast_t;
-template <typename I> struct range_t;
+template <typename I> class range_t;
 
 namespace detail
 {

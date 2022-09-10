@@ -171,7 +171,7 @@ constexpr index_base BASE_ZERO{0, index_base::construct{}};
  *
  * @ingroup constants
  */
-constexpr index_base BASE_ONE{0, index_base::construct{}};
+constexpr index_base BASE_ONE{1, index_base::construct{}};
 
 struct fortran_t
 {
