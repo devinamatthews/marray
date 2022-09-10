@@ -4764,7 +4764,9 @@ GTEST_API_ extern const char kStackTraceMarker[];
 // a null pointer literal.  Therefore, we know that x is a null
 // pointer literal if and only if the first version is picked by the
 // compiler.
-char IsNullLiteralHelper(Secret* p);
+template <typename T=void>
+char IsNullLiteralHelper(nullptr_t);
+char (&IsNullLiteralHelper(int))[2];  // NOLINT
 char (&IsNullLiteralHelper(...))[2];  // NOLINT
 
 // A compile-time bool constant that is true if and only if x is a

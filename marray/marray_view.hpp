@@ -545,7 +545,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         permute(const Perm&... perm)
 #endif
         {
-            static_assert(sizeof...(Perm) == NDim);
+            static_assert(sizeof...(Perm) == NDim || NDim == DYNAMIC);
             permute({(int)perm...});
         }
 

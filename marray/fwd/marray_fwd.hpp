@@ -125,23 +125,19 @@ struct layout
     bool operator!=(layout other) const { return type != other.type; }
 };
 
-struct column_major_layout : layout { constexpr column_major_layout() : layout(0, construct{}) {} };
-
 /**
  * Specifies that elements should be laid out in column-major order.
  *
  * @ingroup constants
  */
-constexpr column_major_layout COLUMN_MAJOR;
-
-struct row_major_layout : layout { constexpr row_major_layout() : layout(1, construct{}) {} };
+constexpr layout COLUMN_MAJOR{0, layout::construct{}};
 
 /**
  * Specifies that elements should be laid out in row-major order.
  *
  * @ingroup constants
  */
-constexpr row_major_layout ROW_MAJOR;
+constexpr layout ROW_MAJOR{1, layout::construct{}};
 
 /**
  * The default layout for tensors (either row- or column-major).
@@ -149,7 +145,7 @@ constexpr row_major_layout ROW_MAJOR;
  *
  * @ingroup constants
  */
-constexpr decltype(MARRAY_DEFAULT_LAYOUT) DEFAULT_LAYOUT;
+constexpr layout DEFAULT_LAYOUT{MARRAY_DEFAULT_LAYOUT};
 
 struct index_base
 {
@@ -163,23 +159,19 @@ struct index_base
     bool operator!=(index_base other) const { return type != other.type; }
 };
 
-struct base_zero : index_base { constexpr base_zero() : index_base(0, construct{}) {} };
-
 /**
  * Specifies that indices should start at 0.
  *
  * @ingroup constants
  */
-constexpr base_zero BASE_ZERO;
-
-struct base_one : index_base { constexpr base_one() : index_base(1, construct{}) {} };
+constexpr index_base BASE_ZERO{0, index_base::construct{}};
 
 /**
  * Specifies that indices should start at 1.
  *
  * @ingroup constants
  */
-constexpr base_one BASE_ONE;
+constexpr index_base BASE_ONE{1, index_base::construct{}};
 
 struct fortran_t
 {
@@ -206,7 +198,7 @@ constexpr fortran_t MATLAB;
  *
  * @ingroup constants
  */
-constexpr decltype(MARRAY_DEFAULT_BASE) DEFAULT_BASE;
+constexpr index_base DEFAULT_BASE{MARRAY_DEFAULT_BASE};
 
 }
 

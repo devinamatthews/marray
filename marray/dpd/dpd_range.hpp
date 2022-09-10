@@ -1,7 +1,7 @@
 #ifndef MARRAY_DPD_RANGE_HPP
 #define MARRAY_DPD_RANGE_HPP
 
-#include "range.hpp"
+#include "../range.hpp"
 #include "../marray_base.hpp"
 
 namespace MArray

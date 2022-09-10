@@ -503,11 +503,19 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *               initializer; the provided data must be "dense", i.e. there
          *               cannot be missing values.
          *
+         * @param layout The layout to use, either #ROW_MAJOR or #COLUMN_MAJOR.
+         *               If not specified, use the default layout.
+         *
          * @note Only available when `NDim != ` @ref DYNAMIC.
          */
-        marray(initializer_type data)
+#if MARRAY_DOXYGEN
+        marray(initializer data, layout layout = DEFAULT_LAYOUT)
+#else
+        template <int NDim_=NDim>
+        marray(initializer_type data, layout layout = DEFAULT_LAYOUT, std::enable_if_t<(NDim_>1)>* = nullptr)
+    #endif
         {
-            reset(data);
+            reset(data, layout);
         }
 
         /**
@@ -1106,13 +1114,16 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *               initializer; the provided data must be "dense", i.e. there
          *               cannot be missing values.
          *
+         * @param layout The layout to use, either #ROW_MAJOR or #COLUMN_MAJOR.
+         *               If not specified, use the default layout.
+         *
          * @note Only available when `NDim != ` @ref DYNAMIC.
          */
-        void reset(initializer_type data)
+        void reset(initializer_type data, layout layout = DEFAULT_LAYOUT)
         {
             detail::array_type_t<len_type, NDim> len(NDim);
             base_class::set_lengths_(0, len, data);
-            reset(len);
+            reset(len, layout);
             base_class::set_data_(0, data_, data);
         }
 
