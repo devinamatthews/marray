@@ -195,9 +195,9 @@ class array_2d
             }
         };
 
-        constexpr static size_t _s1 = sizeof(adaptor<std::initializer_list<std::initializer_list<int>>>);
-        constexpr static size_t _s2 = sizeof(adaptor<const matrix<int>&>);
-        constexpr static size_t max_adaptor_size = _s1 > _s2 ? _s1 : _s2;
+        static constexpr size_t _s1 = sizeof(adaptor<std::initializer_list<std::initializer_list<int>>>);
+        static constexpr size_t _s2 = sizeof(adaptor<const matrix<int>&>);
+        static constexpr size_t max_adaptor_size = (_s1 > _s2 ? _s1 : _s2);
 
         std::aligned_storage_t<max_adaptor_size> raw_adaptor_;
         adaptor_base& adaptor_;

@@ -32,7 +32,7 @@ class indexed_marray : public indexed_marray_base<Type, indexed_marray<Type, All
         using base::dense_stride_;
         using base::factor_;
         layout layout_ = DEFAULT_LAYOUT;
-        struct : Allocator { stride_type size = 0; } storage_;
+        struct storage_s : Allocator { stride_type size = 0; } storage_;
 
     public:
 

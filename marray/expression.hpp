@@ -1062,30 +1062,30 @@ struct vector_width;
 template <typename T, typename... Dims>
 struct vector_width<array_expr<T, Dims...>>
 {
-    constexpr static int value = vector_traits<typename std::remove_cv<T>::type>::vector_width;
+    static constexpr int value = vector_traits<typename std::remove_cv<T>::type>::vector_width;
 };
 
 template <typename Expr>
 struct vector_width<Expr,std::enable_if_t<is_scalar<Expr>::value>>
 {
-    constexpr static int value = vector_traits<Expr>::vector_width;
+    static constexpr int value = vector_traits<Expr>::vector_width;
 };
 
 template <typename Expr>
 struct vector_width<Expr,std::enable_if_t<is_unary_expression<Expr>::value>>
 {
-    constexpr static int w1_ = vector_width<std::decay_t<typename Expr::expr_type>>::value;
-    constexpr static int w2_ = vector_width<std::decay_t<typename Expr::result_type>>::value;
-    constexpr static int value = (w1_ < w2_ ? w1_ : w2_);
+    static constexpr int w1_ = vector_width<std::decay_t<typename Expr::expr_type>>::value;
+    static constexpr int w2_ = vector_width<std::decay_t<typename Expr::result_type>>::value;
+    static constexpr int value = (w1_ < w2_ ? w1_ : w2_);
 };
 
 template <typename Expr>
 struct vector_width<Expr,std::enable_if_t<is_binary_expression<Expr>::value>>
 {
-    constexpr static int w1_ = vector_width<std::decay_t<typename Expr::first_type>>::value;
-    constexpr static int w2_ = vector_width<std::decay_t<typename Expr::second_type>>::value;
-    constexpr static int w3_ = vector_width<std::decay_t<typename Expr::result_type>>::value;
-    constexpr static int value = (w3_ < (w1_ < w2_ ? w1_ : w2_) ? w3_ : (w1_ < w2_ ? w1_ : w2_));
+    static constexpr int w1_ = vector_width<std::decay_t<typename Expr::first_type>>::value;
+    static constexpr int w2_ = vector_width<std::decay_t<typename Expr::second_type>>::value;
+    static constexpr int w3_ = vector_width<std::decay_t<typename Expr::result_type>>::value;
+    static constexpr int value = (w3_ < (w1_ < w2_ ? w1_ : w2_) ? w3_ : (w1_ < w2_ ? w1_ : w2_));
 };
 
 /*

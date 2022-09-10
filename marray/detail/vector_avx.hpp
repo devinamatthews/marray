@@ -11,8 +11,8 @@ namespace MArray
 template <>
 struct vector_traits<float>
 {
-    constexpr static int vector_width = 8;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 8;
+    static constexpr size_t alignment = 32;
     typedef __m256 vector_type;
 
     template <typename T> static
@@ -268,8 +268,8 @@ struct vector_traits<float>
 template <>
 struct vector_traits<double>
 {
-    constexpr static int vector_width = 4;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 4;
+    static constexpr size_t alignment = 32;
     typedef __m256d vector_type;
 
     template <typename T> static
@@ -478,8 +478,8 @@ struct vector_traits<double>
 template <>
 struct vector_traits<std::complex<float>>
 {
-    constexpr static int vector_width = 4;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 4;
+    static constexpr size_t alignment = 32;
     typedef __m256 vector_type;
 
     template <typename T> static
@@ -740,8 +740,8 @@ struct vector_traits<std::complex<float>>
 template <>
 struct vector_traits<std::complex<double>>
 {
-    constexpr static int vector_width = 2;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 2;
+    static constexpr size_t alignment = 32;
     typedef __m256d vector_type;
 
     template <typename T> static
@@ -961,8 +961,8 @@ template <typename U>
 struct vector_traits<U, std::enable_if_t<std::is_same<U,int8_t>::value ||
                                             std::is_same<U,uint8_t>::value>>
 {
-    constexpr static int vector_width = 32;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 32;
+    static constexpr size_t alignment = 32;
     typedef __m256i vector_type;
 
     template <typename T> static
@@ -1458,8 +1458,8 @@ template <typename U>
 struct vector_traits<U, std::enable_if_t<std::is_same<U,int16_t>::value ||
                                             std::is_same<U,uint16_t>::value>>
 {
-    constexpr static int vector_width = 16;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 16;
+    static constexpr size_t alignment = 32;
     typedef __m256i vector_type;
 
     template <typename T> static
@@ -1836,8 +1836,8 @@ template <typename U>
 struct vector_traits<U, std::enable_if_t<std::is_same<U,int32_t>::value ||
                                             std::is_same<U,uint32_t>::value>>
 {
-    constexpr static int vector_width = 8;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 8;
+    static constexpr size_t alignment = 32;
     typedef __m256i vector_type;
 
     template <typename T> static
@@ -2154,8 +2154,8 @@ template <typename U>
 struct vector_traits<U, std::enable_if_t<std::is_same<U,int64_t>::value ||
                                             std::is_same<U,uint64_t>::value>>
 {
-    constexpr static int vector_width = 4;
-    constexpr static size_t alignment = 32;
+    static constexpr int vector_width = 4;
+    static constexpr size_t alignment = 32;
     typedef __m256i vector_type;
 
     template <typename T> static

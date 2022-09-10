@@ -22,7 +22,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
         using base_class::len_;
         using base_class::stride_;
         using base_class::data_;
-        struct : Allocator { stride_type size = 0; } storage_;
+        struct storage_s : Allocator { stride_type size = 0; } storage_;
         index_base initial_base_ = DEFAULT_BASE;
         layout layout_ = DEFAULT_LAYOUT;
 

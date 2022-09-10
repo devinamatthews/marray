@@ -137,9 +137,9 @@ class array_1d
             }
         };
 
-        constexpr static size_t _s1 = sizeof(adaptor<T*&>);
-        constexpr static size_t _s2 = sizeof(adaptor<short_vector<T,MARRAY_OPT_NDIM>>);
-        constexpr static size_t max_adaptor_size = _s1 > _s2 ? _s1 : _s2;
+        static constexpr size_t _s1 = sizeof(adaptor<T*&>);
+        static constexpr size_t _s2 = sizeof(adaptor<short_vector<T,MARRAY_OPT_NDIM>>);
+        static constexpr size_t max_adaptor_size = (_s1 > _s2 ? _s1 : _s2);
 
         std::aligned_storage_t<max_adaptor_size> raw_adaptor_;
         adaptor_base& adaptor_;

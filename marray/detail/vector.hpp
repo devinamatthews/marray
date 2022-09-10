@@ -15,8 +15,8 @@ namespace MArray
 template <typename T, typename=void>
 struct vector_traits
 {
-    constexpr static int vector_width = 1;
-    constexpr static int alignment = 1;
+    static constexpr int vector_width = 1;
+    static constexpr int alignment = 1;
     typedef T vector_type;
 };
 

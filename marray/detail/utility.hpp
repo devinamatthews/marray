@@ -6,9 +6,6 @@
 #include <array>
 #include <type_traits>
 
-#include "../types.hpp"
-#include "../fwd/marray_fwd.hpp"
-
 #ifdef MARRAY_ENABLE_ASSERTS
 #define MARRAY_ASSERT(e) assert(e)
 #else
@@ -17,6 +14,9 @@
 
 #define MARRAY_LIKELY(x) __builtin_expect((x),1)
 #define MARRAY_UNLIKELY(x) __builtin_expect((x),0)
+
+#include "../types.hpp"
+#include "../fwd/marray_fwd.hpp"
 
 namespace MArray
 {

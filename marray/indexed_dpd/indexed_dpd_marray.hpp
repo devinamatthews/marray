@@ -40,7 +40,7 @@ class indexed_dpd_marray : public indexed_dpd_marray_base<Type, indexed_dpd_marr
         using base::dense_irrep_;
         using base::nirrep_;
         using base::factor_;
-        struct : Allocator { stride_type size = 0; } storage_;
+        struct storage_s : Allocator { stride_type size = 0; } storage_;
 
     public:
 

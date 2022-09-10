@@ -22,7 +22,7 @@ class dpd_marray : public dpd_marray_base<Type, dpd_marray<Type, Allocator>, tru
         using base::data_;
         using base::irrep_;
         using base::nirrep_;
-        struct : Allocator { stride_type size = 0; } storage_;
+        struct storage_s : Allocator { stride_type size = 0; } storage_;
 
     public:
         using typename base::value_type;

@@ -9,14 +9,6 @@
 #include <algorithm>
 #include <cassert>
 
-#ifndef MARRAY_ASSERT
-#ifdef MARRAY_ENABLE_ASSERTS
-#define MARRAY_ASSERT(e) assert(e)
-#else
-#define MARRAY_ASSERT(e)
-#endif
-#endif
-
 namespace MArray
 {
 
