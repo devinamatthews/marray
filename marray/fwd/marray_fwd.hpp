@@ -1,6 +1,7 @@
 #ifndef MARRAY_MARRAY_FWD_HPP
 #define MARRAY_MARRAY_FWD_HPP
 
+#include <complex>
 #include <memory>
 
 #include "../types.hpp"
@@ -113,6 +114,13 @@ template <typename Type> using matrix_view = marray_view<Type, 2>;
  */
 template <typename Type, typename Allocator=std::allocator<Type>> using matrix = marray<Type, 2, Allocator>;
 
+/**
+ * Type specifying one of the pre-defined tensor layouts. The pre-defined layouts place tensor elements
+ * in continguous locations in memory; more flexible layouts can be achieved by explicitly specifying the
+ * strides of the tensor indices.
+ *
+ * @ingroup types
+ */
 struct layout
 {
     struct construct {};
@@ -130,14 +138,22 @@ struct layout
  *
  * @ingroup constants
  */
+#if MARRAY_DOXYGEN
+constexpr layout COLUMN_MAJOR;
+#else
 constexpr layout COLUMN_MAJOR{0, layout::construct{}};
+#endif
 
 /**
  * Specifies that elements should be laid out in row-major order.
  *
  * @ingroup constants
  */
+#if MARRAY_DOXYGEN
+constexpr layout ROW_MAJOR;
+#else
 constexpr layout ROW_MAJOR{1, layout::construct{}};
+#endif
 
 /**
  * The default layout for tensors (either row- or column-major).
@@ -145,8 +161,19 @@ constexpr layout ROW_MAJOR{1, layout::construct{}};
  *
  * @ingroup constants
  */
+#if MARRAY_DOXYGEN
+constexpr layout DEFAULT_LAYOUT;
+#else
 constexpr layout DEFAULT_LAYOUT{MARRAY_DEFAULT_LAYOUT};
+#endif
 
+/**
+ * Type specifying one of the pre-defined tensor bases. The pre-defined bases index all tensor dimensions starting
+ * at either zero or one. More flexible bases can be obtained by explicitly specifying the base for each tensor
+ * dimension.
+ *
+ * @ingroup types
+ */
 struct index_base
 {
     struct construct {};
@@ -164,14 +191,28 @@ struct index_base
  *
  * @ingroup constants
  */
+#if MARRAY_DOXYGEN
+constexpr index_base BASE_ZERO;
+#else
 constexpr index_base BASE_ZERO{0, index_base::construct{}};
+#endif
 
 /**
  * Specifies that indices should start at 1.
  *
  * @ingroup constants
  */
+#if MARRAY_DOXYGEN
+constexpr index_base BASE_ONE;
+#else
 constexpr index_base BASE_ONE{1, index_base::construct{}};
+#endif
+
+struct c_cxx_t
+{
+    operator layout() { return ROW_MAJOR; }
+    operator index_base() { return BASE_ZERO; }
+};
 
 struct fortran_t
 {
@@ -180,14 +221,32 @@ struct fortran_t
 };
 
 /**
- * Specifies column-major layout and base-1 indices.
+ * Specifies row-major layout and base-0 indices. Convertible to either [layout](@ref MArray::layout) or [index_base](@ref MArray::index_base).
+ * Same as @ref CXX.
+ *
+ * @ingroup constants
+ */
+constexpr c_cxx_t C;
+
+/**
+ * Specifies row-major layout and base-0 indices. Convertible to either [layout](@ref MArray::layout) or [index_base](@ref MArray::index_base).
+ * Same as @ref C.
+ *
+ * @ingroup constants
+ */
+constexpr c_cxx_t CXX;
+
+/**
+ * Specifies column-major layout and base-1 indices. Convertible to either [layout](@ref MArray::layout) or [index_base](@ref MArray::index_base).
+ * Same as [MATLAB](@ref MArray::MATLAB).
  *
  * @ingroup constants
  */
 constexpr fortran_t FORTRAN;
 
 /**
- * Specifies column-major layout and base-1 indices.
+ * Specifies column-major layout and base-1 indices. Convertible to either [layout](@ref MArray::layout) or [index_base](@ref MArray::index_base).
+ * Same as [FORTRAN](@ref MArray::FORTRAN).
  *
  * @ingroup constants
  */
@@ -198,7 +257,11 @@ constexpr fortran_t MATLAB;
  *
  * @ingroup constants
  */
+#if MARRAY_DOXYGEN
+constexpr index_base DEFAULT_BASE;
+#else
 constexpr index_base DEFAULT_BASE{MARRAY_DEFAULT_BASE};
+#endif
 
 }
 

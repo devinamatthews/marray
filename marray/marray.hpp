@@ -183,7 +183,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param other     The tensor, view, or partially-indexed tensor to copy.
          *
-         * @param fortran   The token @ref FORTRAN or @ref MATLAB.
+         * @param fortran   The token [FORTRAN](@ref MArray::FORTRAN) or [MATLAB](@ref MArray::MATLAB).
          */
 #if MARRAY_DOXYGEN
         marray(tensor_or_view other, fortran_t fortran);
@@ -277,7 +277,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         marray(const array_1d<len_type>& len, layout layout)
         {
@@ -293,7 +293,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         marray(const array_1d<len_type>& len, const Type& val, layout layout)
         {
@@ -310,7 +310,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, uninitialized_t uninitialized, layout layout)
@@ -328,8 +328,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
         marray(const array_1d<len_type>& len, index_base base)
         {
@@ -345,8 +345,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
         marray(const array_1d<len_type>& len, const Type& val, index_base base)
         {
@@ -363,8 +363,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, uninitialized_t uninitialized, base base)
@@ -382,10 +382,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         marray(const array_1d<len_type>& len, index_base base, layout layout)
         {
@@ -401,10 +401,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         marray(const array_1d<len_type>& len, const Type& val, index_base base, layout layout)
         {
@@ -421,10 +421,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, uninitialized_t uninitialized, base base, layout layout)
@@ -442,7 +442,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param fortran    The token @ref FORTRAN.
+         * @param fortran    The token [FORTRAN](@ref MArray::FORTRAN).
          */
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, fortran_t fortran)
@@ -462,7 +462,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param fortran    The token @ref FORTRAN.
+         * @param fortran    The token [FORTRAN](@ref MArray::FORTRAN).
          */
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, const Type& val, fortran_t fortran)
@@ -483,7 +483,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param fortran    The token @ref FORTRAN.
+         * @param fortran    The token [FORTRAN](@ref MArray::FORTRAN).
          */
 #if MARRAY_DOXYGEN
         marray(const array_1d<len_type>& len, uninitialized_t uninitialized, fortran_t fortran)
@@ -506,7 +506,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param layout The layout to use, either #ROW_MAJOR or #COLUMN_MAJOR.
          *               If not specified, use the default layout.
          *
-         * @note Only available when `NDim != ` @ref DYNAMIC.
+         * @note Only available when `NDim != ` [DYNAMIC](@ref MArray::DYNAMIC).
          */
 #if MARRAY_DOXYGEN
         marray(initializer data, layout layout = DEFAULT_LAYOUT)
@@ -785,7 +785,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param other     The tensor, view, or partially-indexed tensor to copy.
          *
-         * @param fortran   The token @ref FORTRAN or @ref MATLAB.
+         * @param fortran   The token [FORTRAN](@ref MArray::FORTRAN) or [MATLAB](@ref MArray::MATLAB).
          */
 #if MARRAY_DOXYGEN
         void reset(tensor_or_view other, fortran_t fortran);
@@ -846,7 +846,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         void reset(const array_1d<len_type>& len, layout layout)
         {
@@ -862,7 +862,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         void reset(const array_1d<len_type>& len, const Type& val, layout layout)
         {
@@ -879,7 +879,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, uninitialized_t uninitialized, layout layout)
@@ -897,8 +897,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
         void reset(const array_1d<len_type>& len, MArray::index_base base)
         {
@@ -914,8 +914,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
         void reset(const array_1d<len_type>& len, const Type& val, MArray::index_base base)
         {
@@ -932,8 +932,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, uninitialized_t uninitialized, base base)
@@ -951,10 +951,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         void reset(const array_1d<len_type>& len, MArray::index_base base, layout layout)
         {
@@ -970,10 +970,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
         void reset(const array_1d<len_type>& len, const Type& val, MArray::index_base base, layout layout)
         {
@@ -991,10 +991,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          */
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, uninitialized_t uninitialized, base base, layout layout)
@@ -1017,10 +1017,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
         void reset(const array_1d<len_type>& len, layout layout, MArray::index_base base)
         {
@@ -1036,10 +1036,10 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          *
-         * @param base    The base to use, either @ref BASE_ZERO or @ref BASE_ONE (a.k.a. @ref FORTRAN or
-         *                @ref MATLAB).
+         * @param base    The base to use, either [BASE_ZERO](@ref MArray::BASE_ZERO) or [BASE_ONE](@ref MArray::BASE_ONE) (a.k.a. [FORTRAN](@ref MArray::FORTRAN) or
+         *                [MATLAB](@ref MArray::MATLAB)).
          */
         void reset(const array_1d<len_type>& len, const Type& val, layout layout, MArray::index_base base)
         {
@@ -1053,7 +1053,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *              container type with elements convertible to tensor
          *              lengths, including initializer lists.
          *
-         * @param fortran    The token @ref FORTRAN.
+         * @param fortran    The token [FORTRAN](@ref MArray::FORTRAN).
          */
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, fortran_t fortran)
@@ -1073,7 +1073,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param val       Initialize all elements to this value.
          *
-         * @param fortran    The token @ref FORTRAN.
+         * @param fortran    The token [FORTRAN](@ref MArray::FORTRAN).
          */
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, const Type& val, fortran_t fortran)
@@ -1094,7 +1094,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          *
          * @param uninitialized   The token @ref uninitialized.
          *
-         * @param fortran    The token @ref FORTRAN.
+         * @param fortran    The token [FORTRAN](@ref MArray::FORTRAN).
          */
 #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, uninitialized_t uninitialized, fortran_t fortran)
@@ -1117,7 +1117,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
          * @param layout The layout to use, either #ROW_MAJOR or #COLUMN_MAJOR.
          *               If not specified, use the default layout.
          *
-         * @note Only available when `NDim != ` @ref DYNAMIC.
+         * @note Only available when `NDim != ` [DYNAMIC](@ref MArray::DYNAMIC).
          */
         void reset(initializer_type data, layout layout = DEFAULT_LAYOUT)
         {

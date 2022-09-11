@@ -1,1 +1,3 @@
-git+https://github.com/pieterdavid/mkdocs-doxygen-plugin
+breathe
+myst-parser
+sphinx-rtd-theme

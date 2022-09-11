@@ -29,7 +29,7 @@ void check_size(size_t size, const Stride& stride, const Strides&... strides)
  * offsets can be tracked along with the indices. Note that this class should not be constructed
  * directly, use @ref make_iterator instead.
  *
- * @tparam NDim     Either a non-negative number of dimensions (indices), or @ref DYNAMIC.
+ * @tparam NDim     Either a non-negative number of dimensions (indices), or [DYNAMIC](@ref MArray::DYNAMIC).
  *
  * @tparam N        The number of sets of strides to track.
  */
@@ -43,8 +43,8 @@ class index_iterator
          * The order of iteration is optimized for the first set of strides, if given.
          *
          * @param len       The length of each index. The number of lengths must match `NDim` if
-         *                  it is not @ref DYNAMIC. Can be any container type with values convertible
-         *                  to @ref len_type.
+         *                  it is not [DYNAMIC](@ref MArray::DYNAMIC). Can be any container type with values convertible
+         *                  to [len_type](@ref MArray::len_type).
          *
          * @param strides   A parameter pack of index strides. There must be exactly `N` parameters
          *                  in the pack, and each set of strides must have the same size as `len`.
@@ -266,7 +266,7 @@ class index_iterator
          * @endcode
          *
          * @param pos   The desired index combination. If the specified combination does not exist, the iterator
-         *              is left unchanged. Can be any container type with values convertible to @ref len_type.
+         *              is left unchanged. Can be any container type with values convertible to [len_type](@ref MArray::len_type).
          *              `pos` must be empty for an iterator with 0 dimensions.
          *
          * @param off   A parameter pack of offsets. There must be exactly `N` parameters in the pack, and each
@@ -492,7 +492,7 @@ class index_iterator
  * @endcode
  *
  * @param len       The lengths of each dimension. Can be any container type whose values are convertible to
- *                  @ref len_type.
+ *                  [len_type](@ref MArray::len_type).
  *
  * @param strides   A parameter pack of strides. There must be exactly `N` parameters in the pack. Can be any
  *                  container type whose values are convertible to @ref stride_type. The size of each set of strides

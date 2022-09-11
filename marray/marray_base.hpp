@@ -241,7 +241,7 @@ class marray_base
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param base  One of @ref BASE_ZERO, @ref BASE_ONE, @ref FORTRAN, or @ref MATLAB.
+         * @param base  One of [BASE_ZERO](@ref MArray::BASE_ZERO), [BASE_ONE](@ref MArray::BASE_ONE), [FORTRAN](@ref MArray::FORTRAN), or [MATLAB](@ref MArray::MATLAB).
          */
         void reset(const array_1d<len_type>& len, pointer ptr, const index_base& base)
         {
@@ -259,8 +259,8 @@ class marray_base
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param stride    The strides along each dimension, or a layout (one of @ref ROW_MAJOR, @ref COLUMN_MAJOR,
-         *                  @ref FORTRAN, @ref MATLAB). The stride is the distance
+         * @param stride    The strides along each dimension, or a layout (one of [ROW_MAJOR](@ref MArray::ROW_MAJOR), [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR),
+         *                  [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The stride is the distance
          *                  in memory (in units of the value type) between successive
          *                  elements along this direction. In general, the strides need
          *                  not be defined such that elements have unique locations,
@@ -286,13 +286,13 @@ class marray_base
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param base  The base for each index, or a standard base (one of @ref BASE_ZERO, @ref BASE_ONE,
-         *              @ref FORTRAN, @ref MATLAB). The base is the minimum value of the index. For example,
+         * @param base  The base for each index, or a standard base (one of [BASE_ZERO](@ref MArray::BASE_ZERO), [BASE_ONE](@ref MArray::BASE_ONE),
+         *              [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The base is the minimum value of the index. For example,
          *              a tensor with lengths (2,3,4) and base (1,6,0) can have valid indices along the three
          *              dimensions in the ranges [1,3), [6,9), and [0,4), respectively.
          *
-         * @param stride    The strides along each dimension, or a layout (one of @ref ROW_MAJOR, @ref COLUMN_MAJOR,
-         *                  @ref FORTRAN, @ref MATLAB). The stride is the distance
+         * @param stride    The strides along each dimension, or a layout (one of [ROW_MAJOR](@ref MArray::ROW_MAJOR), [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR),
+         *                  [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The stride is the distance
          *                  in memory (in units of the value type) between successive
          *                  elements along this direction. In general, the strides need
          *                  not be defined such that elements have unique locations,
@@ -331,7 +331,7 @@ class marray_base
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param fortran   Either the token @ref FORTRAN or @ref MATLAB.
+         * @param fortran   Either the token [FORTRAN](@ref MArray::FORTRAN) or [MATLAB](@ref MArray::MATLAB).
          */
  #if MARRAY_DOXYGEN
         void reset(const array_1d<len_type>& len, pointer ptr, fortran_t fortran)
@@ -391,8 +391,8 @@ class marray_base
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param stride    The strides along each dimension, or a layout (one of @ref ROW_MAJOR, @ref COLUMN_MAJOR,
-         *                  @ref FORTRAN, @ref MATLAB). The stride is the distance
+         * @param stride    The strides along each dimension, or a layout (one of [ROW_MAJOR](@ref MArray::ROW_MAJOR), [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR),
+         *                  [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The stride is the distance
          *                  in memory (in units of the value type) between successive
          *                  elements along this direction. In general, the strides need
          *                  not be defined such that elements have unique locations,
@@ -589,7 +589,7 @@ class marray_base
          *
          * @param len       The lengths of the hypothetical tensor.
          *
-         * @param layout    The layout to use, either @ref ROW_MAJOR or @ref COLUMN_MAJOR.
+         * @param layout    The layout to use, either [ROW_MAJOR](@ref MArray::ROW_MAJOR) or [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR).
          *                  If omitted, the default layout is used.
          *
          * @returns         The set of strides for the given lengths and layout.
@@ -699,7 +699,7 @@ class marray_base
          *              equal to the number of dimensions, and the supplied initializer
          *              lists must be "dense", i.e. every element must be specified.
          *
-         * @note Only available when `NDim != ` @ref DYNAMIC.
+         * @note Only available when `NDim != ` [DYNAMIC](@ref MArray::DYNAMIC).
          *
          * @return      *this
          */
@@ -1046,7 +1046,7 @@ class marray_base
         /**
          * Return an immutable view of this tensor.
          *
-         * @tparam N The number of dimensions in the view, or @ref DYNAMIC. The default is `NDim`.
+         * @tparam N The number of dimensions in the view, or [DYNAMIC](@ref MArray::DYNAMIC). The default is `NDim`.
          *
          * @return An immutable view.
          */
@@ -1064,7 +1064,7 @@ class marray_base
         /**
          * Return a view of this tensor.
          *
-         * @tparam N The number of dimensions in the view, or @ref DYNAMIC. The default is `NDim`.
+         * @tparam N The number of dimensions in the view, or [DYNAMIC](@ref MArray::DYNAMIC). The default is `NDim`.
          *
          * @return  A possibly-mutable tensor view. For a tensor
          *          ([marray](@ref MArray::marray)), the returned view is
@@ -1434,8 +1434,8 @@ class marray_base
          * Return a view that references the same data, but with a different base.
          *
          * @param new_base   The base of the new view. Either a container type with elements convertible to
-         *                   @ref len_type (including initializer lists), or one of the tokens @ref BASE_ZERO,
-         *                   @ref BASE_ONE, @ref FORTRAN, or @ref MATLAB.
+         *                   [len_type](@ref MArray::len_type) (including initializer lists), or one of the tokens [BASE_ZERO](@ref MArray::BASE_ZERO),
+         *                   [BASE_ONE](@ref MArray::BASE_ONE), [FORTRAN](@ref MArray::FORTRAN), or [MATLAB](@ref MArray::MATLAB).
          *
          * @return      A possibly-mutable tensor view. For a tensor
          *              ([marray](@ref MArray::marray)), the returned view is
@@ -1495,8 +1495,8 @@ class marray_base
         /**
          * Change the base for the indices.
          *
-         * @param new_base   The new base, either a container with elements convertible to @ref len_type or one
-         *                   of the tokens @ref BASE_ZERO, @ref BASE_ONE, @ref FORTRAN, or @ref MATLAB.
+         * @param new_base   The new base, either a container with elements convertible to [len_type](@ref MArray::len_type) or one
+         *                   of the tokens [BASE_ZERO](@ref MArray::BASE_ZERO), [BASE_ONE](@ref MArray::BASE_ONE), [FORTRAN](@ref MArray::FORTRAN), or [MATLAB](@ref MArray::MATLAB).
          */
         void rebase(const base_like& new_base)
         {
@@ -1686,7 +1686,7 @@ class marray_base
          * formed by combining multiple indices in the original view is equal to the base of index
          * with smallest stride.
          *
-         * @tparam NewNDim  The number of dimensions in the lowered view or @ref DYNAMIC.
+         * @tparam NewNDim  The number of dimensions in the lowered view or [DYNAMIC](@ref MArray::DYNAMIC).
          *
          * @param split The "split" or "pivot" vector. The number of split points/pivots
          *              must be equal to the number of dimensions in the lowered view
@@ -2139,7 +2139,7 @@ class marray_base
          * For a tensor view ([marray_view](@ref MArray::marray_view)), the final
          * view or reference is mutable if the value type is not const-qualified.
          *
-         * @note Only available when `NDim != ` @ref DYNAMIC. Otherwise, use @ref operator()().
+         * @note Only available when `NDim != ` [DYNAMIC](@ref MArray::DYNAMIC). Otherwise, use @ref operator()().
          *
          * @param i     The specified index. The dimension to which this index
          *              refers depends on how many [] operators have been applied.
@@ -2204,7 +2204,7 @@ class marray_base
          * For a tensor view ([marray_view](@ref MArray::marray_view)), the final
          * view is mutable if the value type is not const-qualified.
          *
-         * @note Only available when `NDim != ` @ref DYNAMIC. Otherwise, use @ref operator()().
+         * @note Only available when `NDim != ` [DYNAMIC](@ref MArray::DYNAMIC). Otherwise, use @ref operator()().
          *
          * @param x     The specified range (either the result of [range](@ref MArray::range) or
          *              [all](@ref MArray::slice::all)). The dimension to which this range
@@ -2263,7 +2263,7 @@ class marray_base
          * side of an assignment, but it can be used in the right-hand side of any tensor expression. Explicitly
          * broadcasting allows the dimensions of different tensors in the expression to be lined up as desired.
          *
-         * @note Only available when `NDim != ` @ref DYNAMIC. Otherwise, use @ref operator()().
+         * @note Only available when `NDim != ` [DYNAMIC](@ref MArray::DYNAMIC). Otherwise, use @ref operator()().
          *
          * @param bcast  The special token [bcast](@ref MArray::slice::bcast).
          *
@@ -2326,7 +2326,7 @@ class marray_base
          *
          * The result of `tensor(arg1, arg2, arg2, ...)` is exactly the same as
          * `tensor[arg1][arg2][arg2]...`, except that it is also applicable to tensors
-         * and views with `NDim == ` @ref DYNAMIC. In that case, the result is the same as
+         * and views with `NDim == ` [DYNAMIC](@ref MArray::DYNAMIC). In that case, the result is the same as
          * `tensor.view<N>()[arg1][arg2][arg3]...` where `N` is the number of non-broadcast
          * arguments, and must be the same as the number of tensor dimensions.
          *
@@ -2394,16 +2394,16 @@ class marray_base
         /**
          * Iterate over the elements and call a function.
          *
-         * @tparam N  The number of dimensions which will be iterated over, or @ref DYNAMIC.
-         *            If `NDim` and `N` are both not @ref DYNAMIC, then they must be equal.
+         * @tparam N  The number of dimensions which will be iterated over, or [DYNAMIC](@ref MArray::DYNAMIC).
+         *            If `NDim` and `N` are both not [DYNAMIC](@ref MArray::DYNAMIC), then they must be equal.
          *
          * @param f
          * @parblock  A function or functor callable as either `f(e)`, where `e` is a reference to a tensor element,
          *            or
          *
-         *            - if `N != ` @ref DYNAMIC : `f(e, i0, i1, ...)` where `i0, i1, ...` are indices, one for
+         *            - if `N != ` [DYNAMIC](@ref MArray::DYNAMIC) : `f(e, i0, i1, ...)` where `i0, i1, ...` are indices, one for
          *              each dimension, or
-         *            - if `N == ` @ref DYNAMIC : `f(e, idx)` where `idx` is an unspecified container
+         *            - if `N == ` [DYNAMIC](@ref MArray::DYNAMIC) : `f(e, idx)` where `idx` is an unspecified container
          *              type of indices, one for each dimension.
          *
          *            For a tensor ([marray](@ref MArray::marray)),
@@ -2616,7 +2616,7 @@ class marray_base
         /**
          * Return the number of dimensions.
          *
-         * @note The return value is only truly a constant expresson if `N` is not @ref DYNAMIC.
+         * @note The return value is only truly a constant expresson if `N` is not [DYNAMIC](@ref MArray::DYNAMIC).
          *
          * @return The number of dimensions.
          */
@@ -2633,11 +2633,15 @@ class marray_base
  *
  * @param x The tensor to view.
  *
+ * @tparam N The number of dimensions in the resulting view or [DYNAMIC](@ref MArray::DYNAMIC). The default is the same number of
+ *           dimensions in the tensor (if fixed), or [DYNAMIC](@ref MArray::DYNAMIC) (if not).
+ *
  * @return  An immutable view.
  *
  * @ingroup funcs
  */
 #if MARRAY_DOXYGEN
+template <int N>
 immutable_view cview(tensor_or_view x);
 #else
 template <typename Type, int NDim, typename Derived, bool Owner>
@@ -2651,6 +2655,18 @@ auto cview(const marray_slice<Type, NDim, NIndexed, Dims...>& x)
 {
     return x.cview();
 }
+
+template <int N, typename Type, int NDim, typename Derived, bool Owner>
+auto cview(const marray_base<Type, NDim, Derived, Owner>& x)
+{
+    return x.template cview<N>();
+}
+
+template <int N, typename Type, int NDim, int NIndexed, typename... Dims>
+auto cview(const marray_slice<Type, NDim, NIndexed, Dims...>& x)
+{
+    return x.template cview<N>();
+}
 #endif
 
 /**
@@ -2658,8 +2674,8 @@ auto cview(const marray_slice<Type, NDim, NIndexed, Dims...>& x)
  *
  * @param x The tensor to view.
  *
- * @tparam N The number of dimensions in the resulting view or @ref DYNAMIC. The default is the same number of
- *           dimensions (if fixed), or @ref DYNAMIC (if not), in the tensor.
+ * @tparam N The number of dimensions in the resulting view or [DYNAMIC](@ref MArray::DYNAMIC). The default is the same number of
+ *           dimensions in the tensor (if fixed), or [DYNAMIC](@ref MArray::DYNAMIC) (if not).
  *
  * @return  A possibly-mutable tensor view. For a tensor
  *          ([marray](@ref MArray::marray)), the returned view is immutable if the instance is const-qualified.

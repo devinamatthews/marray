@@ -406,7 +406,7 @@ class marray_slice
          * is as if the remaining dimensions were indexed with `[`[all](@ref MArray::slice::all)`]`.
          *
          * @tparam N  If not specified, the returned view has a fixed number of dimensions equal to the number
-         *            of sliced dimensions used to create this indexing object. If @ref DYNAMIC
+         *            of sliced dimensions used to create this indexing object. If [DYNAMIC](@ref MArray::DYNAMIC)
          *            is specified, then the resulting view will have a variable number of dimensons. A specific
          *            numerical value should not be used.
          *
@@ -431,7 +431,7 @@ class marray_slice
          * is as if the remaining dimensions were indexed with `[`[all](@ref MArray::slice::all)`]`.
          *
          * @tparam N  If not specified, the returned view has a fixed number of dimensions equal to the number
-         *            of sliced dimensions used to create this indexing object. If @ref DYNAMIC
+         *            of sliced dimensions used to create this indexing object. If [DYNAMIC](@ref MArray::DYNAMIC)
          *            is specified, then the resulting view will have a variable number of dimensons. A specific
          *            numerical value should not be used.
          *

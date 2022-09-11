@@ -119,7 +119,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param base  One of @ref BASE_ZERO, @ref BASE_ONE, @ref FORTRAN, or @ref MATLAB.
+         * @param base  One of [BASE_ZERO](@ref MArray::BASE_ZERO), [BASE_ONE](@ref MArray::BASE_ONE), [FORTRAN](@ref MArray::FORTRAN), or [MATLAB](@ref MArray::MATLAB).
          */
         marray_view(const array_1d<len_type>& len, pointer ptr, const index_base& base)
         {
@@ -137,8 +137,8 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param stride    The strides along each dimension, or a layout (one of @ref ROW_MAJOR, @ref COLUMN_MAJOR,
-         *                  @ref FORTRAN, @ref MATLAB). The stride is the distance
+         * @param stride    The strides along each dimension, or a layout (one of [ROW_MAJOR](@ref MArray::ROW_MAJOR), [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR),
+         *                  [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The stride is the distance
          *                  in memory (in units of the value type) between successive
          *                  elements along this direction. In general, the strides need
          *                  not be defined such that elements have unique locations,
@@ -164,13 +164,13 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param base  The base for each index, or a standard base (one of @ref BASE_ZERO, @ref BASE_ONE,
-         *              @ref FORTRAN, @ref MATLAB). The base is the minimum value of the index. For example,
+         * @param base  The base for each index, or a standard base (one of [BASE_ZERO](@ref MArray::BASE_ZERO), [BASE_ONE](@ref MArray::BASE_ONE),
+         *              [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The base is the minimum value of the index. For example,
          *              a tensor with lengths (2,3,4) and base (1,6,0) can have valid indices along the three
          *              dimensions in the ranges [1,3), [6,9), and [0,4), respectively.
          *
-         * @param stride    The strides along each dimension, or a layout (one of @ref ROW_MAJOR, @ref COLUMN_MAJOR,
-         *                  @ref FORTRAN, @ref MATLAB). The stride is the distance
+         * @param stride    The strides along each dimension, or a layout (one of [ROW_MAJOR](@ref MArray::ROW_MAJOR), [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR),
+         *                  [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The stride is the distance
          *                  in memory (in units of the value type) between successive
          *                  elements along this direction. In general, the strides need
          *                  not be defined such that elements have unique locations,
@@ -196,7 +196,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param fortran   Either the token @ref FORTRAN or @ref MATLAB.
+         * @param fortran   Either the token [FORTRAN](@ref MArray::FORTRAN) or [MATLAB](@ref MArray::MATLAB).
          */
  #if MARRAY_DOXYGEN
         marray_view(const array_1d<len_type>& len, pointer ptr, fortran_t fortran)
@@ -256,8 +256,8 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          *
-         * @param stride    The strides along each dimension, or a layout (one of @ref ROW_MAJOR, @ref COLUMN_MAJOR,
-         *                  @ref FORTRAN, @ref MATLAB). The stride is the distance
+         * @param stride    The strides along each dimension, or a layout (one of [ROW_MAJOR](@ref MArray::ROW_MAJOR), [COLUMN_MAJOR](@ref MArray::COLUMN_MAJOR),
+         *                  [FORTRAN](@ref MArray::FORTRAN), [MATLAB](@ref MArray::MATLAB)). The stride is the distance
          *                  in memory (in units of the value type) between successive
          *                  elements along this direction. In general, the strides need
          *                  not be defined such that elements have unique locations,
@@ -579,7 +579,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          * formed by combining multiple indices in the original view is equal to the base of index
          * with smallest stride.
          *
-         * This overload is only available for dynamic views (`NDim == ` @ref DYNAMIC).
+         * This overload is only available for dynamic views (`NDim == ` [DYNAMIC](@ref MArray::DYNAMIC)).
          *
          * @param split The "split" or "pivot" vector. The number of split points/pivots
          *              must be equal to the number of dimensions in the lowered view
