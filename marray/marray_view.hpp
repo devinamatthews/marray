@@ -668,6 +668,26 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         }
 
         /**
+         * Prepare the view for iteration "down" one dimension.
+         *
+         * @param dim   The dimension to be iterated over.
+         */
+        void first(int dim)
+        {
+            length(dim, 0);
+        }
+
+        /**
+         * Prepare the view for iteration "up" one dimension.
+         *
+         * @param dim   The dimension to be iterated over.
+         */
+        void last(int dim)
+        {
+            next(dim, 0);
+        }
+
+        /**
          * Set the tensor stride along the specified dimension.
          *
          * @param dim   The dimension whose stride to change.
