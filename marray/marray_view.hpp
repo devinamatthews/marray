@@ -85,6 +85,13 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         }
 
         /* Inherit docs */
+        template <typename U, int N, typename D, bool O>
+        marray_view(marray_base<U, N, D, O>&& other)
+        {
+            reset(other);
+        }
+
+        /* Inherit docs */
         template <typename U, int N, int I, typename... D>
         marray_view(const marray_slice<U, N, I, D...>& other)
         {

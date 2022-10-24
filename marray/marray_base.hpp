@@ -197,6 +197,12 @@ class marray_base
             reset(other.lengths(), other.data(), other.bases(), other.strides());
         }
 
+        template <typename U, int N, bool O, typename D>
+        void reset(marray_base<U, N, D, O>&& other)
+        {
+            reset(other);
+        }
+
         /* Inherit docs */
         template <typename U, int N, bool O, typename D>
         void reset(const marray_base<U, N, D, O>& other)
