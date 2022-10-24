@@ -93,7 +93,7 @@ class indexed_dpd_marray_base : detail::dpd_base
             idx_len_.clear();
             idx_.reset();
             dense_irrep_ = other.irrep_;
-            factor_ = {1};
+            factor_.assign(1, Type(1));
         }
 
         void reset(int irrep, int nirrep,
@@ -138,7 +138,7 @@ class indexed_dpd_marray_base : detail::dpd_base
             idx.slurp(idx_, ROW_MAJOR);
             idx_irrep.slurp(idx_irrep_);
             idx_len_.resize(idx_ndim);
-            factor_.assign(num_idx, Type(1));
+            factor_.assign(num_indices(), Type(1));
 
             for (auto i : range(idx_ndim))
             {

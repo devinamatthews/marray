@@ -208,7 +208,7 @@ class indexed_marray : public indexed_marray_base<Type, indexed_marray<Type, All
             idx_len_.assign(dense_len_.begin()+dense_dim, dense_len_.end());
             dense_len_.resize(dense_dim);
             dense_stride_ = marray_view<Type>::strides(dense_len_, layout);
-            factor_.assign(num_idx, Type(1));
+            factor_.assign(num_indices(), Type(1));
 
             layout_ = layout;
             data_.resize(num_idx);
