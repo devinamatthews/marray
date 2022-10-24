@@ -655,6 +655,19 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         /** @{ */
 
         /**
+         * Set the tensor data pointer.
+         *
+         * @param ptr  The new data pointer.
+         *
+         * @returns    The old data pointer.
+         */
+        pointer data(pointer ptr)
+        {
+            std::swap(ptr, data_);
+            return ptr;
+        }
+
+        /**
          * Set the tensor length along the specified dimension.
          *
          * @param dim   The dimension whose length to change.
