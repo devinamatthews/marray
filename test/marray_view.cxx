@@ -11,8 +11,8 @@ TEST(marray_view, constructor)
     double tmp;
     double* data = &tmp;
 
-    marray<double,3> v0({4, 2, 5});
-    marray<double,4> v01({3, 4, 2, 5});
+    marray<double,3> v0{4, 2, 5};
+    marray<double,4> v01{3, 4, 2, 5};
 
     marray_view<double,2> v1;
     EXPECT_EQ(nullptr, v1.data());
@@ -130,7 +130,7 @@ TEST(varray_view, constructor)
     double tmp;
     double* data = &tmp;
 
-    marray<double> v0({4, 2, 5});
+    marray<double> v0{4, 2, 5};
 
     marray_view<double> v1;
     EXPECT_EQ(0u, v1.dimension());
@@ -258,8 +258,8 @@ TEST(marray_view, reset)
     marray_view<const double,3> v2;
     marray_view<double,3> v3({4, 2, 5}, data);
     marray_view<const double,3> v4({4, 2, 5}, data);
-    marray<double,3> v0({4, 2, 5});
-    marray<double,4> v01({3, 4, 2, 5});
+    marray<double,3> v0{4, 2, 5};
+    marray<double,4> v01{3, 4, 2, 5};
 
     v1.reset({4, 2, 5}, data);
     EXPECT_EQ(data, v1.data());
@@ -379,7 +379,7 @@ TEST(varray_view, reset)
 
     marray_view<double> v1;
     marray_view<double> v2({4, 2, 5}, data);
-    marray<double> v0({4, 2, 5});
+    marray<double> v0{4, 2, 5};
 
     v1.reset({4, 2, 5}, data);
     EXPECT_EQ(3u, v1.dimension());
@@ -541,7 +541,7 @@ TEST(marray_view, assign)
     int data2[6] = {0, 1, 2,
                     3, 4, 5};
 
-    marray<double> v0({2, 3});
+    marray<double> v0{2, 3};
     marray_view<double> v1(v0);
 
     v1 = marray_view<double>({2, 3}, data1);
@@ -817,8 +817,8 @@ TEST(marray_view, lower)
 
 TEST(marray_view, fix)
 {
-    marray<double> v1({4, 2, 5});
-    marray<double> v2_({4, 2, 5});
+    marray<double> v1{4, 2, 5};
+    marray<double> v2_{4, 2, 5};
     marray_view<double> v2(v2_);
 
     auto m1 = v1.view<3>();
@@ -844,8 +844,8 @@ TEST(marray_view, fix)
 
 TEST(marray_view, vary)
 {
-    marray<double,3> m1({4, 2, 5});
-    marray<double,3> m2_({4, 2, 5});
+    marray<double,3> m1{4, 2, 5};
+    marray<double,3> m2_{4, 2, 5};
     marray_view<double,3> m2(m2_);
 
     auto v1 = m1.view<DYNAMIC>();
