@@ -85,6 +85,13 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         }
 
         /* Inherit docs */
+        template <typename U, int N, typename D, bool O>
+        marray_view(marray_base<U, N, D, O>&& other)
+        {
+            reset(other);
+        }
+
+        /* Inherit docs */
         template <typename U, int N, int I, typename... D>
         marray_view(const marray_slice<U, N, I, D...>& other)
         {
@@ -658,6 +665,19 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         /** @{ */
 
         /**
+         * Set the tensor data pointer.
+         *
+         * @param ptr  The new data pointer.
+         *
+         * @returns    The old data pointer.
+         */
+        pointer data(pointer ptr)
+        {
+            std::swap(ptr, data_);
+            return ptr;
+        }
+
+        /**
          * Set the tensor length along the specified dimension.
          *
          * @param dim   The dimension whose length to change.
@@ -675,6 +695,26 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
             MARRAY_ASSERT(bbox_off_[dim] + length(dim) * std::abs(stride(dim)) / bbox_stride_[dim] <= bbox_len_[dim]);
 #endif
             return len;
+        }
+
+        /**
+         * Prepare the view for iteration "down" one dimension.
+         *
+         * @param dim   The dimension to be iterated over.
+         */
+        void first(int dim)
+        {
+            length(dim, 0);
+        }
+
+        /**
+         * Prepare the view for iteration "up" one dimension.
+         *
+         * @param dim   The dimension to be iterated over.
+         */
+        void last(int dim)
+        {
+            next(dim, 0);
         }
 
         /**

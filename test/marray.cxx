@@ -13,7 +13,7 @@ TEST(marray, constructor)
     marray_view<double,3> v0({4, 2, 5}, data);
     marray_view<const double,3> v01({4, 2, 5}, data);
     marray_view<int,3> v02({4, 2, 5}, (int*)data);
-    marray<int,3> v03({4, 2, 5});
+    marray<int,3> v03{4, 2, 5};
     marray_view<double,4> v04({3, 4, 2, 5}, data);
 
     marray<double,2> v1;
@@ -21,7 +21,7 @@ TEST(marray, constructor)
     EXPECT_EQ((array<len_type,2>{0, 0}), v1.lengths());
     EXPECT_EQ((array<stride_type,2>{0, 0}), v1.strides());
 
-    marray<double,3> v2({4, 2, 5});
+    marray<double,3> v2{4, 2, 5};
     EXPECT_EQ((array<len_type,3>{4, 2, 5}), v2.lengths());
     EXPECT_EQ((array<stride_type,3>{10, 5, 1}), v2.strides());
     EXPECT_EQ(0, v2.data()[0]);
@@ -81,7 +81,7 @@ TEST(marray, constructor)
     EXPECT_EQ((array<stride_type,3>{10, 5, 1}), v51.strides());
     EXPECT_EQ(1, v51.data()[0]);
 
-    marray<double,3> v6(marray<double,3>({4, 2, 5}));
+    marray<double,3> v6(marray<double,3>{4, 2, 5});
     EXPECT_EQ((array<len_type,3>{4, 2, 5}), v6.lengths());
     EXPECT_EQ((array<stride_type,3>{10, 5, 1}), v6.strides());
 }
@@ -93,7 +93,7 @@ TEST(varray, constructor)
     marray_view<double> v0({4, 2, 5}, data);
     marray_view<const double> v01({4, 2, 5}, data);
     marray_view<int> v02({4, 2, 5}, (int*)data);
-    marray<int> v03({4, 2, 5});
+    marray<int> v03{4, 2, 5};
 
     marray<double> v1;
     EXPECT_EQ(0u, v1.dimension());
@@ -105,7 +105,7 @@ TEST(varray, constructor)
     EXPECT_EQ((stride_vector{10, 5, 1}), v21.strides());
     EXPECT_EQ(0, v21.data()[0]);
 
-    marray<double> v2({4, 2, 5});
+    marray<double> v2{4, 2, 5};
     EXPECT_EQ(3u, v2.dimension());
     EXPECT_EQ((len_vector{4, 2, 5}), v2.lengths());
     EXPECT_EQ((stride_vector{10, 5, 1}), v2.strides());
@@ -167,7 +167,7 @@ TEST(varray, constructor)
     EXPECT_EQ((stride_vector{10, 5, 1}), v51.strides());
     EXPECT_EQ(1, v51.data()[0]);
 
-    marray<double> v6(marray<double>({4, 2, 5}));
+    marray<double> v6(marray<double>{4, 2, 5});
     EXPECT_EQ(3u, v6.dimension());
     EXPECT_EQ((len_vector{4, 2, 5}), v6.lengths());
     EXPECT_EQ((stride_vector{10, 5, 1}), v6.strides());
@@ -180,7 +180,7 @@ TEST(marray, reset)
     marray_view<double,3> v0({4, 2, 5}, data);
     marray_view<const double,3> v01({4, 2, 5}, data);
     marray_view<int,3> v02({4, 2, 5}, (int*)data);
-    marray<int,3> v03({4, 2, 5});
+    marray<int,3> v03{4, 2, 5};
     marray_view<double,4> v04({3, 4, 2, 5}, data);
 
     marray<double,3> v1;
@@ -241,7 +241,7 @@ TEST(marray, reset)
     EXPECT_EQ((array<stride_type,3>{10, 5, 1}), v1.strides());
     EXPECT_EQ(1, v1.data()[0]);
 
-    v1.reset(marray<double,3>({4, 2, 5}));
+    v1.reset(marray<double,3>{4, 2, 5});
     EXPECT_EQ((array<len_type,3>{4, 2, 5}), v1.lengths());
     EXPECT_EQ((array<stride_type,3>{10, 5, 1}), v1.strides());
 
@@ -258,7 +258,7 @@ TEST(varray, reset)
     marray_view<double> v0({4, 2, 5}, data);
     marray_view<const double> v01({4, 2, 5}, data);
     marray_view<int> v02({4, 2, 5}, (int*)data);
-    marray<int> v03({4, 2, 5});
+    marray<int> v03{4, 2, 5};
 
     marray<double> v1;
     marray<double> v2({4, 2, 5}, 1.0);
@@ -325,7 +325,7 @@ TEST(varray, reset)
     EXPECT_EQ((stride_vector{10, 5, 1}), v1.strides());
     EXPECT_EQ(1, v1.data()[0]);
 
-    v1.reset(marray<double>({4, 2, 5}));
+    v1.reset(marray<double>{4, 2, 5});
     EXPECT_EQ(3u, v1.dimension());
     EXPECT_EQ((len_vector{4, 2, 5}), v1.lengths());
     EXPECT_EQ((stride_vector{10, 5, 1}), v1.strides());
@@ -396,7 +396,7 @@ TEST(varray, assign)
     int data2[6] = {0, 1, 2,
                     3, 4, 5};
 
-    marray<double> v1({2, 3});
+    marray<double> v1{2, 3};
 
     v1 = marray_view<double>({2, 3}, data1);
     EXPECT_EQ((len_vector{2, 3}), v1.lengths());
@@ -564,7 +564,7 @@ TEST(varray, push_pop)
 
 TEST(marray, view)
 {
-    marray<double,3> v1({4, 2, 5});
+    marray<double,3> v1{4, 2, 5};
 
     auto v2 = v1.cview();
     EXPECT_EQ((array<len_type,3>{4, 2, 5}), v2.lengths());
@@ -584,7 +584,7 @@ TEST(marray, view)
 
 TEST(varray, view)
 {
-    marray<double> v1({4, 2, 5});
+    marray<double> v1{4, 2, 5};
 
     auto v2 = v1.cview();
     EXPECT_EQ((len_vector{4, 2, 5}), v2.lengths());
@@ -604,7 +604,7 @@ TEST(varray, view)
 
 TEST(marray, permuted)
 {
-    marray<double,3> v1({4, 2, 5});
+    marray<double,3> v1{4, 2, 5};
 
     auto v2 = v1.permuted({1, 0, 2});
     EXPECT_EQ((array<len_type,3>{2, 4, 5}), v2.lengths());
@@ -616,7 +616,7 @@ TEST(marray, permuted)
     EXPECT_EQ((array<stride_type,3>{1, 10, 5}), v3.strides());
     EXPECT_EQ(v1.data(), v3.data());
 
-    auto v4 = const_cast<const marray<double,3>&>(v1).permuted({1, 0, 2});
+    auto v4 = const_cast<const marray<double,3>&>(v1).permuted{1, 0, 2};
     EXPECT_EQ((array<len_type,3>{2, 4, 5}), v4.lengths());
     EXPECT_EQ((array<stride_type,3>{5, 10, 1}), v4.strides());
     EXPECT_EQ(v1.data(), v4.data());
@@ -629,7 +629,7 @@ TEST(marray, permuted)
 
 TEST(varray, permuted)
 {
-    marray<double> v1({4, 2, 5});
+    marray<double> v1{4, 2, 5};
 
     auto v2 = v1.permuted({1, 0, 2});
     EXPECT_EQ((len_vector{2, 4, 5}), v2.lengths());
@@ -641,7 +641,7 @@ TEST(varray, permuted)
     EXPECT_EQ((stride_vector{1, 10, 5}), v3.strides());
     EXPECT_EQ(v1.data(), v3.data());
 
-    auto v4 = const_cast<const marray<double>&>(v1).permuted({1, 0, 2});
+    auto v4 = const_cast<const marray<double>&>(v1).permuted{1, 0, 2};
     EXPECT_EQ((len_vector{2, 4, 5}), v4.lengths());
     EXPECT_EQ((stride_vector{5, 10, 1}), v4.strides());
     EXPECT_EQ(v1.data(), v4.data());
@@ -654,7 +654,7 @@ TEST(varray, permuted)
 
 TEST(marray, transposed)
 {
-    marray<double,2> v1({4, 8});
+    marray<double,2> v1{4, 8};
 
     auto v2 = v1.transposed();
     EXPECT_EQ((array<len_type,2>{8, 4}), v2.lengths());
@@ -674,7 +674,7 @@ TEST(marray, transposed)
 
 TEST(marray, lowered)
 {
-    marray<double,3> v1({4, 2, 5});
+    marray<double,3> v1{4, 2, 5};
 
     auto v2 = v1.lowered<3>({1, 2});
     EXPECT_EQ((array<len_type,3>{4, 2, 5}), v2.lengths());
@@ -691,7 +691,7 @@ TEST(marray, lowered)
     EXPECT_EQ((array<stride_type,1>{1}), v4.strides());
     EXPECT_EQ(v1.data(), v4.data());
 
-    auto v5 = const_cast<const marray<double,3>&>(v1).lowered<3>({1, 2});
+    auto v5 = const_cast<const marray<double,3>&>(v1).lowered<3>{1, 2};
     EXPECT_EQ((array<len_type,3>{4, 2, 5}), v5.lengths());
     EXPECT_EQ((array<stride_type,3>{10, 5, 1}), v5.strides());
     EXPECT_EQ(v1.data(), v2.data());
@@ -699,7 +699,7 @@ TEST(marray, lowered)
 
 TEST(varray, lowered)
 {
-    marray<double> v1({4, 2, 5});
+    marray<double> v1{4, 2, 5};
 
     auto v2 = v1.lowered({1, 2});
     EXPECT_EQ((len_vector{4, 2, 5}), v2.lengths());
@@ -716,7 +716,7 @@ TEST(varray, lowered)
     EXPECT_EQ((stride_vector{1}), v4.strides());
     EXPECT_EQ(v1.data(), v4.data());
 
-    auto v5 = const_cast<const marray<double>&>(v1).lowered({1, 2});
+    auto v5 = const_cast<const marray<double>&>(v1).lowered{1, 2};
     EXPECT_EQ((len_vector{4, 2, 5}), v5.lengths());
     EXPECT_EQ((stride_vector{10, 5, 1}), v5.strides());
     EXPECT_EQ(v1.data(), v2.data());
@@ -801,7 +801,7 @@ TEST(marray, front_back)
     EXPECT_EQ(v1.data()+7, &v1.back());
     EXPECT_EQ(v1.data()+7, &(const_cast<const marray<double,1>&>(v1).back()));
 
-    marray<double,3> v2({4, 2, 5});
+    marray<double,3> v2{4, 2, 5};
 
     auto v3 = v2.cfront(0);
     EXPECT_EQ((array<len_type,2>{2, 5}), v3.lengths());
@@ -836,7 +836,7 @@ TEST(marray, front_back)
 
 TEST(varray, front_back)
 {
-    marray<double> v2({4, 2, 5});
+    marray<double> v2{4, 2, 5};
 
     auto v3 = v2.cfront(0);
     EXPECT_EQ((len_vector{2, 5}), v3.lengths());
@@ -1037,7 +1037,7 @@ TEST(varray, iteration)
                                       { 6, 7, 8},
                                       { 9,10,11}}};
 
-    marray<double> v1({4, 3});
+    marray<double> v1{4, 3};
     copy_n(&data[0][0], 12, v1.data());
     const marray<double> v2(v1);
 
@@ -1130,8 +1130,8 @@ TEST(varray, iteration)
 
 TEST(marray, swap)
 {
-    marray<double,3> v1({4, 2, 5});
-    marray<double,3> v2({3, 8, 3});
+    marray<double,3> v1{4, 2, 5};
+    marray<double,3> v2{3, 8, 3};
 
     auto data1 = v1.data();
     auto data2 = v2.data();
@@ -1157,8 +1157,8 @@ TEST(marray, swap)
 
 TEST(varray, swap)
 {
-    marray<double> v1({4, 2, 5});
-    marray<double> v2({3, 8});
+    marray<double> v1{4, 2, 5};
+    marray<double> v2{3, 8};
 
     auto data1 = v1.data();
     auto data2 = v2.data();

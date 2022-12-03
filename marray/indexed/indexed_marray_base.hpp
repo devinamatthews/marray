@@ -96,7 +96,7 @@ class indexed_marray_base
             idx_len_.assign(dense_len_.begin()+dense_dim, dense_len_.end());
             dense_len_.resize(dense_dim);
             dense_stride_ = marray_view<Type>::strides(dense_len_, layout);
-            factor_.assign(num_idx, Type(1));
+            factor_.assign(num_indices(), Type(1));
         }
 
         void reset(const array_1d<len_type>& len,
@@ -121,7 +121,7 @@ class indexed_marray_base
             idx_len_.assign(dense_len_.begin()+dense_dim, dense_len_.end());
             dense_len_.resize(dense_dim);
             stride.slurp(dense_stride_);
-            factor_.assign(num_idx, Type(1));
+            factor_.assign(num_indices(), Type(1));
         }
 
         /***********************************************************************
@@ -568,7 +568,7 @@ class indexed_marray_base
 
         len_type num_indices() const
         {
-            return idx_.length(0);
+            return std::max<len_type>(1, idx_.length(0));
         }
 
         stride_type dense_stride(int dim) const
