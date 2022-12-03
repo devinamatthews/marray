@@ -1693,6 +1693,8 @@ class marray_base
          * with smallest stride.
          *
          * @tparam NewNDim  The number of dimensions in the lowered view or [DYNAMIC](@ref MArray::DYNAMIC).
+         *                  If `split` is a comma-separated list of split points (e.g. `t.split(1, 3, 4)`),
+         *                  then `NewNDim` is deduced as the number of split points plus one.
          *
          * @param split The "split" or "pivot" vector. The number of split points/pivots
          *              must be equal to the number of dimensions in the lowered view
@@ -1705,7 +1707,9 @@ class marray_base
          *              lower-dimensional view. The split points must be
          *              in increasing order and in the range `[1,N)`. May be any
          *              one-dimensional container type whose elements are convertible
-         *              to `int`, including initializer lists.
+         *              to `int`, including initializer lists, or a comma-separated list of
+         *              split points (i.e. multiple arguments of any integral type, one
+         *              for each split point).
          *
          * @return      A possibly-mutable tensor view. For a tensor
          *              ([marray](@ref MArray::marray)), the returned view is
@@ -1780,9 +1784,25 @@ class marray_base
 
         /* Inherit docs */
         template <int NewNDim=DYNAMIC>
-        marray_view<ctype, NewNDim> lowered(const array_1d<int>& split) const
+        auto lowered(const array_1d<int>& split) const
         {
             return const_cast<marray_base&>(*this).lowered<NewNDim>(split);
+        }
+
+        /* Inherit docs */
+        template <typename... Splits>
+        std::enable_if_t<detail::are_convertible<int,Splits...>::value,marray_view<Type,sizeof...(Splits)+1>>
+        lowered(const Splits... splits)
+        {
+            return lowered<sizeof...(Splits)+1>({(int)splits...});
+        }
+
+        /* Inherit docs */
+        template <typename... Splits>
+        std::enable_if_t<detail::are_convertible<int,Splits...>::value,marray_view<ctype,sizeof...(Splits)+1>>
+        lowered(const Splits... splits) const
+        {
+            return lowered<sizeof...(Splits)+1>({(int)splits...});
         }
 #endif
 
