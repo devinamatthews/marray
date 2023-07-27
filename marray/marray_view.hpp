@@ -13,7 +13,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
     template <typename, int, typename, bool, int> friend class marray_base;
     template <typename, int, int> friend class marray_view;
     template <typename, int, typename> friend class marray;
-    template <typename, int, int, typename...> friend class marray_slice;
+    template <typename, int, int, int, typename...> friend class marray_slice;
 
     protected:
         typedef marray_base<Type, NDim, marray_view, false, Tags> base_class;
@@ -92,8 +92,8 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
         }
 
         /* Inherit docs */
-        template <typename U, int N, int I, typename... D>
-        marray_view(const marray_slice<U, N, I, D...>& other)
+        template <typename U, int N, int I, int T, typename... D>
+        marray_view(const marray_slice<U, N, I, T, D...>& other)
         {
             reset(other);
         }
@@ -507,7 +507,9 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
          *              a permutation of `[0,NDim)`, where `NDim` is the number of
          *              tensor dimensions.
          */
-        void permute(const array_1d<int, NDim>& perm)
+        template <int Tags_=Tags>
+        std::enable_if_t<detail::is_gen_stored(Tags_)>
+        permute(const array_1d<int, NDim>& perm)
         {
             MARRAY_ASSERT(perm.size() == dimension());
 
@@ -553,7 +555,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
         void permute(const Perm&... perm)
 #else
         template <typename... Perm>
-        std::enable_if_t<detail::are_convertible<int,Perm...>::value>
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value && detail::is_gen_stored(Tags)>
         permute(const Perm&... perm)
 #endif
         {
@@ -567,7 +569,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
          * This overload is only available for matrix views.
          */
 #if !MARRAY_DOXYGEN
-        template <typename=void, int N=NDim, typename=std::enable_if_t<N==2>>
+        template <typename=void, int N=NDim, typename=std::enable_if_t<N==2 && detail::is_gen_stored(Tags)>>
 #endif
         void transpose()
         {
@@ -629,7 +631,9 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
          * `n-1-i` in the original view, where `n` is the tensor length along
          * that dimension.
          */
-        void reverse()
+        template <int Tags_=Tags>
+        std::enable_if_t<detail::is_gen_stored(Tags_)>
+        reverse()
         {
             for (auto i : range(dimension()))
                 reverse(i);
@@ -644,7 +648,9 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
          *
          * @param dim  The dimension along which to reverse the indices.
          */
-        void reverse(int dim)
+        template <int Tags_=Tags>
+        std::enable_if_t<detail::is_gen_stored(Tags_)>
+        reverse(int dim)
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
             data_ += (length(dim)-1) * stride(dim);
@@ -724,8 +730,8 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>
         stride_type stride(int dim, stride_type str)
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
-            if ((Tags == ROW_STORED && dim == dimension()-1) ||
-                (Tags == COLUMN_STORED && dim == 0))
+            if ((detail::is_row_stored(Tags) && dim == dimension()-1) ||
+                (detail::is_col_stored(Tags) && dim == 0))
                 MARRAY_ASSERT(str == 1);
             std::swap(str, stride_[dim]);
 #ifdef MARRAY_ENABLE_ASSERTS

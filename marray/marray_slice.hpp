@@ -25,13 +25,13 @@ struct slice_dim
     : dim(dim), len(len), off(off), stride(stride) {}
 };
 
-template <typename Type, int NDim, int NIndexed, typename... Dims>
+template <typename Type, int NDim, int NIndexed, int Tags, typename... Dims>
 class marray_slice
 {
     template <typename, int, typename, bool, int> friend class marray_base;
     template <typename, int, typename> friend class marray;
     template <typename, int, int> friend class marray_view;
-    template <typename, int, int, typename...> friend class marray_slice;
+    template <typename, int, int, int, typename...> friend class marray_slice;
 
     public:
         typedef typename marray_view<Type, NDim>::value_type value_type;
@@ -59,7 +59,7 @@ class marray_slice
         static constexpr int NSliced = sizeof...(Dims);
 
     public:
-        static constexpr int NewNDim = (... || std::is_same_v<Dims,bcast_dim>) ? 0 : NSliced + DimsLeft;
+        static constexpr int NewNDim = (... || std::is_same_v<Dims,bcast_dim>) ? 0 : (NSliced + DimsLeft);
 
     protected:
         marray_slice(const marray_slice& other) = default;
@@ -112,7 +112,7 @@ class marray_slice
           dims_(bcast_dim{})
         {}
 
-        marray_slice(const marray_slice<Type, NDim, NIndexed-1, Dims...>& parent, len_type i)
+        marray_slice(const marray_slice<Type, NDim, NIndexed-1, Tags, Dims...>& parent, len_type i)
         : data_(parent.data_ + i*parent.stride_[CurDim]),
           base_(parent.base_),
           len_(parent.len_),
@@ -127,7 +127,7 @@ class marray_slice
         {}
 
         template <typename... OldDims, typename I>
-        marray_slice(const marray_slice<Type, NDim, NIndexed-1, OldDims...>& parent, const range_t<I>& slice)
+        marray_slice(const marray_slice<Type, NDim, NIndexed-1, Tags, OldDims...>& parent, const range_t<I>& slice)
         : data_(parent.data_ + slice.front()*parent.stride_[CurDim]),
           base_(parent.base_),
           len_(parent.len_),
@@ -146,7 +146,7 @@ class marray_slice
         {}
 
         template <typename... OldDims>
-        marray_slice(const marray_slice<Type, NDim, NIndexed, OldDims...>& parent,
+        marray_slice(const marray_slice<Type, NDim, NIndexed, Tags, OldDims...>& parent,
                      bcast_t)
         : data_(parent.data_),
           base_(parent.base_),
@@ -330,7 +330,7 @@ class marray_slice
         {
             i -= base(NextDim);
             MARRAY_ASSERT(i >= 0 && i < length(NextDim));
-            return data_[i * stride(NextDim)];
+            return data_[i * (detail::is_row_stored(Tags) ? 1 : stride(NextDim))];
         }
 
         /* Inherit docs */
@@ -340,7 +340,7 @@ class marray_slice
             static_assert(DimsLeft, "No more dimensions to index");
             i -= base(NextDim);
             MARRAY_ASSERT(i >= 0 && i < length(NextDim));
-            auto slice = marray_slice<Type, NDim, NIndexed+1, Dims...>{*this, i};
+            auto slice = marray_slice<Type, NDim, NIndexed+1, Tags, Dims...>{*this, i};
             if constexpr (DimsLeft == 1)
                 return slice.view();
             else
@@ -354,7 +354,7 @@ class marray_slice
             static_assert(DimsLeft, "No more dimensions to index");
             x -= base(NextDim);
             MARRAY_ASSERT_RANGE_IN(x, 0, length(NextDim));
-            auto slice = marray_slice<Type, NDim, NIndexed+1, Dims..., slice_dim>{*this, x};
+            auto slice = marray_slice<Type, NDim, NIndexed+1, Tags, Dims..., slice_dim>{*this, x};
             if constexpr (DimsLeft == 1)
                 return slice.view();
             else
@@ -371,7 +371,7 @@ class marray_slice
         /* Inherit docs */
         auto operator[](bcast_t) const
         {
-            return marray_slice<Type, NDim, NIndexed, Dims..., bcast_dim>{*this, slice::bcast};
+            return marray_slice<Type, NDim, NIndexed, Tags, Dims..., bcast_dim>{*this, slice::bcast};
         }
 
         /**
@@ -488,7 +488,8 @@ class marray_slice
         len_type base(int dim) const
         {
             MARRAY_ASSERT(dim >= 0 && dim < NDim);
-            return base_[dim];
+            return detail::is_zero_based(Tags) ? 0 :
+                   detail::is_one_based(Tags) ? 1 : base_[dim];
         }
 
         len_type length(int dim) const
@@ -500,7 +501,8 @@ class marray_slice
         stride_type stride(int dim) const
         {
             MARRAY_ASSERT(dim >= 0 && dim < NDim);
-            return stride_[dim];
+            return (detail::is_col_stored(Tags) && CurDim == 0) ||
+                   (detail::is_row_stored(Tags) && CurDim == NDim-1) ? 1 : stride_[dim];
         }
 };
 

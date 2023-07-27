@@ -42,6 +42,28 @@ constexpr int ROW_STORED = 2;
 #endif
 
 /**
+ * Special value which indicates that the tensor is accessed using base-0 indices (e.g. C/C++ style).
+ *
+ * @ingroup constants
+ */
+#if MARRAY_DOXYGEN
+constexpr int ZERO_BASED;
+#else
+constexpr int ZERO_BASED = 1 << 2;
+#endif
+
+/**
+ * Special value which indicates that the tensor is accessed using base-1 indices (e.g. Fortran or Matlab style).
+ *
+ * @ingroup constants
+ */
+#if MARRAY_DOXYGEN
+constexpr int ONE_BASED;
+#else
+constexpr int ONE_BASED = 2 << 2;
+#endif
+
+/**
  * A partially-indexed tensor.
  *
  * This type cannot be constructed directly, but is returned by indexing a tensor
@@ -57,7 +79,7 @@ constexpr int ROW_STORED = 2;
  *
  * @ingroup classes
  */
-template <typename Type, int NDim, int NIndexed, typename... Dims>
+template <typename Type, int NDim, int NIndexed, int Tags, typename... Dims>
 class marray_slice;
 
 /**

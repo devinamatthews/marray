@@ -578,8 +578,8 @@ struct slice_array_expr_helper<array_expr<T, Dims2...>, Dims1...>
 template <typename Expr>
 struct expression_type<Expr, std::enable_if_t<detail::is_marray_like_v<std::decay_t<Expr>>>>
 {
-    template <typename T, int NDim, int NIndexed, typename... Dims>
-    static typename slice_array_expr_helper<typename array_expr_helper<T, NDim-NIndexed>::type, Dims...>::type check(const marray_slice<T, NDim, NIndexed, Dims...>*);
+    template <typename T, int NDim, int NIndexed, int Tags, typename... Dims>
+    static typename slice_array_expr_helper<typename array_expr_helper<T, NDim-NIndexed>::type, Dims...>::type check(const marray_slice<T, NDim, NIndexed, Tags, Dims...>*);
 
     template <typename T, int NDim, typename Derived, int Tags>
     static typename array_expr_helper<T, NDim>::type check(const marray_base<T, NDim, Derived, false, Tags>*);
@@ -602,10 +602,10 @@ struct expression_type<Expr, std::enable_if_t<is_expression<std::decay_t<Expr>>:
     typedef std::decay_t<Expr> type;
 };
 
-template <typename T, int NDim, int NIndexed, typename... Dims,
+template <typename T, int NDim, int NIndexed, int Tags, typename... Dims,
           int... I, int... J>
-expression_type_t<marray_slice<T, NDim, NIndexed, Dims...>>
-make_expression_helper(const marray_slice<T, NDim, NIndexed, Dims...>& x,
+expression_type_t<marray_slice<T, NDim, NIndexed, Tags, Dims...>>
+make_expression_helper(const marray_slice<T, NDim, NIndexed, Tags, Dims...>& x,
                        std::integer_sequence<int, I...>,
                        std::integer_sequence<int, J...>)
 {
@@ -621,8 +621,7 @@ expression_type_t<const marray_base<T, NDim, Derived, Owner>>
 make_expression_helper(const marray_base<T, NDim, Derived, Owner, Tags>& x,
                        std::integer_sequence<int, I...>)
 {
-    return {x.data(), slice_dim(x.base(I), x.length(I), 0, Tags == COLUMN_STORED && I == 0 ? 1 :
-                                                           Tags == ROW_STORED && I == NDim-1 ? 1 : x.stride(I))...};
+    return {x.data(), slice_dim(x.base(I), x.length(I), 0, x.stride(I))...};
 }
 
 template <typename T, int NDim, typename Derived, bool Owner, int Tags, int... I>
@@ -630,13 +629,12 @@ expression_type_t<marray_base<T, NDim, Derived, Owner>>
 make_expression_helper(marray_base<T, NDim, Derived, Owner, Tags>& x,
                        std::integer_sequence<int, I...>)
 {
-    return {x.data(), slice_dim(x.base(I), x.length(I), 0, Tags == COLUMN_STORED && I == 0 ? 1 :
-                                                           Tags == ROW_STORED && I == NDim-1 ? 1 : x.stride(I))...};
+    return {x.data(), slice_dim(x.base(I), x.length(I), 0, x.stride(I))...};
 }
 
-template <typename T, int NDim, int NIndexed, typename... Dims>
-expression_type_t<marray_slice<T, NDim, NIndexed, Dims...>>
-make_expression(const marray_slice<T, NDim, NIndexed, Dims...>& x)
+template <typename T, int NDim, int NIndexed, int Tags, typename... Dims>
+expression_type_t<marray_slice<T, NDim, NIndexed, Tags, Dims...>>
+make_expression(const marray_slice<T, NDim, NIndexed, Tags, Dims...>& x)
 {
     return make_expression_helper(x, std::make_integer_sequence<int, sizeof...(Dims)>(),
                                      std::make_integer_sequence<int, NDim-NIndexed>());

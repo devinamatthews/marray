@@ -134,30 +134,30 @@ auto repartition(const range_t<I>& A, const range_t<I>& B, direction dir = FORWA
     if (dir == FORWARD)
     {
         MARRAY_ASSERT(B.size() > 0);
-        return std::make_tuple(A, B.front(), range(B.front()+1, B.back()+1));
+        return std::make_tuple(A, B.from(), range(B.from()+1, B.to()));
     }
     else
     {
         MARRAY_ASSERT(A.size() > 0);
-        return std::make_tuple(range(A.front(), A.back()), A.back(), B);
+        return std::make_tuple(range(A.from(), A.to()-1), A.to()-1, B);
     }
 }
 
 template <typename I>
 auto repartition(const range_t<I>& A, I b, const range_t<I>& C, direction dir = FORWARD)
 {
-    MARRAY_ASSERT(A.back()+1 == b.front());
+    MARRAY_ASSERT(A.back()+1 == b);
     MARRAY_ASSERT(b+1 == C.front());
 
     if (dir == FORWARD)
     {
         MARRAY_ASSERT(C.size() > 0);
-        return std::make_tuple(A, b, b+1, range(C.front()+1, C.back()+1));
+        return std::make_tuple(A, b, b+1, range(C.from()+1, C.to()));
     }
     else
     {
         MARRAY_ASSERT(A.size() > 0);
-        return std::make_tuple(range(A.front(), A.back()), b-1, b, C);
+        return std::make_tuple(range(A.from(), A.to()-1), b-1, b, C);
     }
 }
 
@@ -190,11 +190,11 @@ auto continue_with(const range_t<I>& R0, I r1, const range_t<I>& R2, direction d
 
     if (dir == FORWARD)
     {
-        return std::make_tuple(range(R0.front(), r1+1), R2);
+        return std::make_tuple(range(R0.from(), R0.to()+1), R2);
     }
     else
     {
-        return std::make_tuple(R0, range(r1, R2.back()+1));
+        return std::make_tuple(R0, range(R2.from()-1, R2.to()));
     }
 }
 
@@ -207,11 +207,11 @@ auto continue_with(const range_t<I>& R0, I r1, I r2, const range_t<I>& R3, direc
 
     if (dir == FORWARD)
     {
-        return std::make_tuple(range(R0.front(), r1+1), r2, R3);
+        return std::make_tuple(range(R0.from(), R0.to()+1), r2, R3);
     }
     else
     {
-        return std::make_tuple(R0, r1, range(r2, R3.back()+1));
+        return std::make_tuple(R0, r1, range(R3.from()-1, R3.to()));
     }
 }
 
@@ -225,11 +225,11 @@ auto continue_with(const range_t<I>& R0, const range_t<I>& R1, const range_t<I>&
 
     if (dir == FORWARD)
     {
-        return std::make_tuple(range(R0.front(), R1.back()+1), R2);
+        return std::make_tuple(range(R0.from(), R1.to()), R2);
     }
     else
     {
-        return std::make_tuple(R0, range(R1.front(), R2.back()+1));
+        return std::make_tuple(R0, range(R1.from(), R2.to()));
     }
 }
 

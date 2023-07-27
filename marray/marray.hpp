@@ -12,7 +12,7 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
     template <typename, int, typename, bool, int> friend class marray_base;
     template <typename, int, int> friend class marray_view;
     template <typename, int, typename> friend class marray;
-    template <typename, int, int, typename...> friend class marray_slice;
+    template <typename, int, int, int, typename...> friend class marray_slice;
 
     protected:
         typedef marray_base<Type, NDim, marray, true> base_class;
@@ -57,8 +57,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         marray(tensor_or_view other);
 #else
-        template <typename U, int N, int I, typename... D>
-        marray(const marray_slice<U, N, I, D...>& other)
+        template <typename U, int N, int I, int T, typename... D>
+        marray(const marray_slice<U, N, I, T, D...>& other)
         {
             reset(other);
         }
@@ -97,8 +97,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         marray(tensor_or_view other, layout layout);
 #else
-        template <typename U, int N, int I, typename... D>
-        marray(const marray_slice<U, N, I, D...>& other, layout layout)
+        template <typename U, int N, int I, int T, typename... D>
+        marray(const marray_slice<U, N, I, T, D...>& other, layout layout)
         {
             reset(other, layout);
         }
@@ -131,8 +131,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         marray(tensor_or_view other, base base);
 #else
-        template <typename U, int N, int I, typename... D>
-        marray(const marray_slice<U, N, I, D...>& other, index_base base)
+        template <typename U, int N, int I, int T, typename... D>
+        marray(const marray_slice<U, N, I, T, D...>& other, index_base base)
         {
             reset(other, base);
         }
@@ -164,8 +164,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         marray(tensor_or_view other, base base, layout layout);
 #else
-        template <typename U, int N, int I, typename... D>
-        marray(const marray_slice<U, N, I, D...>& other, index_base base, layout layout)
+        template <typename U, int N, int I, int T, typename... D>
+        marray(const marray_slice<U, N, I, T, D...>& other, index_base base, layout layout)
         {
             reset(other, base, layout);
         }
@@ -188,8 +188,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         marray(tensor_or_view other, fortran_t fortran);
 #else
-        template <typename U, int N, int I, typename... D>
-        marray(const marray_slice<U, N, I, D...>& other, fortran_t)
+        template <typename U, int N, int I, int T, typename... D>
+        marray(const marray_slice<U, N, I, T, D...>& other, fortran_t)
         {
             reset(other, FORTRAN);
         }
@@ -656,8 +656,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         void reset(tensor_or_view other);
 #else
-        template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other)
+        template <typename U, int N, int I, int T, typename... D>
+        void reset(const marray_slice<U, N, I, T, D...>& other)
         {
             reset(other.view(), DEFAULT_BASE, DEFAULT_LAYOUT);
         }
@@ -690,8 +690,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         void reset(tensor_or_view other, layout layout);
 #else
-        template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other, layout layout)
+        template <typename U, int N, int I, int T, typename... D>
+        void reset(const marray_slice<U, N, I, T, D...>& other, layout layout)
         {
             reset(other.view(), DEFAULT_BASE, layout);
         }
@@ -724,8 +724,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         void reset(tensor_or_view other, base base);
 #else
-        template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other, MArray::index_base base)
+        template <typename U, int N, int I, int T, typename... D>
+        void reset(const marray_slice<U, N, I, T, D...>& other, MArray::index_base base)
         {
             reset(other.view(), base, DEFAULT_LAYOUT);
         }
@@ -757,8 +757,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         void reset(tensor_or_view other, base base, layout layout);
 #else
-        template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other, MArray::index_base base, layout layout)
+        template <typename U, int N, int I, int T, typename... D>
+        void reset(const marray_slice<U, N, I, T, D...>& other, MArray::index_base base, layout layout)
         {
             reset(other.view(), base, layout);
         }
@@ -790,8 +790,8 @@ class marray : public marray_base<Type, NDim, marray<Type, NDim, Allocator>, tru
 #if MARRAY_DOXYGEN
         void reset(tensor_or_view other, fortran_t fortran);
 #else
-        template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other, fortran_t)
+        template <typename U, int N, int I, int T, typename... D>
+        void reset(const marray_slice<U, N, I, T, D...>& other, fortran_t)
         {
             reset(other.view(), BASE_ONE, COLUMN_MAJOR);
         }

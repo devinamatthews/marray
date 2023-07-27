@@ -507,9 +507,9 @@ constexpr static auto is_marray_or_view_v = is_marray_or_view<T, NDim>::value;
 template <typename T, int NDim>
 struct is_marray_slice_helper : std::false_type {};
 
-template <typename T, int NDim, int NIndexed, typename... Dims, int NDimReq>
-struct is_marray_slice_helper<marray_slice<T, NDim, NIndexed, Dims...>, NDimReq>
-: are_dims_compatible<marray_slice<T, NDim, NIndexed, Dims...>::NewNDim, NDimReq> {};
+template <typename T, int NDim, int NIndexed, int Tags, typename... Dims, int NDimReq>
+struct is_marray_slice_helper<marray_slice<T, NDim, NIndexed, Tags, Dims...>, NDimReq>
+: are_dims_compatible<marray_slice<T, NDim, NIndexed, Tags, Dims...>::NewNDim, NDimReq> {};
 
 template <typename T, int NDim=DYNAMIC>
 struct is_marray_slice : is_marray_slice_helper<std::decay_t<T>, NDim> {};
@@ -531,6 +531,61 @@ struct is_complex<std::complex<T>> : std::true_type {};
 
 template <typename T>
 constexpr static auto is_complex_v = is_complex<T>::value;
+
+constexpr static auto STORAGE_TAG_BITS = 0b0011;
+constexpr static auto BASE_TAG_BITS = 0b1100;
+
+constexpr auto clear_storage_tag(int tags)
+{
+    return tags & ~STORAGE_TAG_BITS;
+}
+
+constexpr auto clear_storage_tag_if(int tags, bool cond)
+{
+    return cond ? clear_storage_tag(tags) : tags;
+}
+
+constexpr auto is_row_stored(int tags)
+{
+    return (tags & STORAGE_TAG_BITS) == ROW_STORED;
+}
+
+constexpr auto is_col_stored(int tags)
+{
+    return (tags & STORAGE_TAG_BITS) == COLUMN_STORED;
+}
+
+constexpr auto is_gen_stored(int tags)
+{
+    return (tags & STORAGE_TAG_BITS) == 0;
+}
+
+constexpr auto flip_storage_tag(int tags)
+{
+    return (is_row_stored(tags) ? COLUMN_STORED :
+            is_col_stored(tags) ? ROW_STORED : 0)
+           | clear_storage_tag(tags);
+}
+
+constexpr auto clear_base_tag(int tags)
+{
+    return tags & ~BASE_TAG_BITS;
+}
+
+constexpr auto is_zero_based(int tags)
+{
+    return (tags & BASE_TAG_BITS) == ZERO_BASED;
+}
+
+constexpr auto is_one_based(int tags)
+{
+    return (tags & BASE_TAG_BITS) == ONE_BASED;
+}
+
+constexpr auto is_gen_based(int tags)
+{
+    return (tags & BASE_TAG_BITS) == 0;
+}
 
 }
 }

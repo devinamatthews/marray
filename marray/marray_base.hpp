@@ -20,12 +20,12 @@ template <typename Type, int NDim, typename Derived, bool Owner, int Tags>
 class marray_base
 {
     static_assert(NDim > 0 || NDim == DYNAMIC, "NDim must be positive or DYNAMIC");
-    static_assert(NDim != DYNAMIC || Tags == 0, "A dynamic tensor cannot have storage tags");
+    static_assert(NDim != DYNAMIC || detail::is_gen_stored(Tags), "A dynamic tensor cannot have storage tags");
 
     template <typename, int, typename, bool, int> friend class marray_base;
     template <typename, int, int> friend class marray_view;
     template <typename, int, typename> friend class marray;
-    template <typename, int, int, typename...> friend class marray_slice;
+    template <typename, int, int, int, typename...> friend class marray_slice;
 
     public:
         /***********************************************************************
@@ -239,8 +239,8 @@ class marray_base
         }
 
         /* Inherit docs */
-        template <typename U, int N, int I, typename... D>
-        void reset(const marray_slice<U, N, I, D...>& other)
+        template <typename U, int N, int I, int T, typename... D>
+        void reset(const marray_slice<U, N, I, T, D...>& other)
         {
             reset(other.view());
         }
@@ -323,11 +323,19 @@ class marray_base
             base.base(len_, base_);
             stride.stride(len_, stride_);
 
-            if (Tags == COLUMN_STORED)
+            if (detail::is_col_stored(Tags))
                 MARRAY_ASSERT(stride_.front() == 1);
 
-            if (Tags == ROW_STORED)
+            if (detail::is_row_stored(Tags))
                 MARRAY_ASSERT(stride_.back() == 1);
+
+            if (detail::is_zero_based(Tags))
+                for (auto i : range(dimension()))
+                    MARRAY_ASSERT(base_[i] == 0);
+
+            if (detail::is_one_based(Tags))
+                for (auto i : range(dimension()))
+                    MARRAY_ASSERT(base_[i] == 1);
 
             for (auto i : range(dimension()))
                 MARRAY_ASSERT(len_[i] >= 0);
@@ -529,19 +537,19 @@ class marray_base
 
             if constexpr (std::is_same_v<std::decay_t<Arg>,bcast_t>)
             {
-                return marray_slice<T, N, 0, bcast_dim>{*this, slice::bcast}(args...);
+                return marray_slice<T, N, 0, Tags, bcast_dim>{*this, slice::bcast}(args...);
             }
             else if constexpr (std::is_same_v<std::decay_t<Arg>,all_t>)
             {
-                return marray_slice<T, N, 1, slice_dim>{*this, range(length(0))}(args...);
+                return marray_slice<T, N, 1, Tags, slice_dim>{*this, range(length(0))}(args...);
             }
             else if constexpr (std::is_convertible_v<Arg,len_type>)
             {
-                return marray_slice<T, N, 1>{*this, arg}(args...);
+                return marray_slice<T, N, 1, Tags>{*this, arg}(args...);
             }
             else
             {
-                return marray_slice<T, N, 1, slice_dim>{*this, arg}(args...);
+                return marray_slice<T, N, 1, Tags, slice_dim>{*this, arg}(args...);
             }
         }
 
@@ -589,13 +597,13 @@ class marray_base
             {
                 stride[ndim-1] = 1;
                 for (auto i : reversed_range(ndim-1))
-                    stride[i] = stride[i+1]*len_[i+1];
+                    stride[i] = stride[i+1]*len[i+1];
             }
             else
             {
                 stride[0] = 1;
                 for (auto i : range(1,ndim))
-                    stride[i] = stride[i-1]*len_[i-1];
+                    stride[i] = stride[i-1]*len[i-1];
             }
 
             return stride;
@@ -785,17 +793,17 @@ class marray_base
         }
 
         /* Inherit docs */
-        template <typename U, int N, int I, typename... D>
-        std::enable_if_t<NDim == DYNAMIC || NDim == marray_slice<U, N, I, D...>::NewNDim, Derived&>
-        operator=(const marray_slice<U, N, I, D...>& other)
+        template <typename U, int N, int I, int T, typename... D>
+        std::enable_if_t<NDim == DYNAMIC || NDim == marray_slice<U, N, I, T, D...>::NewNDim, Derived&>
+        operator=(const marray_slice<U, N, I, T, D...>& other)
         {
             return *this = other.view();
         }
 
         /* Inherit docs */
-        template <typename U, int N, int I, typename... D>
-        std::enable_if_t<NDim == DYNAMIC || NDim == marray_slice<U, N, I, D...>::NewNDim, const Derived&>
-        operator=(const marray_slice<U, N, I, D...>& other) const
+        template <typename U, int N, int I, int T, typename... D>
+        std::enable_if_t<NDim == DYNAMIC || NDim == marray_slice<U, N, I, T, D...>::NewNDim, const Derived&>
+        operator=(const marray_slice<U, N, I, T, D...>& other) const
         {
             return *this = other.view();
         }
@@ -974,8 +982,8 @@ class marray_base
         }
 
         /* Inherit docs */
-        template <typename U, int N, int I, typename... D>
-        bool operator==(const marray_slice<U, N, I, D...>& other) const
+        template <typename U, int N, int I, int T, typename... D>
+        bool operator==(const marray_slice<U, N, I, T, D...>& other) const
         {
             return *this == other.view();
         }
@@ -1000,8 +1008,8 @@ class marray_base
         }
 
         /* Inherit docs */
-        template <typename U, int N, int I, typename... D>
-        bool operator!=(const marray_slice<U, N, I, D...>& other) const
+        template <typename U, int N, int I, int T, typename... D>
+        bool operator!=(const marray_slice<U, N, I, T, D...>& other) const
         {
             return *this != other.view();
         }
@@ -1026,7 +1034,7 @@ class marray_base
 #if MARRAY_DOXYGEN
         immutable_view
 #else
-        marray_view<const Type, N, N==DYNAMIC ? 0 : Tags>
+        marray_view<const Type, N, detail::clear_storage_tag_if(Tags, N==DYNAMIC)>
 #endif
         cview() const
         {
@@ -1049,14 +1057,14 @@ class marray_base
 #if MARRAY_DOXYGEN
         possibly_mutable_view view();
 #else
-        marray_view<ctype, N, N==DYNAMIC ? 0 : Tags> view() const
+        marray_view<ctype, N, detail::clear_storage_tag_if(Tags, N==DYNAMIC)> view() const
         {
             return *this;
         }
 
         /* Inherit docs */
         template <int N=NDim>
-        marray_view<Type, N, N==DYNAMIC ? 0 : Tags> view()
+        marray_view<Type, N, detail::clear_storage_tag_if(Tags, N==DYNAMIC)> view()
         {
             return *this;
         }
@@ -1269,14 +1277,14 @@ class marray_base
         /** @{ */
 
         template <int NewTags, int NDim_=NDim>
-        std::enable_if_t<NDim_!=DYNAMIC, marray_view<Type, NDim, NewTags>>
+        std::enable_if_t<NDim_!=DYNAMIC || detail::is_gen_stored(NewTags), marray_view<Type, NDim, NewTags>>
         assume()
         {
             return marray_view<Type, NDim, NewTags>(*this);
         }
 
         template <int NewTags, int NDim_=NDim>
-        std::enable_if_t<NDim_!=DYNAMIC, marray_view<ctype, NDim, NewTags>>
+        std::enable_if_t<NDim_!=DYNAMIC || detail::is_gen_stored(NewTags), marray_view<ctype, NDim, NewTags>>
         assume() const
         {
             return marray_view<ctype, NDim, NewTags>(*this);
@@ -1441,7 +1449,7 @@ class marray_base
 #if MARRAY_DOXYGEN
         possibly_mutable_view rebased(const base_like& new_base);
 #else
-        marray_view<Type,NDim,Tags> rebased(const base_like& new_base)
+        marray_view<Type,NDim,detail::clear_base_tag(Tags)> rebased(const base_like& new_base)
         {
             marray_view<Type,NDim> r(*this);
             r.rebase(new_base);
@@ -1449,7 +1457,7 @@ class marray_base
         }
 
         /* Inherit docs */
-        marray_view<ctype,NDim,Tags> rebased(const base_like& new_base) const
+        marray_view<ctype,NDim,detail::clear_base_tag(Tags)> rebased(const base_like& new_base) const
         {
             return const_cast<marray_base&>(*this).rebased(new_base);
         }
@@ -1472,7 +1480,7 @@ class marray_base
 #if MARRAY_DOXYGEN
         possibly_mutable_view rebased(int dim, len_type new_base);
 #else
-        marray_view<Type,NDim,Tags> rebased(int dim, len_type new_base)
+        marray_view<Type,NDim,detail::clear_base_tag(Tags)> rebased(int dim, len_type new_base)
         {
             marray_view<Type,NDim> r(*this);
             r.rebase(dim, new_base);
@@ -1480,7 +1488,7 @@ class marray_base
         }
 
         /* Inherit docs */
-        marray_view<ctype,NDim,Tags> rebased(int dim, len_type new_base) const
+        marray_view<ctype,NDim,detail::clear_base_tag(Tags)> rebased(int dim, len_type new_base) const
         {
             return const_cast<marray_base&>(*this).rebased(dim, new_base);
         }
@@ -1492,7 +1500,13 @@ class marray_base
          * @param new_base   The new base, either a container with elements convertible to [len_type](@ref MArray::len_type) or one
          *                   of the tokens [BASE_ZERO](@ref MArray::BASE_ZERO), [BASE_ONE](@ref MArray::BASE_ONE), [FORTRAN](@ref MArray::FORTRAN), or [MATLAB](@ref MArray::MATLAB).
          */
-        void rebase(const base_like& new_base)
+#if MARRAY_DOXYGEN
+        void
+#else
+        template <int Tags_=Tags>
+        std::enable_if_t<detail::is_gen_based(Tags_)>
+#endif
+        rebase(const base_like& new_base)
         {
             MARRAY_ASSERT(!new_base || new_base.size() == dimension());
 
@@ -1509,7 +1523,13 @@ class marray_base
          * @param new_base   The new base along the indicated dimension.
          *
          */
-        void rebase(int dim, len_type new_base)
+#if MARRAY_DOXYGEN
+        void
+#else
+        template <int Tags_=Tags>
+        std::enable_if_t<detail::is_gen_based(Tags_)>
+#endif
+        rebase(int dim, len_type new_base)
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
             base_[dim] = new_base;
@@ -1546,7 +1566,8 @@ class marray_base
 #if MARRAY_DOXYGEN
         possibly_mutable_view permuted(const array_1d<int, NDim>& perm);
 #else
-        marray_view<Type,NDim> permuted(const array_1d<int, NDim>& perm)
+        marray_view<Type,NDim,detail::clear_storage_tag(Tags)>
+        permuted(const array_1d<int, NDim>& perm)
         {
             marray_view<Type,NDim> r(*this);
             r.permute(perm);
@@ -1554,7 +1575,8 @@ class marray_base
         }
 
         /* Inherit docs */
-        marray_view<ctype,NDim> permuted(const array_1d<int, NDim>& perm) const
+        marray_view<ctype,NDim,detail::clear_storage_tag(Tags)>
+        permuted(const array_1d<int, NDim>& perm) const
         {
             return const_cast<marray_base&>(*this).permuted(perm);
         }
@@ -1584,7 +1606,8 @@ class marray_base
         possibly_mutable_view permuted(const Perm&... perm);
 #else
         template <typename... Perm>
-        std::enable_if_t<detail::are_convertible<int,Perm...>::value,marray_view<Type,NDim>>
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value,
+            marray_view<Type,NDim,detail::clear_storage_tag(Tags)>>
         permuted(const Perm&... perm)
         {
             marray_view<Type,NDim> r(*this);
@@ -1594,7 +1617,8 @@ class marray_base
 
         /* Inherit docs */
         template <typename... Perm>
-        std::enable_if_t<detail::are_convertible<int,Perm...>::value,marray_view<ctype,NDim>>
+        std::enable_if_t<detail::are_convertible<int,Perm...>::value,
+            marray_view<ctype,NDim,detail::clear_storage_tag(Tags)>>
         permuted(const Perm&... perm) const
         {
             return const_cast<marray_base&>(*this).permuted(perm...);
@@ -1617,8 +1641,7 @@ class marray_base
         possibly_mutable_view transposed();
 #else
         template <typename=void, int N=NDim>
-        std::enable_if_t<N==2,marray_view<Type, NDim, Tags==ROW_STORED ? COLUMN_STORED :
-                                                      Tags==COLUMN_STORED ? ROW_STORED : 0>>
+        std::enable_if_t<N==2,marray_view<Type,NDim,detail::flip_storage_tag(Tags)>>
         transposed()
         {
             return {{len_[1], len_[0]}, data_, {base_[1], base_[0]}, {stride_[1], stride_[0]}};
@@ -1626,8 +1649,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N==2,marray_view<ctype, NDim, Tags==ROW_STORED ? COLUMN_STORED :
-                                                       Tags==COLUMN_STORED ? ROW_STORED : 0>>
+        std::enable_if_t<N==2,marray_view<ctype,NDim,detail::flip_storage_tag(Tags)>>
         transposed() const
         {
             return const_cast<marray_base&>(*this).transposed();
@@ -1817,7 +1839,8 @@ class marray_base
 #if MARRAY_DOXYGEN
         possibly_mutable_view reversed();
 #else
-        marray_view<Type, NDim> reversed()
+        marray_view<Type, NDim, detail::clear_storage_tag(Tags)>
+        reversed()
         {
             marray_view<Type,NDim> r(*this);
             r.reverse();
@@ -1825,7 +1848,8 @@ class marray_base
         }
 
         /* Inherit docs */
-        marray_view<ctype, NDim> reversed() const
+        marray_view<ctype, NDim, detail::clear_storage_tag(Tags)>
+        reversed() const
         {
             return const_cast<marray_base&>(*this).reversed();
         }
@@ -1851,7 +1875,8 @@ class marray_base
 #if MARRAY_DOXYGEN
         possibly_mutable_view reversed(int dim);
 #else
-        marray_view<Type, NDim> reversed(int dim)
+        marray_view<Type, NDim, detail::clear_storage_tag(Tags)>
+        reversed(int dim)
         {
             marray_view<Type,NDim> r(*this);
             r.reverse(dim);
@@ -1859,7 +1884,8 @@ class marray_base
         }
 
         /* Inherit docs */
-        marray_view<ctype, NDim> reversed(int dim) const
+        marray_view<ctype, NDim, detail::clear_storage_tag(Tags)>
+        reversed(int dim) const
         {
             return const_cast<marray_base&>(*this).reversed(dim);
         }
@@ -1889,7 +1915,7 @@ class marray_base
         immutable_reference_or_view cslice(int dim, len_type i);
 #else
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<const Type, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<const Type, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         cslice(int dim, len_type i) const
         {
             return const_cast<marray_base&>(*this).slice(dim, i);
@@ -1921,7 +1947,7 @@ class marray_base
         possibly_mutable_reference_or_view slice(int dim, len_type i);
 #else
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<Type, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<Type, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         slice(int dim, len_type i)
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
@@ -1944,7 +1970,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<ctype, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<ctype, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         slice(int dim, len_type i) const
         {
             return const_cast<marray_base&>(*this).slice(dim, i);
@@ -1983,7 +2009,7 @@ class marray_base
         immutable_reference_or_view cfront(int dim=0) const;
 #else
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<const Type, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<const Type, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         cfront(int dim=0) const
         {
             return const_cast<marray_base&>(*this).front(dim);
@@ -2013,7 +2039,7 @@ class marray_base
         possibly_mutable_reference_or_view front(int dim=0);
 #else
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<Type, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<Type, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         front(int dim=0)
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
@@ -2022,7 +2048,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<ctype, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<ctype, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         front(int dim=0) const
         {
             return const_cast<marray_base&>(*this).front(dim);
@@ -2061,7 +2087,7 @@ class marray_base
         immutable_reference_or_view cback(int dim=0) const;
 #else
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<const Type, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<const Type, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         cback(int dim=0) const
         {
             return const_cast<marray_base&>(*this).back(dim);
@@ -2091,7 +2117,7 @@ class marray_base
         possibly_mutable_reference_or_view back(int dim=0);
 #else
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<Type, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<Type, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         back(int dim=0)
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
@@ -2100,7 +2126,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1, marray_view<ctype, NDim == DYNAMIC ? DYNAMIC : NDim-1>>
+        std::enable_if_t<N!=1, marray_view<ctype, NDim == DYNAMIC ? DYNAMIC : NDim-1, detail::clear_storage_tag(Tags)>>
         back(int dim=0) const
         {
             return const_cast<marray_base&>(*this).back(dim);
@@ -2182,7 +2208,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1&&N!=DYNAMIC, marray_slice<Type, NDim, 1>>
+        std::enable_if_t<N!=1&&N!=DYNAMIC, marray_slice<Type, NDim, 1, Tags>>
         operator[](len_type i)
         {
             i -= base(0);
@@ -2192,7 +2218,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=1&&N!=DYNAMIC, marray_slice<ctype, NDim, 1>>
+        std::enable_if_t<N!=1&&N!=DYNAMIC, marray_slice<ctype, NDim, 1, Tags>>
         operator[](len_type i) const
         {
             i -= base(0);
@@ -2228,7 +2254,7 @@ class marray_base
         possibly_mutable_view operator[](range x);
 #else
         template <typename I, typename=void, int N=NDim>
-        std::enable_if_t<N!=DYNAMIC,marray_slice<Type, NDim, 1, slice_dim>>
+        std::enable_if_t<N!=DYNAMIC,marray_slice<Type, NDim, 1, Tags, slice_dim>>
         operator[](range_t<I> x)
         {
             x -= base(0);
@@ -2238,7 +2264,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename I, typename=void, int N=NDim>
-        std::enable_if_t<N!=DYNAMIC,marray_slice<ctype, NDim, 1, slice_dim>>
+        std::enable_if_t<N!=DYNAMIC,marray_slice<ctype, NDim, 1, Tags, slice_dim>>
         operator[](range_t<I> x) const
         {
             x -= base(0);
@@ -2248,7 +2274,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=DYNAMIC,marray_slice<Type, NDim, 1, slice_dim>>
+        std::enable_if_t<N!=DYNAMIC,marray_slice<Type, NDim, 1, Tags, slice_dim>>
         operator[](all_t)
         {
             return {*this, range(length(0))};
@@ -2256,7 +2282,7 @@ class marray_base
 
         /* Inherit docs */
         template <typename=void, int N=NDim>
-        std::enable_if_t<N!=DYNAMIC,marray_slice<ctype, NDim, 1, slice_dim>>
+        std::enable_if_t<N!=DYNAMIC,marray_slice<ctype, NDim, 1, Tags, slice_dim>>
         operator[](all_t) const
         {
             return {*this, range(length(0))};
@@ -2283,7 +2309,7 @@ class marray_base
 #if MARRAY_DOXYGEN
         indexing_object operator[](bcast_t bcast) const;
 #else
-        marray_slice<const Type, NDim, 0, bcast_dim>
+        marray_slice<const Type, NDim, 0, Tags, bcast_dim>
         operator[](bcast_t) const
         {
             return {*this, slice::bcast};
@@ -2494,7 +2520,7 @@ class marray_base
 #endif
         corigin() const
         {
-            return const_cast<marray_base&>(*this).origin();
+            return origin();
         }
 
         /**
@@ -2512,13 +2538,13 @@ class marray_base
 #if MARRAY_DOXYGEN
         possibly_immutable_pointer origin();
 #else
-        pointer origin()
+        cptr origin() const
         {
             return const_cast<marray_base&>(*this).origin();
         }
 
         /* Inherit docs */
-        cptr origin() const
+        pointer origin()
         {
             auto ptr = data();
             for (auto i : range(dimension()))
@@ -2539,7 +2565,7 @@ class marray_base
 #endif
         cdata() const
         {
-            return const_cast<marray_base&>(*this).data();
+            return data();
         }
 
         /**
@@ -2577,7 +2603,8 @@ class marray_base
         len_type base(int dim=0) const
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
-            return base_[dim];
+            return detail::is_zero_based(Tags) ? 0 :
+                   detail::is_one_based(Tags) ? 1 : base_[dim];
         }
 
         /**
@@ -2623,8 +2650,8 @@ class marray_base
         stride_type stride(int dim=0) const
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
-            return (Tags == ROW_STORED && dim == NDim-1) ||
-                   (Tags == COLUMN_STORED && dim == 0) ? 1 : stride_[dim];
+            return (detail::is_row_stored(Tags) && dim == NDim-1) ||
+                   (detail::is_col_stored(Tags) && dim == 0) ? 1 : stride_[dim];
         }
 
         /**
@@ -2674,8 +2701,8 @@ auto cview(const marray_base<Type, NDim, Derived, Owner, Tags>& x)
     return x.cview();
 }
 
-template <typename Type, int NDim, int NIndexed, typename... Dims>
-auto cview(const marray_slice<Type, NDim, NIndexed, Dims...>& x)
+template <typename Type, int NDim, int NIndexed, int Tags, typename... Dims>
+auto cview(const marray_slice<Type, NDim, NIndexed, Tags, Dims...>& x)
 {
     return x.cview();
 }
@@ -2686,8 +2713,8 @@ auto cview(const marray_base<Type, NDim, Derived, Owner, Tags>& x)
     return x.template cview<N>();
 }
 
-template <int N, typename Type, int NDim, int NIndexed, typename... Dims>
-auto cview(const marray_slice<Type, NDim, NIndexed, Dims...>& x)
+template <int N, typename Type, int NDim, int NIndexed, int Tags, typename... Dims>
+auto cview(const marray_slice<Type, NDim, NIndexed, Tags, Dims...>& x)
 {
     return x.template cview<N>();
 }
@@ -2725,8 +2752,8 @@ auto view(marray_base<Type, NDim, Derived, Owner, Tags>& x)
     return x.view();
 }
 
-template <typename Type, int NDim, int NIndexed, typename... Dims>
-auto view(const marray_slice<Type, NDim, NIndexed, Dims...>& x)
+template <typename Type, int NDim, int NIndexed, int Tags, typename... Dims>
+auto view(const marray_slice<Type, NDim, NIndexed, Tags, Dims...>& x)
 {
     return x.view();
 }
@@ -2743,8 +2770,8 @@ auto view(marray_base<Type, NDim, Derived, Owner, Tags>& x)
     return x.template view<N>();
 }
 
-template <int N, typename Type, int NDim, int NIndexed, typename... Dims>
-auto view(const marray_slice<Type, NDim, NIndexed, Dims...>& x)
+template <int N, typename Type, int NDim, int NIndexed, int Tags, typename... Dims>
+auto view(const marray_slice<Type, NDim, NIndexed, Tags, Dims...>& x)
 {
     return x.template view<N>();
 }
@@ -2827,8 +2854,8 @@ std::ostream& operator<<(std::ostream& os, const marray_base<Type, NDim, Derived
 }
 
 /* Inherit docs */
-template <typename Type, int NDim, int NIndexed, typename... Dims>
-std::ostream& operator<<(std::ostream& os, const marray_slice<Type, NDim, NIndexed, Dims...>& x)
+template <typename Type, int NDim, int NIndexed, int Tags, typename... Dims>
+std::ostream& operator<<(std::ostream& os, const marray_slice<Type, NDim, NIndexed, Tags, Dims...>& x)
 {
     return os << x.view();
 }
