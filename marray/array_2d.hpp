@@ -11,11 +11,11 @@ namespace detail
 template <typename T>
 struct is_matrix : std::false_type {};
 
-template <typename T, typename D, bool O>
-struct is_matrix<marray_base<T, 2, D, O>> : std::true_type {};
+template <typename T, typename D, bool O, int Tags>
+struct is_matrix<marray_base<T, 2, D, O, Tags>> : std::true_type {};
 
-template <typename T>
-struct is_matrix<marray_view<T, 2>> : std::true_type {};
+template <typename T, int Tags>
+struct is_matrix<marray_view<T, 2, Tags>> : std::true_type {};
 
 template <typename T, typename A>
 struct is_matrix<marray<T, 2, A>> : std::true_type {};

@@ -7,16 +7,16 @@
 namespace MArray
 {
 
-template <typename Type, int NDim>
-class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, false>
+template <typename Type, int NDim, int Tags>
+class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim, Tags>, false, Tags>
 {
-    template <typename, int, typename, bool> friend class marray_base;
-    template <typename, int> friend class marray_view;
+    template <typename, int, typename, bool, int> friend class marray_base;
+    template <typename, int, int> friend class marray_view;
     template <typename, int, typename> friend class marray;
     template <typename, int, int, typename...> friend class marray_slice;
 
     protected:
-        typedef marray_base<Type, NDim, marray_view, false> base_class;
+        typedef marray_base<Type, NDim, marray_view, false, Tags> base_class;
 
         using base_class::base_;
         using base_class::len_;
@@ -71,22 +71,22 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         }
 
         /* Inherit docs */
-        template <typename U, int N, typename D, bool O>
-        marray_view(const marray_base<U, N, D, O>& other)
+        template <typename U, int N, typename D, bool O, int T>
+        marray_view(const marray_base<U, N, D, O, T>& other)
         {
             reset(other);
         }
 
         /* Inherit docs */
-        template <typename U, int N, typename D, bool O>
-        marray_view(marray_base<U, N, D, O>& other)
+        template <typename U, int N, typename D, bool O, int T>
+        marray_view(marray_base<U, N, D, O, T>& other)
         {
             reset(other);
         }
 
         /* Inherit docs */
-        template <typename U, int N, typename D, bool O>
-        marray_view(marray_base<U, N, D, O>&& other)
+        template <typename U, int N, typename D, bool O, int T>
+        marray_view(marray_base<U, N, D, O, T>&& other)
         {
             reset(other);
         }
@@ -110,7 +110,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          */
-        marray_view(const array_1d<len_type>& len, pointer ptr)
+        marray_view(const array_1d<len_type, NDim>& len, pointer ptr)
         {
             reset(len, ptr);
         }
@@ -128,7 +128,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *
          * @param base  One of [BASE_ZERO](@ref MArray::BASE_ZERO), [BASE_ONE](@ref MArray::BASE_ONE), [FORTRAN](@ref MArray::FORTRAN), or [MATLAB](@ref MArray::MATLAB).
          */
-        marray_view(const array_1d<len_type>& len, pointer ptr, const index_base& base)
+        marray_view(const array_1d<len_type, NDim>& len, pointer ptr, const index_base& base)
         {
             reset(len, ptr, base);
         }
@@ -154,7 +154,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *                  location of the "first" element (`index == base`), although this
          *                  is not the lowest address of any tensor element.
          */
-        marray_view(const array_1d<len_type>& len, pointer ptr, const layout_like& stride)
+        marray_view(const array_1d<len_type, NDim>& len, pointer ptr, const layout_like& stride)
         {
             reset(len, ptr, stride);
         }
@@ -186,7 +186,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *                  location of the "first" element (`index == base`), although this
          *                  is not the lowest address of any tensor element.
          */
-        marray_view(const array_1d<len_type>& len, pointer ptr, const base_like& base,
+        marray_view(const array_1d<len_type, NDim>& len, pointer ptr, const base_like& base,
                     const layout_like& stride)
         {
             reset(len, ptr, base, stride);
@@ -206,9 +206,9 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          * @param fortran   Either the token [FORTRAN](@ref MArray::FORTRAN) or [MATLAB](@ref MArray::MATLAB).
          */
  #if MARRAY_DOXYGEN
-        marray_view(const array_1d<len_type>& len, pointer ptr, fortran_t fortran)
+        marray_view(const array_1d<len_type, NDim>& len, pointer ptr, fortran_t fortran)
 #else
-        marray_view(const array_1d<len_type>& len, pointer ptr, fortran_t)
+        marray_view(const array_1d<len_type, NDim>& len, pointer ptr, fortran_t)
 #endif
         {
             reset(len, ptr, FORTRAN);
@@ -236,7 +236,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              If this is a mutable view, then the pointer may not be
          *              const-qualified.
          */
-        marray_view(const array_1d<len_type>& begin, const array_1d<len_type>& end, pointer ptr)
+        marray_view(const array_1d<len_type, NDim>& begin, const array_1d<len_type, NDim>& end, pointer ptr)
         {
             reset(begin, end, ptr);
         }
@@ -273,7 +273,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *                  location of the "first" element (`index == begin`), although this
          *                  is not the lowest address of any tensor element.
          */
-        marray_view(const array_1d<len_type>& begin, const array_1d<len_type>& end, pointer ptr, const layout_like& stride)
+        marray_view(const array_1d<len_type, NDim>& begin, const array_1d<len_type, NDim>& end, pointer ptr, const layout_like& stride)
         {
             reset(begin, end, ptr, stride);
         }
@@ -369,15 +369,12 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *          one-dimensional container type whose elements are convertible
          *          to a tensor length, including initializer lists.
          */
-        void shift(const array_1d<len_type>& n)
+        void shift(const array_1d<len_type, NDim>& n)
         {
             MARRAY_ASSERT(n.size() == dimension());
 
-            std::array<len_type, NDim> n_;
-            n.slurp(n_);
-
             for (auto dim : range(dimension()))
-                shift(dim, n_[dim]);
+                shift(dim, n[dim]);
         }
 
         /**
@@ -510,14 +507,12 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
          *              a permutation of `[0,NDim)`, where `NDim` is the number of
          *              tensor dimensions.
          */
-        void permute(const array_1d<int>& perm)
+        void permute(const array_1d<int, NDim>& perm)
         {
             MARRAY_ASSERT(perm.size() == dimension());
 
             auto len = len_;
             auto stride = stride_;
-            dim_vector perm_;
-            perm.slurp(perm_);
 
 #ifdef MARRAY_ENABLE_ASSERTS
             auto bbox_len = bbox_len_;
@@ -527,17 +522,17 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
 
             for (auto i : range(dimension()))
             {
-                MARRAY_ASSERT(perm_[i] < dimension());
+                MARRAY_ASSERT(perm[i] < dimension());
                 for (auto j : range(i+1,dimension()))
-                    MARRAY_ASSERT(perm_[i] != perm_[j]);
+                    MARRAY_ASSERT(perm[i] != perm[j]);
 
-                len_[i] = len[perm_[i]];
-                stride_[i] = stride[perm_[i]];
+                len_[i] = len[perm[i]];
+                stride_[i] = stride[perm[i]];
 
 #ifdef MARRAY_ENABLE_ASSERTS
-                bbox_len_[i] = bbox_len[perm_[i]];
-                bbox_off_[i] = bbox_off[perm_[i]];
-                bbox_stride_[i] = bbox_stride[perm_[i]];
+                bbox_len_[i] = bbox_len[perm[i]];
+                bbox_off_[i] = bbox_off[perm[i]];
+                bbox_stride_[i] = bbox_stride[perm[i]];
 #endif
             }
         }
@@ -614,7 +609,7 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
 #if !MARRAY_DOXYGEN
         template <typename=void, int N=NDim, typename=std::enable_if_t<N==DYNAMIC>>
 #endif
-        void lower(const array_1d<int>& split)
+        void lower(const array_1d<int, NDim>& split)
         {
             reset(lowered(split));
         }
@@ -729,6 +724,9 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
         stride_type stride(int dim, stride_type str)
         {
             MARRAY_ASSERT(dim >= 0 && dim < dimension());
+            if ((Tags == ROW_STORED && dim == dimension()-1) ||
+                (Tags == COLUMN_STORED && dim == 0))
+                MARRAY_ASSERT(str == 1);
             std::swap(str, stride_[dim]);
 #ifdef MARRAY_ENABLE_ASSERTS
             MARRAY_ASSERT(std::abs(stride(dim)) % bbox_stride_[dim] == 0);
@@ -767,8 +765,8 @@ class marray_view : public marray_base<Type, NDim, marray_view<Type, NDim>, fals
  *
  * @ingroup funcs
  */
-template <typename Type, int NDim>
-void swap(marray_view<Type, NDim>& a, marray_view<Type, NDim>& b)
+template <typename Type, int NDim, int Tags>
+void swap(marray_view<Type, NDim, Tags>& a, marray_view<Type, NDim, Tags>& b)
 {
     a.swap(b);
 }

@@ -19,6 +19,7 @@
 
 #include "../types.hpp"
 #include "../fwd/marray_fwd.hpp"
+#include "../fwd/expression_fwd.hpp"
 
 namespace MArray
 {
@@ -457,6 +458,79 @@ void assign(std::array<T, N>& lhs, const C&... rhs)
 {
     assign_helper<0>(lhs, rhs...);
 }
+
+template <int NDim1, int NDim2>
+struct are_dims_compatible
+: std::bool_constant<NDim1 == NDim2 || NDim1 == DYNAMIC || NDim2 == DYNAMIC> {};
+
+template <int NDim1, int NDim2>
+constexpr static auto are_dims_compatible_v = are_dims_compatible<NDim1, NDim2>::value;
+
+template <typename T, int NDim>
+struct is_marray_helper : std::false_type {};
+
+template <typename T, int NDim, typename Allocator, int NDimReq>
+struct is_marray_helper<marray<T, NDim, Allocator>, NDimReq>
+: are_dims_compatible<NDim, NDimReq> {};
+
+template <typename T, int NDim=DYNAMIC>
+struct is_marray : is_marray_helper<std::decay_t<T>, NDim> {};
+
+template <typename T, int NDim=DYNAMIC>
+constexpr static auto is_marray_v = is_marray<T, NDim>::value;
+
+template <typename T, int NDim>
+struct is_marray_view_helper : std::false_type {};
+
+template <typename T, int NDim, int Tags, int NDimReq>
+struct is_marray_view_helper<marray_view<T, NDim, Tags>, NDimReq>
+: are_dims_compatible<NDim, NDimReq> {};
+
+template <typename T, int NDim=DYNAMIC>
+struct is_marray_view : is_marray_view_helper<std::decay_t<T>, NDim> {};
+
+template <typename T, int NDim=DYNAMIC>
+constexpr static auto is_marray_view_v = is_marray_view<T, NDim>::value;
+
+template <typename T, int NDim=DYNAMIC>
+struct is_marray_or_view
+: std::bool_constant<is_marray_v<T, NDim> ||
+                     is_marray_view_v<T, NDim>> {};
+
+template <typename T, int NDim, typename Derived, bool Owner, int Tags, int NDimReq>
+struct is_marray_or_view<marray_base<T, NDim, Derived, Owner, Tags>, NDimReq>
+: are_dims_compatible<NDim, NDimReq> {};
+
+template <typename T, int NDim=DYNAMIC>
+constexpr static auto is_marray_or_view_v = is_marray_or_view<T, NDim>::value;
+
+template <typename T, int NDim>
+struct is_marray_slice_helper : std::false_type {};
+
+template <typename T, int NDim, int NIndexed, typename... Dims, int NDimReq>
+struct is_marray_slice_helper<marray_slice<T, NDim, NIndexed, Dims...>, NDimReq>
+: are_dims_compatible<marray_slice<T, NDim, NIndexed, Dims...>::NewNDim, NDimReq> {};
+
+template <typename T, int NDim=DYNAMIC>
+struct is_marray_slice : is_marray_slice_helper<std::decay_t<T>, NDim> {};
+
+template <typename T, int NDim=DYNAMIC>
+constexpr static auto is_marray_slice_v = is_marray_slice<T, NDim>::value;
+
+template <typename T, int NDim>
+struct is_marray_like : std::bool_constant<is_marray_slice_v<T, NDim> || is_marray_or_view_v<T, NDim>> {};
+
+template <typename T, int NDim=DYNAMIC>
+constexpr static auto is_marray_like_v = is_marray_like<T, NDim>::value;
+
+template <typename T>
+struct is_complex : std::false_type {};
+
+template <typename T>
+struct is_complex<std::complex<T>> : std::true_type {};
+
+template <typename T>
+constexpr static auto is_complex_v = is_complex<T>::value;
 
 }
 }

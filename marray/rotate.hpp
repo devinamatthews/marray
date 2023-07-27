@@ -6,37 +6,24 @@
 namespace MArray
 {
 
-template <typename T, int N>
-void rotate(const marray_view<T, N>& array, const array_1d<len_type>& shift)
+template <typename T>
+std::enable_if_t<detail::is_marray_like_v<T>>
+rotate(T&& array, const array_1d<len_type>& shift)
 {
     MARRAY_ASSERT(shift.size() == array.dimension());
 
-    len_vector shift_;
-    shift.slurp(shift_);
-
     for (auto i : range(array.dimension()))
-        rotate(array, i, shift_[i]);
+        rotate(array, i, shift[i]);
 }
 
-template <typename T, int N, typename A>
-void rotate(marray<T, N, A>& array, const array_1d<len_type>& shift)
-{
-    rotate(array.view(), shift);
-}
-
-template <typename T, int N, int I, typename... D>
-void rotate(const marray_slice<T, N, I, D...>& array, const array_1d<len_type>& shift)
-{
-    rotate(array.view(), shift);
-}
-
-template <typename T, int N>
-void rotate(const marray_view<T, N>& array, int dim, len_type shift)
+template <typename T>
+std::enable_if_t<detail::is_marray_like_v<T>>
+rotate(T&& array, int dim, len_type shift)
 {
     MARRAY_ASSERT(dim >= 0 && dim < array.dimension());
 
-    len_type n = array.length(dim);
-    stride_type s = array.stride(dim);
+    auto n = array.length(dim);
+    auto s = array.stride(dim);
 
     if (n == 0) return;
 
@@ -80,18 +67,6 @@ void rotate(const marray_view<T, N>& array, int dim, len_type shift)
             b -= s;
         }
     }
-}
-
-template <typename T, int N, typename A>
-void rotate(marray<T, N, A>& array, int dim, len_type shift)
-{
-    rotate(array.view(), dim, shift);
-}
-
-template <typename T, int N, int I, typename... D>
-void rotate(const marray_slice<T, N, I, D...>& array, int dim, len_type shift)
-{
-    rotate(array.view(), dim, shift);
 }
 
 }

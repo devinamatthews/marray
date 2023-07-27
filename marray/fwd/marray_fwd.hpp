@@ -20,6 +20,28 @@ constexpr int DYNAMIC = -1;
 #endif
 
 /**
+ * Special value which indicates that the tensor is stored with a continuous first dimension.
+ *
+ * @ingroup constants
+ */
+#if MARRAY_DOXYGEN
+constexpr int COLUMN_STORED;
+#else
+constexpr int COLUMN_STORED = 1;
+#endif
+
+/**
+ * Special value which indicates that the tensor is stored with a continuous last dimension.
+ *
+ * @ingroup constants
+ */
+#if MARRAY_DOXYGEN
+constexpr int ROW_STORED;
+#else
+constexpr int ROW_STORED = 2;
+#endif
+
+/**
  * A partially-indexed tensor.
  *
  * This type cannot be constructed directly, but is returned by indexing a tensor
@@ -45,7 +67,7 @@ class marray_slice;
  *
  * @ingroup classes
  */
-template <typename Type, int NDim, typename Derived, bool Owner>
+template <typename Type, int NDim, typename Derived, bool Owner, int Tags=0>
 class marray_base;
 
 /**
@@ -57,7 +79,7 @@ class marray_base;
  *
  * @ingroup classes
  */
-template <typename Type, int NDim=DYNAMIC>
+template <typename Type, int NDim=DYNAMIC, int Tags=0>
 class marray_view;
 
 /**
@@ -81,7 +103,7 @@ class marray;
  *
  * @ingroup types
  */
-template <typename Type> using row_view = marray_view<Type, 1>;
+template <typename Type, int Tags=0> using row_view = marray_view<Type, 1, Tags>;
 
 /**
  * Alias for a 1-dimensional tensor.
@@ -101,7 +123,7 @@ template <typename Type, typename Allocator=std::allocator<Type>> using row = ma
  *
  * @ingroup types
  */
-template <typename Type> using matrix_view = marray_view<Type, 2>;
+template <typename Type, int Tags=0> using matrix_view = marray_view<Type, 2, Tags>;
 
 /**
  * Alias for a 2-dimensional tensor.

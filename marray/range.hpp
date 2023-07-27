@@ -311,6 +311,16 @@ class range_t
         {
             return range_t(back(), front()-step(), -step());
         }
+
+        bool empty() const
+        {
+            return size() == 0;
+        }
+
+        explicit operator bool() const
+        {
+            return size();
+        }
 };
 
 /**
@@ -547,6 +557,6 @@ auto reversed_rangeN(T to, U N, V delta)
     return range(to-delta, to-(N+1)*delta, -delta);
 }
 
-}
+} // namespace MArray
 
 #endif //MARRAY_RANGE_HPP

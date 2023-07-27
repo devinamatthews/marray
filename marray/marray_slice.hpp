@@ -28,9 +28,9 @@ struct slice_dim
 template <typename Type, int NDim, int NIndexed, typename... Dims>
 class marray_slice
 {
-    template <typename, int, typename, bool> friend class marray_base;
+    template <typename, int, typename, bool, int> friend class marray_base;
     template <typename, int, typename> friend class marray;
-    template <typename, int> friend class marray_view;
+    template <typename, int, int> friend class marray_view;
     template <typename, int, int, typename...> friend class marray_slice;
 
     public:
@@ -57,8 +57,11 @@ class marray_slice
         static constexpr int CurDim = NIndexed-1;
         static constexpr int NextDim = NIndexed;
         static constexpr int NSliced = sizeof...(Dims);
+
+    public:
         static constexpr int NewNDim = (... || std::is_same_v<Dims,bcast_dim>) ? 0 : NSliced + DimsLeft;
 
+    protected:
         marray_slice(const marray_slice& other) = default;
 
         template <typename Array>
@@ -321,9 +324,8 @@ class marray_slice
 #if MARRAY_DOXYGEN
         tensor_view_or_reference operator[](index_or_slice i)
 #else
-        template <int N=DimsLeft>
-        std::enable_if_t<N==1 && !sizeof...(Dims), reference>
-        operator[](len_type i) const
+        template <int N=DimsLeft, typename=std::enable_if_t<N==1 && !sizeof...(Dims)>>
+        reference operator[](len_type i) const
 #endif
         {
             i -= base(NextDim);
@@ -332,40 +334,44 @@ class marray_slice
         }
 
         /* Inherit docs */
-        template <int N=DimsLeft>
-        std::enable_if_t<N!=1 || sizeof...(Dims), marray_slice<Type, NDim, NIndexed+1, Dims...>>
-        operator[](len_type i) const
+        template <int N=DimsLeft, typename=std::enable_if_t<N!=1 || sizeof...(Dims)>>
+        auto operator[](len_type i) const
         {
             static_assert(DimsLeft, "No more dimensions to index");
             i -= base(NextDim);
             MARRAY_ASSERT(i >= 0 && i < length(NextDim));
-            return {*this, i};
+            auto slice = marray_slice<Type, NDim, NIndexed+1, Dims...>{*this, i};
+            if constexpr (DimsLeft == 1)
+                return slice.view();
+            else
+                return slice;
         }
 
         /* Inherit docs */
         template <typename I>
-        marray_slice<Type, NDim, NIndexed+1, Dims..., slice_dim>
-        operator[](range_t<I> x) const
+        auto operator[](range_t<I> x) const
         {
             static_assert(DimsLeft, "No more dimensions to index");
             x -= base(NextDim);
             MARRAY_ASSERT_RANGE_IN(x, 0, length(NextDim));
-            return {*this, x};
+            auto slice = marray_slice<Type, NDim, NIndexed+1, Dims..., slice_dim>{*this, x};
+            if constexpr (DimsLeft == 1)
+                return slice.view();
+            else
+                return slice;
         }
 
         /* Inherit docs */
-        marray_slice<Type, NDim, NIndexed+1, Dims..., slice_dim>
-        operator[](all_t) const
+        auto operator[](all_t) const
         {
             static_assert(DimsLeft, "No more dimensions to index");
-            return {*this, range(length(NIndexed))};
+            return (*this)[range(length(NIndexed))];
         }
 
         /* Inherit docs */
-        marray_slice<Type, NDim, NIndexed, Dims..., bcast_dim>
-        operator[](bcast_t) const
+        auto operator[](bcast_t) const
         {
-            return {*this, slice::bcast};
+            return marray_slice<Type, NDim, NIndexed, Dims..., bcast_dim>{*this, slice::bcast};
         }
 
         /**

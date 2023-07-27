@@ -575,34 +575,20 @@ struct slice_array_expr_helper<array_expr<T, Dims2...>, Dims1...>
     typedef array_expr<T, Dims1..., Dims2...> type;
 };
 
-template <typename Array, typename>
-struct is_marray
-{
-    template <typename T, int NDim, typename Derived, bool Owner>
-    static std::true_type check(const marray_base<T, NDim, Derived, Owner>*);
-
-    template <typename T, int NDim, int NIndexed, typename... Dims>
-    static std::true_type check(const marray_slice<T, NDim, NIndexed, Dims...>*);
-
-    static std::false_type check(...);
-
-    static constexpr bool value = decltype(check((Array*)nullptr))::value;
-};
-
 template <typename Expr>
-struct expression_type<Expr, std::enable_if_t<is_marray<Expr>::value>>
+struct expression_type<Expr, std::enable_if_t<detail::is_marray_like_v<std::decay_t<Expr>>>>
 {
     template <typename T, int NDim, int NIndexed, typename... Dims>
     static typename slice_array_expr_helper<typename array_expr_helper<T, NDim-NIndexed>::type, Dims...>::type check(const marray_slice<T, NDim, NIndexed, Dims...>*);
 
-    template <typename T, int NDim, typename Derived>
-    static typename array_expr_helper<T, NDim>::type check(const marray_base<T, NDim, Derived, false>*);
+    template <typename T, int NDim, typename Derived, int Tags>
+    static typename array_expr_helper<T, NDim>::type check(const marray_base<T, NDim, Derived, false, Tags>*);
 
-    template <typename T, int NDim, typename Derived>
-    static typename array_expr_helper<const T, NDim>::type check(const marray_base<T, NDim, Derived, true>*);
+    template <typename T, int NDim, typename Derived, int Tags>
+    static typename array_expr_helper<const T, NDim>::type check(const marray_base<T, NDim, Derived, true, Tags>*);
 
-    template <typename T, int NDim, typename Derived>
-    static typename array_expr_helper<T, NDim>::type check(marray_base<T, NDim, Derived, true>*);
+    template <typename T, int NDim, typename Derived, int Tags>
+    static typename array_expr_helper<T, NDim>::type check(marray_base<T, NDim, Derived, true, Tags>*);
 
     static void check(...);
 
@@ -630,20 +616,22 @@ make_expression_helper(const marray_slice<T, NDim, NIndexed, Dims...>& x,
                       x.stride(NIndexed+J))...};
 }
 
-template <typename T, int NDim, typename Derived, bool Owner, int... I>
+template <typename T, int NDim, typename Derived, bool Owner, int Tags, int... I>
 expression_type_t<const marray_base<T, NDim, Derived, Owner>>
-make_expression_helper(const marray_base<T, NDim, Derived, Owner>& x,
+make_expression_helper(const marray_base<T, NDim, Derived, Owner, Tags>& x,
                        std::integer_sequence<int, I...>)
 {
-    return {x.data(), slice_dim(x.base(I), x.length(I), 0, x.stride(I))...};
+    return {x.data(), slice_dim(x.base(I), x.length(I), 0, Tags == COLUMN_STORED && I == 0 ? 1 :
+                                                           Tags == ROW_STORED && I == NDim-1 ? 1 : x.stride(I))...};
 }
 
-template <typename T, int NDim, typename Derived, bool Owner, int... I>
+template <typename T, int NDim, typename Derived, bool Owner, int Tags, int... I>
 expression_type_t<marray_base<T, NDim, Derived, Owner>>
-make_expression_helper(marray_base<T, NDim, Derived, Owner>& x,
+make_expression_helper(marray_base<T, NDim, Derived, Owner, Tags>& x,
                        std::integer_sequence<int, I...>)
 {
-    return {x.data(), slice_dim(x.base(I), x.length(I), 0, x.stride(I))...};
+    return {x.data(), slice_dim(x.base(I), x.length(I), 0, Tags == COLUMN_STORED && I == 0 ? 1 :
+                                                           Tags == ROW_STORED && I == NDim-1 ? 1 : x.stride(I))...};
 }
 
 template <typename T, int NDim, int NIndexed, typename... Dims>
@@ -654,16 +642,16 @@ make_expression(const marray_slice<T, NDim, NIndexed, Dims...>& x)
                                      std::make_integer_sequence<int, NDim-NIndexed>());
 }
 
-template <typename T, int NDim, typename Derived, bool Owner>
+template <typename T, int NDim, typename Derived, bool Owner, int Tags>
 expression_type_t<const marray_base<T, NDim, Derived, Owner>>
-make_expression(const marray_base<T, NDim, Derived, Owner>& x)
+make_expression(const marray_base<T, NDim, Derived, Owner, Tags>& x)
 {
     return make_expression_helper(x, std::make_integer_sequence<int, NDim>());
 }
 
-template <typename T, int NDim, typename Derived, bool Owner>
+template <typename T, int NDim, typename Derived, bool Owner, int Tags>
 expression_type_t<marray_base<T, NDim, Derived, Owner>>
-make_expression(marray_base<T, NDim, Derived, Owner>& x)
+make_expression(marray_base<T, NDim, Derived, Owner, Tags>& x)
 {
     return make_expression_helper(x, std::make_integer_sequence<int, NDim>());
 }
@@ -679,7 +667,7 @@ make_expression(Expr&& x)
 template <typename Expr>
 struct is_expression_arg :
     std::integral_constant<bool, is_expression<std::decay_t<Expr>>::value ||
-                                 is_marray<std::decay_t<Expr>>::value> {};
+                                 detail::is_marray_like_v<std::decay_t<Expr>>> {};
 
 template <typename Expr>
 struct is_expression_arg_or_scalar :
@@ -1416,8 +1404,8 @@ struct assign_expr_loop_vec_col_major
 
 template <typename Array, typename Expr>
 std::enable_if_t<(is_array_expression<std::decay_t<Array>>::value ||
-                     is_marray<std::decay_t<Array>>::value) &&
-                    is_expression_arg_or_scalar<std::decay_t<Expr>>::value>
+                  detail::is_marray_like<std::decay_t<Array>>::value) &&
+                 is_expression_arg_or_scalar<std::decay_t<Expr>>::value>
 assign_expr(Array&& array_, Expr&& expr_)
 {
     typedef expression_type_t<std::decay_t<Array>> array_type;
