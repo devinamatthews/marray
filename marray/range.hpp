@@ -56,9 +56,11 @@ class range_t
     template <typename U> friend class range_t;
 
     protected:
+        // NB: ordering the fields from_, to_, delta_ triggers a strange bug on
+        // clang 16 (https://godbolt.org/#z:OYLghAFBqd5QCxAYwPYBMCmBRdBLAF1QCcAaPECAMzwBtMA7AQwFtMQByARg9KtQYEAysib0QXACx8BBAKoBnTAAUAHpwAMvAFYTStJg1DIApACYAQuYukl9ZATwDKjdAGFUtAK4sGEgBykrgAyeAyYAHI%2BAEaYxBIAzKQADqgKhE4MHt6%2BASlpGQKh4VEssfFcSXaYDplCBEzEBNk%2BflyB1bUC9Y0ExZExcYm2DU0tue0jvf2l5YkAlLaoXsTI7BzmCWHI3lgA1CYJbgQAnsmYAPoExEyECofYJhoAgpvbu5gHR4RxTETEDyerzMWwYOy8%2B0ObloeBYd0BLzeYI%2BXzcyAUBHwqARwNB4MhRwAbjV/jigQRMCxkgYKajTudmGw9gAVHE7JgKBR7G5GS4EIEmADsVheezFe2SxFQFIcmHQICB4qVLL2VClLEOIueyvFzL2RAumsVOpVWFoDUNCS1xrFyS80RhyAVopN7M5ex%2BN1JLp1Qq1JuVkulJLlzu1AZNesJYkt/ojOr1ZotRsRPojdodeCdNvj4q86SMHopXpIF1EFOAJBOXwAInsMfKQDz0KgWBcmMg1pyLp6/qWGsAU%2BHc3mC8A9tHvHyzp9DnXWVacyP82Fx/gqFQ4ow1lcZ7X65iQCBktd11QrkOR0qV4XUmFi/vmQAqS9XsU38fETCbr9g2cJedzAANiHJdczQBgMUwVRJSLX5/ggeY9hACcYwgDRFj2JMmAuCAuCQv0hRrAU0xHCCoJg4g4JLYgICjMRSFNTBzSYJCUMnXDJ0w7DcOwgjhSIkjhyvaJUE8PZUHOGi5znCByIIai%2BwBMwgIkggEDiJD5LA%2BNCNIt9uUwAgVgYVDaAuWs5zUjTiAAOg4g4VOArDmItSyAOsuJbJ41830E1NhJHUTxMk%2BCSDAMBZPkxTSRUzziC0gQMR0iM9MCgyv2M4hTIciKrOlGz7JjA5BTcIU3BcliLLyjyCq8nzF303TBWIgKDLMrxp3OCSpKUp9EL2bSmtSgThpHTKTLM2MUoDfzXjGk1e1i1TQukyxrEQmaTTS9qlQc6wrIauNdsMrLTKfdS8HuRr0ua1rbpK4ibpS%2BToNgnlgD5Oj9VQNjKotPDMINCAiH4qwWqEgMlpIPZYmAMIBqGh6dtzCbspikh0MYnj5l85U5pS6GqNcRGkv5YaUfjNHTKJkHUAubHXJw3GbtmiHEQh56XgpKkaX/Y4Z0ZT4F0eF4mC8IhuUMT7voYXGOeO07Jo%2BvkoRFiA5dA9n5ueQlUDwdBVTEiB7z2TWFZzcXJdUfcVY1lnFf4KiICt1APWQvZVCQqA9YN%2BYMK1%2B6OEWWhOAAVl4PwOC0UhUE4Mr1ssetllWWcQR4UgCE0YPFgAaxAMOElsjRJEFDQuC4DQzEFavAlDjhJEj7PY84XgFBADRM%2BzxY4FgJA0CpOg4nISgB%2BSIf4nZIwuCAjRO6wQks0wAA1PBMAAdwAeQZTgM5oc04nbiBomb6IwkaE5d94M/mGIE5N%2BibQSSv0gB7YQRN4YWhL%2Bj3gsGiLwwA3BiFoO3bgf9KTS3EOA0g%2BAvy1GJGAmO0EagS3WBne8zEX4wmiDcO%2BHgsDN2uLCK%2BiwqAGGAAoVeG9t6MBfvwQQIgxDsCkDIQQigVDqF/qQXQXB9DSxQAdSw%2Bg8DRHbpARYklHBJU4AAWgbHOUwicLBcEFHsWRm8Ei8FQMSYgxADaYHEYhWwzESSZBcAwdwnhWh6BCGEAYZQhh8NSOkaRWRrETHyK4zIMxBgVBMfYNxPQxgeLaAEsx3RRh9HsbMJxUwQk5DCRiaYMS/ESEWAoFOax0n6HDk3bhccOCe38EBWRQFJCDQMIWGexdi57AgLgQgMNNj4V4FnX%2B8w84gEkEBWyABOMOZg%2Bn%2BH8H0muNczC5IbvkmOhS24dy7h0kOnAzAzO0a3RZWhOmkF0ekZwkggA%3D%3D%3D)
+        T delta_;
         T from_;
         T to_;
-        T delta_;
 
         typedef T value_type;
         typedef T size_type;
@@ -188,16 +190,16 @@ class range_t
         };
 
         constexpr range_t()
-        : from_(0), to_(0), delta_(1) {}
+        : delta_(1), from_(0), to_(0) {}
 
         constexpr range_t(T to)
-        : from_(0), to_(to), delta_(1) {}
+        : delta_(1), from_(0), to_(to) {}
 
         constexpr range_t(T from, T to)
-        : from_(from), to_(to), delta_(1) {}
+        : delta_(1), from_(from), to_(to) {}
 
         constexpr range_t(T from, T to, T delta)
-        : from_(from), delta_(delta)
+        : delta_(delta), from_(from)
         {
             if (delta > 0)
                 to_ = from+((to-from+delta-1)/delta)*delta;
@@ -255,6 +257,21 @@ class range_t
         value_type back() const
         {
             return to_-delta_;
+        }
+
+        value_type from() const
+        {
+            return from_;
+        }
+
+        value_type to() const
+        {
+            return to_;
+        }
+
+        value_type delta() const
+        {
+            return delta_;
         }
 
         value_type operator[](size_type n) const
