@@ -13,17 +13,27 @@
 namespace MArray
 {
 
-enum direction
+struct direction
 {
-    DOWN,
-    UP,
-    RIGHT = DOWN,
-    LEFT = UP,
-    BOTTOM_RIGHT = DOWN,
-    UPPER_LEFT = UP,
-    FORWARD = DOWN,
-    BACKWARD = UP,
+    int dir;
+
+    constexpr direction(int dir) : dir(dir) {}
+
+    bool operator==(const direction& other) const { return dir == other.dir; }
+    bool operator!=(const direction& other) const { return dir != other.dir; }
 };
+
+constexpr static direction DOWN{0};
+constexpr static direction UP{1};
+
+constexpr static const direction& RIGHT = DOWN;
+constexpr static const direction& LEFT = UP;
+
+constexpr static const direction& BOTTOM_RIGHT = DOWN;
+constexpr static const direction& TOP_LEFT = UP;
+
+constexpr static const direction& FORWARD = DOWN;
+constexpr static const direction& BACKWARD = UP;
 
 namespace detail
 {
@@ -72,6 +82,37 @@ auto partition(const range_t<I>& x, direction dir, std::integer_sequence<I, Size
     ((sizes[Idx+1] += sizes[Idx]), ...);
 
     return std::make_tuple(make_range<I,Sizes>(sizes[Idx], sizes[Idx+1])...);
+}
+
+// Unblocked repartition helper
+
+template <typename I, typename... B, I... MIdx, I... NIdx>
+auto repartition(const range_t<I>& A, const range_t<I>& C, direction dir,
+                 std::integer_sequence<I,MIdx...>,
+                 std::integer_sequence<I,NIdx...>, B... b)
+{
+    constexpr I M = sizeof...(B);
+    constexpr I N = sizeof...(NIdx);
+    MARRAY_ASSERT(A.back()+M+1 == C.front());
+    (MARRAY_ASSERT(A.back()+MIdx+1 == b), ...);
+
+    if (dir == FORWARD)
+    {
+        MARRAY_ASSERT(C.size() >= N);
+        return std::make_tuple(A, (I)b..., C.from()+NIdx..., range(C.from()+N, C.to()));
+    }
+    else
+    {
+        MARRAY_ASSERT(A.size() >= N);
+        return std::make_tuple(range(A.from(), A.to()-N), A.to()-N+NIdx..., (I)b..., C);
+    }
+}
+
+template <int N, typename I, typename... B>
+auto repartition(const range_t<I>& A, const range_t<I>& C, direction dir, B... b)
+{
+    return repartition(A, C, dir, std::make_integer_sequence<I,sizeof...(B)>{},
+                                  std::make_integer_sequence<I,N>{}, b...);
 }
 
 } //namespace detail
@@ -126,39 +167,28 @@ auto partition_columns(const MArray& A, direction dir = FORWARD)
 
 // Unblocked repartition
 
-template <typename I>
+template <int N, typename I>
 auto repartition(const range_t<I>& A, const range_t<I>& B, direction dir = FORWARD)
 {
-    MARRAY_ASSERT(A.back()+1 == B.front());
-
-    if (dir == FORWARD)
-    {
-        MARRAY_ASSERT(B.size() > 0);
-        return std::make_tuple(A, B.from(), range(B.from()+1, B.to()));
-    }
-    else
-    {
-        MARRAY_ASSERT(A.size() > 0);
-        return std::make_tuple(range(A.from(), A.to()-1), A.to()-1, B);
-    }
+    return detail::repartition<N>(A, B, dir);
 }
 
-template <typename I>
+template <int N, typename I>
 auto repartition(const range_t<I>& A, I b, const range_t<I>& C, direction dir = FORWARD)
 {
-    MARRAY_ASSERT(A.back()+1 == b);
-    MARRAY_ASSERT(b+1 == C.front());
+    return detail::repartition<N>(A, C, dir, b);
+}
 
-    if (dir == FORWARD)
-    {
-        MARRAY_ASSERT(C.size() > 0);
-        return std::make_tuple(A, b, b+1, range(C.from()+1, C.to()));
-    }
-    else
-    {
-        MARRAY_ASSERT(A.size() > 0);
-        return std::make_tuple(range(A.from(), A.to()-1), b-1, b, C);
-    }
+template <int N, typename I>
+auto repartition(const range_t<I>& A, I b, I c, const range_t<I>& D, direction dir = FORWARD)
+{
+    return detail::repartition<N>(A, D, dir, b, c);
+}
+
+template <typename I, typename... Args>
+auto repartition(const range_t<I>& A, Args&&... args)
+{
+    return repartition<1>(A, std::forward<Args>(args)...);
 }
 
 // Blocked repartition
@@ -212,6 +242,24 @@ auto continue_with(const range_t<I>& R0, I r1, I r2, const range_t<I>& R3, direc
     else
     {
         return std::make_tuple(R0, r1, range(R3.from()-1, R3.to()));
+    }
+}
+
+template <typename I>
+auto continue_with(const range_t<I>& R0, I r1, I r2, I r3, const range_t<I>& R4, direction dir = FORWARD)
+{
+    MARRAY_ASSERT(R0.back()+1 == r1);
+    MARRAY_ASSERT(r1+1 == r2);
+    MARRAY_ASSERT(r2+1 == r3);
+    MARRAY_ASSERT(r3+1 == R4.front());
+
+    if (dir == FORWARD)
+    {
+        return std::make_tuple(range(R0.from(), R0.to()+2), r3, R4);
+    }
+    else
+    {
+        return std::make_tuple(R0, r1, range(R4.from()-2, R4.to()));
     }
 }
 

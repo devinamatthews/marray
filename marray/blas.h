@@ -3,181 +3,136 @@
 
 #include "detail/fortran.h"
 
+#ifdef MARRAY_USE_BLIS
+#define BLIS_DISABLE_BLAS
+#define _DEFINED_SCOMPLEX
+#define _DEFINED_DCOMPLEX
+#include <blis.h>
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+#define MARRAY_FOR_EACH_REAL_TYPE \
+MARRAY_FOR_EACH_TYPE_BODY(float, float, float, S, s, S, s) \
+MARRAY_FOR_EACH_TYPE_BODY(double, double, double, D, d, D, d)
+
+#define MARRAY_FOR_EACH_COMPLEX_TYPE \
+MARRAY_FOR_EACH_TYPE_BODY(scomplex, scomplex_f, float, C, c, S, s) \
+MARRAY_FOR_EACH_TYPE_BODY(dcomplex, dcomplex_f, double, Z, z, D, d)
+
+#define MARRAY_FOR_EACH_TYPE \
+MARRAY_FOR_EACH_REAL_TYPE \
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
  * Level 1 BLAS, FORTRAN prototypes
  *
  *****************************************************************************/
-void    MARRAY_FC_FUNC(srotg,SROTG)  (float* a, float* b, float* c, float* s);
-void    MARRAY_FC_FUNC(srotmg,SROTMG)(float* d1, float* d2, float* a, const float* b, float* param);
-void    MARRAY_FC_FUNC(srot,SROT)    (const integer* n,                           float* x, const integer* incx,       float* y, const integer* incy, const float* c, const float* s);
-void    MARRAY_FC_FUNC(srotm,SROTM)  (const integer* n,                           float* x, const integer* incx,       float* y, const integer* incy, float* param);
-void    MARRAY_FC_FUNC(sswap,SSWAP)  (const integer* n,                           float* x, const integer* incx,       float* y, const integer* incy);
-void    MARRAY_FC_FUNC(sscal,SSCAL)  (const integer* n, const float* alpha,       float* x, const integer* incx);
-void    MARRAY_FC_FUNC(scopy,SCOPY)  (const integer* n,                     const float* x, const integer* incx,       float* y, const integer* incy);
-void    MARRAY_FC_FUNC(saxpy,SAXPY)  (const integer* n, const float* alpha, const float* x, const integer* incx,       float* y, const integer* incy);
-float   MARRAY_FC_FUNC(sdot,SDOT)    (const integer* n,                     const float* x, const integer* incx, const float* y, const integer* incy);
-float   MARRAY_FC_FUNC(snrm2,SNRM2)  (const integer* n,                     const float* x, const integer* incx);
-float   MARRAY_FC_FUNC(sasum,SASUM)  (const integer* n,                     const float* x, const integer* incx);
-integer MARRAY_FC_FUNC(isamax,ISAMAX)(const integer* n,                     const float* x, const integer* incx);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void    MARRAY_FC_FUNC(ch##rotg,CH##ROTG)      (ctype* a, ctype* b, ctyper* c, ctype* s); \
+void    MARRAY_FC_FUNC(ch##swap,CH##SWAP)      (const integer* n,                           ctype* x, const integer* incx, ctype* y, const integer* incy); \
+void    MARRAY_FC_FUNC(ch##scal,CH##SCAL)      (const integer* n, const ctype* alpha,       ctype* x, const integer* incx); \
+void    MARRAY_FC_FUNC(ch##copy,CH##COPY)      (const integer* n,                     const ctype* x, const integer* incx, ctype* y, const integer* incy); \
+void    MARRAY_FC_FUNC(ch##axpy,CH##AXPY)      (const integer* n, const ctype* alpha, const ctype* x, const integer* incx, ctype* y, const integer* incy); \
+integer MARRAY_FC_FUNC(i##ch##amax,I##CH##AMAX)(const integer* n,                     const ctype* x, const integer* incx);
 
-void    MARRAY_FC_FUNC(drotg,DROTG)  (double* a, double* b, double* c, double* s);
-void    MARRAY_FC_FUNC(drotmg,DROTMG)(double* d1, double* d2, double* a, const double* b, double* param);
-void    MARRAY_FC_FUNC(drot,DROT)    (const integer* n,                            double* x, const integer* incx,       double* y, const integer* incy, const double* c, const double* s);
-void    MARRAY_FC_FUNC(drotm,DROTM)  (const integer* n,                            double* x, const integer* incx,       double* y, const integer* incy, double* param);
-void    MARRAY_FC_FUNC(dswap,DSWAP)  (const integer* n,                            double* x, const integer* incx,       double* y, const integer* incy);
-void    MARRAY_FC_FUNC(dscal,DSCAL)  (const integer* n, const double* alpha,       double* x, const integer* incx);
-void    MARRAY_FC_FUNC(dcopy,DCOPY)  (const integer* n,                      const double* x, const integer* incx,       double* y, const integer* incy);
-void    MARRAY_FC_FUNC(daxpy,DAXPY)  (const integer* n, const double* alpha, const double* x, const integer* incx,       double* y, const integer* incy);
-double  MARRAY_FC_FUNC(ddot,DDOT)    (const integer* n,                      const double* x, const integer* incx, const double* y, const integer* incy);
-double  MARRAY_FC_FUNC(dnrm2,DNRM2)  (const integer* n,                      const double* x, const integer* incx);
-double  MARRAY_FC_FUNC(dasum,DASUM)  (const integer* n,                      const double* x, const integer* incx);
-integer MARRAY_FC_FUNC(idamax,IDAMAX)(const integer* n,                      const double* x, const integer* incx);
+MARRAY_FOR_EACH_TYPE
 
-void     MARRAY_FC_FUNC(crotg,CROTG)  (scomplex* a, scomplex* b, float* c, scomplex* s);
-void     MARRAY_FC_FUNC(csrot,CSROT)  (const integer* n,                              scomplex* x, const integer* incx,       scomplex* y, const integer* incy, const float* c, const float* s);
-void     MARRAY_FC_FUNC(cswap,CSWAP)  (const integer* n,                              scomplex* x, const integer* incx,       scomplex* y, const integer* incy);
-void     MARRAY_FC_FUNC(cscal,CSCAL)  (const integer* n, const scomplex* alpha,       scomplex* x, const integer* incx);
-void     MARRAY_FC_FUNC(csscal,CSSCAL)(const integer* n, const    float* alpha,       scomplex* x, const integer* incx);
-void     MARRAY_FC_FUNC(ccopy,CCOPY)  (const integer* n,                        const scomplex* x, const integer* incx,       scomplex* y, const integer* incy);
-void     MARRAY_FC_FUNC(caxpy,CAXPY)  (const integer* n, const scomplex* alpha, const scomplex* x, const integer* incx,       scomplex* y, const integer* incy);
-scomplex_f MARRAY_FC_FUNC(cdotu,CDOTU)  (const integer* n,                        const scomplex* x, const integer* incx, const scomplex* y, const integer* incy);
-scomplex_f MARRAY_FC_FUNC(cdotc,CDOTC)  (const integer* n,                        const scomplex* x, const integer* incx, const scomplex* y, const integer* incy);
-float    MARRAY_FC_FUNC(scnrm2,SCNRM2)(const integer* n,                        const scomplex* x, const integer* incx);
-float    MARRAY_FC_FUNC(scasum,SCASUM)(const integer* n,                        const scomplex* x, const integer* incx);
-integer  MARRAY_FC_FUNC(icamax,ICAMAX)(const integer* n,                        const scomplex* x, const integer* incx);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void    MARRAY_FC_FUNC(ch##rotmg,CH##ROTMG)(ctype* d1, ctype* d2, ctype* a, const ctype* b, ctype* param); \
+void    MARRAY_FC_FUNC(ch##rot,CH##ROT)    (const integer* n,       ctype* x, const integer* incx,       ctype* y, const integer* incy, const ctype* c, const ctype* s); \
+void    MARRAY_FC_FUNC(ch##rotm,CH##ROTM)  (const integer* n,       ctype* x, const integer* incx,       ctype* y, const integer* incy, ctype* param); \
+ctypef  MARRAY_FC_FUNC(ch##dot,CH##DOT)    (const integer* n, const ctype* x, const integer* incx, const ctype* y, const integer* incy); \
+ctypef  MARRAY_FC_FUNC(ch##nrm2,CH##NRM2)  (const integer* n, const ctype* x, const integer* incx); \
+ctypef  MARRAY_FC_FUNC(ch##asum,CH##ASUM)  (const integer* n, const ctype* x, const integer* incx);
 
-void     MARRAY_FC_FUNC(zrotg,ZROTG)  (dcomplex* a, dcomplex* b, double* c, dcomplex* s);
-void     MARRAY_FC_FUNC(zdrot,ZDROT)  (const integer* n,                              dcomplex* x, const integer* incx,       dcomplex* y, const integer* incy, const double* c, const double* s);
-void     MARRAY_FC_FUNC(zswap,ZSWAP)  (const integer* n,                              dcomplex* x, const integer* incx,       dcomplex* y, const integer* incy);
-void     MARRAY_FC_FUNC(zscal,ZSCAL)  (const integer* n, const dcomplex* alpha,       dcomplex* x, const integer* incx);
-void     MARRAY_FC_FUNC(zdscal,ZDSCAL)(const integer* n, const   double* alpha,       dcomplex* x, const integer* incx);
-void     MARRAY_FC_FUNC(zcopy,ZCOPY)  (const integer* n,                        const dcomplex* x, const integer* incx,       dcomplex* y, const integer* incy);
-void     MARRAY_FC_FUNC(zaxpy,ZAXPY)  (const integer* n, const dcomplex* alpha, const dcomplex* x, const integer* incx,       dcomplex* y, const integer* incy);
-dcomplex_f MARRAY_FC_FUNC(zdotu,ZDOTU)  (const integer* n,                        const dcomplex* x, const integer* incx, const dcomplex* y, const integer* incy);
-dcomplex_f MARRAY_FC_FUNC(zdotc,ZDOTC)  (const integer* n,                        const dcomplex* x, const integer* incx, const dcomplex* y, const integer* incy);
-double   MARRAY_FC_FUNC(dznrm2,DZNRM2)(const integer* n,                        const dcomplex* x, const integer* incx);
-double   MARRAY_FC_FUNC(dzasum,DZASUM)(const integer* n,                        const dcomplex* x, const integer* incx);
-integer  MARRAY_FC_FUNC(izamax,IZAMAX)(const integer* n,                        const dcomplex* x, const integer* incx);
+MARRAY_FOR_EACH_REAL_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void   MARRAY_FC_FUNC(ch##chr##rot,CH##CHR##ROT)  (const integer* n,                            ctype* x, const integer* incx,       ctype* y, const integer* incy, const ctyper* c, const ctyper* s); \
+void   MARRAY_FC_FUNC(ch##chr##scal,CH##CHR##SCAL)(const integer* n, const ctyper* alpha,       ctype* x, const integer* incx); \
+ctypef MARRAY_FC_FUNC(ch##dotu,CH##DOTU)          (const integer* n,                      const ctype* x, const integer* incx, const ctype* y, const integer* incy); \
+ctypef MARRAY_FC_FUNC(ch##dotc,CH##DOTC)          (const integer* n,                      const ctype* x, const integer* incx, const ctype* y, const integer* incy); \
+ctyper MARRAY_FC_FUNC(chr##ch##nrm2,CHR##CH##NRM2)(const integer* n,                      const ctype* x, const integer* incx); \
+ctyper MARRAY_FC_FUNC(chr##ch##asum,CHR##CH##ASUM)(const integer* n,                      const ctype* x, const integer* incx);
+
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
  * Level 2 BLAS, FORTRAN prototypes
  *
  *****************************************************************************/
-void MARRAY_FC_FUNC(sgemv,SGEMV)(                  const char* trans,                   const integer* m, const integer* n,                                       const float* alpha, const float* a, const integer* lda,  const float* x, const integer* incx, const float* beta, float* y, const integer* incy);
-void MARRAY_FC_FUNC(sgbmv,SGBMV)(                  const char* trans,                   const integer* m, const integer* n, const integer* kl, const integer* ku, const float* alpha, const float* a, const integer* lda,  const float* x, const integer* incx, const float* beta, float* y, const integer* incy);
-void MARRAY_FC_FUNC(ssymv,SSYMV)(const char* uplo,                                                        const integer* n,                                       const float* alpha, const float* a, const integer* lda,  const float* x, const integer* incx, const float* beta, float* y, const integer* incy);
-void MARRAY_FC_FUNC(ssbmv,SSBMV)(const char* uplo,                                                        const integer* n, const integer* k,                     const float* alpha, const float* a, const integer* lda,  const float* x, const integer* incx, const float* beta, float* y, const integer* incy);
-void MARRAY_FC_FUNC(sspmv,SSPMV)(const char* uplo,                                                        const integer* n,                                       const float* alpha, const float* ap,                     const float* x, const integer* incx, const float* beta, float* y, const integer* incy);
-void MARRAY_FC_FUNC(strmv,STRMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const float* a, const integer* lda,        float* x, const integer* incx);
-void MARRAY_FC_FUNC(stbmv,STBMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                         const float* a, const integer* lda,        float* x, const integer* incx);
-void MARRAY_FC_FUNC(stpmv,STPMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const float* ap,                           float* x, const integer* incx);
-void MARRAY_FC_FUNC(strsv,STRSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const float* a, const integer* lda,        float* x, const integer* incx);
-void MARRAY_FC_FUNC(stbsv,STBSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                         const float* a, const integer* lda,        float* x, const integer* incx);
-void MARRAY_FC_FUNC(stpsv,STPSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const float* ap,                           float* x, const integer* incx);
-void MARRAY_FC_FUNC(sger,SGER)  (                                                       const integer* m, const integer* n,                                       const float* alpha, const float* x, const integer* incx, const float* y, const integer* incy, float* a, const integer* lda);
-void MARRAY_FC_FUNC(ssyr,SSYR)  (const char* uplo,                                                        const integer* n,                                       const float* alpha, const float* x, const integer* incx,                                      float* a, const integer* lda);
-void MARRAY_FC_FUNC(sspr,SSPR)  (const char* uplo,                                                        const integer* n,                                       const float* alpha, const float* x, const integer* incx,                                      float* ap);
-void MARRAY_FC_FUNC(ssyr2,SSYR2)(const char* uplo,                                                        const integer* n,                                       const float* alpha, const float* x, const integer* incx, const float* y, const integer* incy, float* a, const integer* lda);
-void MARRAY_FC_FUNC(sspr2,SSPR2)(const char* uplo,                                                        const integer* n,                                       const float* alpha, const float* x, const integer* incx, const float* y, const integer* incy, float* ap);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void MARRAY_FC_FUNC(ch##gemv,CH##GEMV)(                  const char* trans,                   const integer* m, const integer* n,                                       const ctype* alpha, const ctype* a, const integer* lda,  const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##gbmv,CH##GBMV)(                  const char* trans,                   const integer* m, const integer* n, const integer* kl, const integer* ku, const ctype* alpha, const ctype* a, const integer* lda,  const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##trmv,CH##TRMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const ctype* a, const integer* lda,        ctype* x, const integer* incx); \
+void MARRAY_FC_FUNC(ch##tbmv,CH##TBMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                         const ctype* a, const integer* lda,        ctype* x, const integer* incx); \
+void MARRAY_FC_FUNC(ch##tpmv,CH##TPMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const ctype* ap,                           ctype* x, const integer* incx); \
+void MARRAY_FC_FUNC(ch##trsv,CH##TRSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const ctype* a, const integer* lda,        ctype* x, const integer* incx); \
+void MARRAY_FC_FUNC(ch##tbsv,CH##TBSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                         const ctype* a, const integer* lda,        ctype* x, const integer* incx); \
+void MARRAY_FC_FUNC(ch##tpsv,CH##TPSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                           const ctype* ap,                           ctype* x, const integer* incx); \
 
-void MARRAY_FC_FUNC(dgemv,DGEMV)(                  const char* trans,                   const integer* m, const integer* n,                                       const double* alpha, const double* a, const integer* lda, const double* x, const integer* incx, const double* beta, double* y, const integer* incy);
-void MARRAY_FC_FUNC(dgbmv,DGBMV)(                  const char* trans,                   const integer* m, const integer* n, const integer* kl, const integer* ku, const double* alpha, const double* a, const integer* lda, const double* x, const integer* incx, const double* beta, double* y, const integer* incy);
-void MARRAY_FC_FUNC(dsymv,DSYMV)(const char* uplo,                                                        const integer* n,                                       const double* alpha, const double* a, const integer* lda, const double* x, const integer* incx, const double* beta, double* y, const integer* incy);
-void MARRAY_FC_FUNC(dsbmv,DSBMV)(const char* uplo,                                                        const integer* n, const integer* k,                     const double* alpha, const double* a, const integer* lda, const double* x, const integer* incx, const double* beta, double* y, const integer* incy);
-void MARRAY_FC_FUNC(dspmv,DSPMV)(const char* uplo,                                                        const integer* n,                                       const double* alpha, const double* ap,                    const double* x, const integer* incx, const double* beta, double* y, const integer* incy);
-void MARRAY_FC_FUNC(dtrmv,DTRMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                            const double* a, const integer* lda,       double* x, const integer* incx);
-void MARRAY_FC_FUNC(dtbmv,DTBMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                          const double* a, const integer* lda,       double* x, const integer* incx);
-void MARRAY_FC_FUNC(dtpmv,DTPMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                            const double* ap,                          double* x, const integer* incx);
-void MARRAY_FC_FUNC(dtrsv,DTRSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                            const double* a, const integer* lda,       double* x, const integer* incx);
-void MARRAY_FC_FUNC(dtbsv,DTBSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                          const double* a, const integer* lda,       double* x, const integer* incx);
-void MARRAY_FC_FUNC(dtpsv,DTPSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                            const double* ap,                          double* x, const integer* incx);
-void MARRAY_FC_FUNC(dger,DGER)  (                                                       const integer* m, const integer* n,                                       const double* alpha, const double* x, const integer* incx, const double* y, const integer* incy, double* a, const integer* lda);
-void MARRAY_FC_FUNC(dsyr,DSYR)  (const char* uplo,                                                        const integer* n,                                       const double* alpha, const double* x, const integer* incx,                                       double* a, const integer* lda);
-void MARRAY_FC_FUNC(dspr,DSPR)  (const char* uplo,                                                        const integer* n,                                       const double* alpha, const double* x, const integer* incx,                                       double* ap);
-void MARRAY_FC_FUNC(dsyr2,DSYR2)(const char* uplo,                                                        const integer* n,                                       const double* alpha, const double* x, const integer* incx, const double* y, const integer* incy, double* a, const integer* lda);
-void MARRAY_FC_FUNC(dspr2,DSPR2)(const char* uplo,                                                        const integer* n,                                       const double* alpha, const double* x, const integer* incx, const double* y, const integer* incy, double* ap);
+MARRAY_FOR_EACH_TYPE
 
-void MARRAY_FC_FUNC(cgemv,CGEMV)(                  const char* trans,                   const integer* m, const integer* n,                                       const scomplex* alpha, const scomplex* a, const integer* lda,  const scomplex* x, const integer* incx, const scomplex* beta, scomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(cgbmv,CGBMV)(                  const char* trans,                   const integer* m, const integer* n, const integer* kl, const integer* ku, const scomplex* alpha, const scomplex* a, const integer* lda,  const scomplex* x, const integer* incx, const scomplex* beta, scomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(chemv,CHEMV)(const char* uplo,                                                        const integer* n,                                       const scomplex* alpha, const scomplex* a, const integer* lda,  const scomplex* x, const integer* incx, const scomplex* beta, scomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(chbmv,CHBMV)(const char* uplo,                                                        const integer* n, const integer* k,                     const scomplex* alpha, const scomplex* a, const integer* lda,  const scomplex* x, const integer* incx, const scomplex* beta, scomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(chpmv,CHPMV)(const char* uplo,                                                        const integer* n,                                       const scomplex* alpha, const scomplex* ap,                     const scomplex* x, const integer* incx, const scomplex* beta, scomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(ctrmv,CTRMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const scomplex* a, const integer* lda,        scomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ctbmv,CTBMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                            const scomplex* a, const integer* lda,        scomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ctpmv,CTPMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const scomplex* ap,                           scomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ctrsv,CTRSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const scomplex* a, const integer* lda,        scomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ctbsv,CTBSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                            const scomplex* a, const integer* lda,        scomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ctpsv,CTPSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const scomplex* ap,                           scomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(cgeru,CGERU)(                                                       const integer* m, const integer* n,                                       const scomplex* alpha, const scomplex* x, const integer* incx, const scomplex* y, const integer* incy, scomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(cgerc,CGERC)(                                                       const integer* m, const integer* n,                                       const scomplex* alpha, const scomplex* x, const integer* incx, const scomplex* y, const integer* incy, scomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(cher,CHER)  (const char* uplo,                                                        const integer* n,                                       const    float* alpha, const scomplex* x, const integer* incx,                                         scomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(chpr,CHPR)  (const char* uplo,                                                        const integer* n,                                       const    float* alpha, const scomplex* x, const integer* incx,                                         scomplex* ap);
-void MARRAY_FC_FUNC(cher2,CHER2)(const char* uplo,                                                        const integer* n,                                       const scomplex* alpha, const scomplex* x, const integer* incx, const scomplex* y, const integer* incy, scomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(chpr2,CHPR2)(const char* uplo,                                                        const integer* n,                                       const scomplex* alpha, const scomplex* x, const integer* incx, const scomplex* y, const integer* incy, scomplex* ap);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void MARRAY_FC_FUNC(ch##symv,CH##SYMV)(const char* uplo,                                                        const integer* n,                                       const ctype* alpha, const ctype* a, const integer* lda,  const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##sbmv,CH##SBMV)(const char* uplo,                                                        const integer* n, const integer* k,                     const ctype* alpha, const ctype* a, const integer* lda,  const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##spmv,CH##SPMV)(const char* uplo,                                                        const integer* n,                                       const ctype* alpha, const ctype* ap,                     const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##ger,CH##GER)  (                                                       const integer* m, const integer* n,                                       const ctype* alpha, const ctype* x, const integer* incx, const ctype* y, const integer* incy, ctype* a, const integer* lda); \
+void MARRAY_FC_FUNC(ch##syr,CH##SYR)  (const char* uplo,                                                        const integer* n,                                       const ctype* alpha, const ctype* x, const integer* incx,                                      ctype* a, const integer* lda); \
+void MARRAY_FC_FUNC(ch##spr,CH##SPR)  (const char* uplo,                                                        const integer* n,                                       const ctype* alpha, const ctype* x, const integer* incx,                                      ctype* ap); \
+void MARRAY_FC_FUNC(ch##syr2,CH##SYR2)(const char* uplo,                                                        const integer* n,                                       const ctype* alpha, const ctype* x, const integer* incx, const ctype* y, const integer* incy, ctype* a, const integer* lda); \
+void MARRAY_FC_FUNC(ch##spr2,CH##SPR2)(const char* uplo,                                                        const integer* n,                                       const ctype* alpha, const ctype* x, const integer* incx, const ctype* y, const integer* incy, ctype* ap);
 
-void MARRAY_FC_FUNC(zgemv,ZGEMV)(                  const char* trans,                   const integer* m, const integer* n,                                       const dcomplex* alpha, const dcomplex* a, const integer* lda,  const dcomplex* x, const integer* incx, const dcomplex* beta, dcomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(zgbmv,ZGBMV)(                  const char* trans,                   const integer* m, const integer* n, const integer* kl, const integer* ku, const dcomplex* alpha, const dcomplex* a, const integer* lda,  const dcomplex* x, const integer* incx, const dcomplex* beta, dcomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(zhemv,ZHEMV)(const char* uplo,                                                        const integer* n,                                       const dcomplex* alpha, const dcomplex* a, const integer* lda,  const dcomplex* x, const integer* incx, const dcomplex* beta, dcomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(zhbmv,ZHBMV)(const char* uplo,                                                        const integer* n, const integer* k,                     const dcomplex* alpha, const dcomplex* a, const integer* lda,  const dcomplex* x, const integer* incx, const dcomplex* beta, dcomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(zhpmv,ZHPMV)(const char* uplo,                                                        const integer* n,                                       const dcomplex* alpha, const dcomplex* ap,                     const dcomplex* x, const integer* incx, const dcomplex* beta, dcomplex* y, const integer* incy);
-void MARRAY_FC_FUNC(ztrmv,ZTRMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const dcomplex* a, const integer* lda,        dcomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ztbmv,ZTBMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                            const dcomplex* a, const integer* lda,        dcomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ztpmv,ZTPMV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const dcomplex* ap,                           dcomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ztrsv,ZTRSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const dcomplex* a, const integer* lda,        dcomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ztbsv,ZTBSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n, const integer* k,                                            const dcomplex* a, const integer* lda,        dcomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(ztpsv,ZTPSV)(const char* uplo, const char* trans, const char* diag,                   const integer* n,                                                              const dcomplex* ap,                           dcomplex* x, const integer* incx);
-void MARRAY_FC_FUNC(zgerc,ZGERC)(                                                       const integer* m, const integer* n,                                       const dcomplex* alpha, const dcomplex* x, const integer* incx, const dcomplex* y, const integer* incy, dcomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(zgeru,ZGERU)(                                                       const integer* m, const integer* n,                                       const dcomplex* alpha, const dcomplex* x, const integer* incx, const dcomplex* y, const integer* incy, dcomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(zher,ZHER)  (const char* uplo,                                                        const integer* n,                                       const   double* alpha, const dcomplex* x, const integer* incx,                                         dcomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(zhpr,ZHPR)  (const char* uplo,                                                        const integer* n,                                       const   double* alpha, const dcomplex* x, const integer* incx,                                         dcomplex* ap);
-void MARRAY_FC_FUNC(zher2,ZHER2)(const char* uplo,                                                        const integer* n,                                       const dcomplex* alpha, const dcomplex* x, const integer* incx, const dcomplex* y, const integer* incy, dcomplex* a, const integer* lda);
-void MARRAY_FC_FUNC(zhpr2,ZHPR2)(const char* uplo,                                                        const integer* n,                                       const dcomplex* alpha, const dcomplex* x, const integer* incx, const dcomplex* y, const integer* incy, dcomplex* ap);
+MARRAY_FOR_EACH_REAL_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void MARRAY_FC_FUNC(ch##hemv,CH##HEMV)(const char* uplo,                                                        const integer* n,                                       const ctype*  alpha, const ctype* a, const integer* lda,  const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##hbmv,CH##HBMV)(const char* uplo,                                                        const integer* n, const integer* k,                     const ctype*  alpha, const ctype* a, const integer* lda,  const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##hpmv,CH##HPMV)(const char* uplo,                                                        const integer* n,                                       const ctype*  alpha, const ctype* ap,                     const ctype* x, const integer* incx, const ctype* beta, ctype* y, const integer* incy); \
+void MARRAY_FC_FUNC(ch##geru,CH##GERU)(                                                       const integer* m, const integer* n,                                       const ctype*  alpha, const ctype* x, const integer* incx, const ctype* y, const integer* incy, ctype* a, const integer* lda); \
+void MARRAY_FC_FUNC(ch##gerc,CH##GERC)(                                                       const integer* m, const integer* n,                                       const ctype*  alpha, const ctype* x, const integer* incx, const ctype* y, const integer* incy, ctype* a, const integer* lda); \
+void MARRAY_FC_FUNC(ch##her,CH##HER)  (const char* uplo,                                                        const integer* n,                                       const ctyper* alpha, const ctype* x, const integer* incx,                                      ctype* a, const integer* lda); \
+void MARRAY_FC_FUNC(ch##hpr,CH##HPR)  (const char* uplo,                                                        const integer* n,                                       const ctyper* alpha, const ctype* x, const integer* incx,                                      ctype* ap); \
+void MARRAY_FC_FUNC(ch##her2,CH##HER2)(const char* uplo,                                                        const integer* n,                                       const ctype*  alpha, const ctype* x, const integer* incx, const ctype* y, const integer* incy, ctype* a, const integer* lda); \
+void MARRAY_FC_FUNC(ch##hpr2,CH##HPR2)(const char* uplo,                                                        const integer* n,                                       const ctype*  alpha, const ctype* x, const integer* incx, const ctype* y, const integer* incy, ctype* ap);
+
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
  * Level 3 BLAS, FORTRAN prototypes
  *
  *****************************************************************************/
-void MARRAY_FC_FUNC(sgemm,SGEMM)  (                                    const char* transa, const char* transb,                   const integer* m, const integer* n, const integer* k, const float* alpha, const float* a, const integer* lda, const float* b, const integer* ldb, const float* beta, float* c, const integer* ldc);
-void MARRAY_FC_FUNC(ssymm,SSYMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const float* alpha, const float* a, const integer* lda, const float* b, const integer* ldb, const float* beta, float* c, const integer* ldc);
-void MARRAY_FC_FUNC(ssyrk,SSYRK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const float* alpha, const float* a, const integer* lda,                                     const float* beta, float* c, const integer* ldc);
-void MARRAY_FC_FUNC(ssyr2k,SSYR2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const float* alpha, const float* a, const integer* lda, const float* b, const integer* ldb, const float* beta, float* c, const integer* ldc);
-void MARRAY_FC_FUNC(strmm,STRMM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const float* alpha, const float* a, const integer* lda,       float* b, const integer* ldb);
-void MARRAY_FC_FUNC(strsm,STRSM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const float* alpha, const float* a, const integer* lda,       float* b, const integer* ldb);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void MARRAY_FC_FUNC(ch##gemm,CH##GEMM)  (                                    const char* transa, const char* transb,                   const integer* m, const integer* n, const integer* k, const ctype* alpha, const ctype* a, const integer* lda, const ctype* b, const integer* ldb, const ctype* beta, ctype* c, const integer* ldc); \
+void MARRAY_FC_FUNC(ch##symm,CH##SYMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const ctype* alpha, const ctype* a, const integer* lda, const ctype* b, const integer* ldb, const ctype* beta, ctype* c, const integer* ldc); \
+void MARRAY_FC_FUNC(ch##syrk,CH##SYRK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const ctype* alpha, const ctype* a, const integer* lda,                                     const ctype* beta, ctype* c, const integer* ldc); \
+void MARRAY_FC_FUNC(ch##syr2k,CH##SYR2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const ctype* alpha, const ctype* a, const integer* lda, const ctype* b, const integer* ldb, const ctype* beta, ctype* c, const integer* ldc); \
+void MARRAY_FC_FUNC(ch##trmm,CH##TRMM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const ctype* alpha, const ctype* a, const integer* lda,       ctype* b, const integer* ldb); \
+void MARRAY_FC_FUNC(ch##trsm,CH##TRSM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const ctype* alpha, const ctype* a, const integer* lda,       ctype* b, const integer* ldb);
 
-void MARRAY_FC_FUNC(dgemm,DGEMM)  (                                    const char* transa, const char* transb,                   const integer* m, const integer* n, const integer* k, const double* alpha, const double* a, const integer* lda, const double* b, const integer* ldb, const double* beta, double* c, const integer* ldc);
-void MARRAY_FC_FUNC(dsymm,DSYMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const double* alpha, const double* a, const integer* lda, const double* b, const integer* ldb, const double* beta, double* c, const integer* ldc);
-void MARRAY_FC_FUNC(dsyrk,DSYRK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const double* alpha, const double* a, const integer* lda,                                      const double* beta, double* c, const integer* ldc);
-void MARRAY_FC_FUNC(dsyr2k,DSYR2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const double* alpha, const double* a, const integer* lda, const double* b, const integer* ldb, const double* beta, double* c, const integer* ldc);
-void MARRAY_FC_FUNC(dtrmm,DTRMM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const double* alpha, const double* a, const integer* lda,       double* b, const integer* ldb);
-void MARRAY_FC_FUNC(dtrsm,DTRSM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const double* alpha, const double* a, const integer* lda,       double* b, const integer* ldb);
+MARRAY_FOR_EACH_TYPE
 
-void MARRAY_FC_FUNC(cgemm,CGEMM)  (                                    const char* transa, const char* transb,                   const integer* m, const integer* n, const integer* k, const scomplex* alpha, const scomplex* a, const integer* lda, const scomplex* b, const integer* ldb, const scomplex* beta, scomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(chemm,CHEMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const scomplex* alpha, const scomplex* a, const integer* lda, const scomplex* b, const integer* ldb, const scomplex* beta, scomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(csymm,CSYMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const scomplex* alpha, const scomplex* a, const integer* lda, const scomplex* b, const integer* ldb, const scomplex* beta, scomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(csyrk,CSYRK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const scomplex* alpha, const scomplex* a, const integer* lda,                                        const scomplex* beta, scomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(csyr2k,CSYR2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const scomplex* alpha, const scomplex* a, const integer* lda, const scomplex* b, const integer* ldb, const scomplex* beta, scomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(cherk,CHERK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const    float* alpha, const scomplex* a, const integer* lda,                                        const    float* beta, scomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(cher2k,CHER2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const scomplex* alpha, const scomplex* a, const integer* lda, const scomplex* b, const integer* ldb, const    float* beta, scomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(ctrmm,CTRMM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const scomplex* alpha, const scomplex* a, const integer* lda,       scomplex* b, const integer* ldb);
-void MARRAY_FC_FUNC(ctrsm,CTRSM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const scomplex* alpha, const scomplex* a, const integer* lda,       scomplex* b, const integer* ldb);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+void MARRAY_FC_FUNC(ch##hemm,CH##HEMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const ctype*  alpha, const ctype* a, const integer* lda, const ctype* b, const integer* ldb, const ctype*  beta, ctype* c, const integer* ldc); \
+void MARRAY_FC_FUNC(ch##herk,CH##HERK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const ctyper* alpha, const ctype* a, const integer* lda,                                     const ctyper* beta, ctype* c, const integer* ldc); \
+void MARRAY_FC_FUNC(ch##her2k,CH##HER2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const ctype*  alpha, const ctype* a, const integer* lda, const ctype* b, const integer* ldb, const ctyper* beta, ctype* c, const integer* ldc);
 
-void MARRAY_FC_FUNC(zgemm,ZGEMM)  (                                    const char* transa, const char* transb,                   const integer* m, const integer* n, const integer* k, const dcomplex* alpha, const dcomplex* a, const integer* lda, const dcomplex* b, const integer* ldb, const dcomplex* beta, dcomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(zhemm,ZHEMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const dcomplex* alpha, const dcomplex* a, const integer* lda, const dcomplex* b, const integer* ldb, const dcomplex* beta, dcomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(zsymm,ZSYMM)  (const char* side, const char* uplo,                                                           const integer* m, const integer* n,                   const dcomplex* alpha, const dcomplex* a, const integer* lda, const dcomplex* b, const integer* ldb, const dcomplex* beta, dcomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(zsyrk,ZSYRK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const dcomplex* alpha, const dcomplex* a, const integer* lda,                                        const dcomplex* beta, dcomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(zsyr2k,ZSYR2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const dcomplex* alpha, const dcomplex* a, const integer* lda, const dcomplex* b, const integer* ldb, const dcomplex* beta, dcomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(zherk,ZHERK)  (                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const   double* alpha, const dcomplex* a, const integer* lda,                                        const   double* beta, dcomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(zher2k,ZHER2K)(                  const char* uplo, const char* trans,                                                          const integer* n, const integer* k, const dcomplex* alpha, const dcomplex* a, const integer* lda, const dcomplex* b, const integer* ldb, const   double* beta, dcomplex* c, const integer* ldc);
-void MARRAY_FC_FUNC(ztrmm,ZTRMM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const dcomplex* alpha, const dcomplex* a, const integer* lda,       dcomplex* b, const integer* ldb);
-void MARRAY_FC_FUNC(ztrsm,ZTRSM)  (const char* side, const char* uplo, const char* transa,                     const char* diag, const integer* m, const integer* n,                   const dcomplex* alpha, const dcomplex* a, const integer* lda,       dcomplex* b, const integer* ldb);
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
@@ -185,1039 +140,424 @@ void MARRAY_FC_FUNC(ztrsm,ZTRSM)  (const char* side, const char* uplo, const cha
  *
  *****************************************************************************/
 
-static inline void   c_srotg (float* a, float* b, float* c, float* s)
-{
-    MARRAY_FC_FUNC(srotg,SROTG)(a, b, c, s);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline void   c_##ch##rotg (ctype* a, ctype* b, ctyper* c, ctype* s) \
+{ \
+    MARRAY_FC_FUNC(ch##rotg,CH##ROTG)(a, b, c, s); \
+} \
+\
+static inline void   c_##ch##swap (const integer n, ctype* x, const integer incx, \
+                                                    ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##swap,CH##SWAP)(&n, x, &incx, y, &incy); \
+} \
+\
+static inline void   c_##ch##scal (const integer n, const ctype alpha, ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##scal,CH##SCAL)(&n, &alpha, x, &incx); \
+} \
+\
+static inline void   c_##ch##copy (const integer n, const ctype* x, const integer incx, \
+                                                          ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##copy,CH##COPY)(&n, x, &incx, y, &incy); \
+} \
+\
+static inline void   c_##ch##axpy (const integer n, const ctype alpha, const ctype* x, const integer incx, \
+                                                                             ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##axpy,CH##AXPY)(&n, &alpha, x, &incx, y, &incy); \
+} \
+\
+static inline integer c_i##ch##amax(const integer n, const ctype* x, const integer incx) \
+{ \
+    return MARRAY_FC_FUNC(i##ch##amax,I##CH##AMAX)(&n, x, &incx)-1; \
 }
 
-static inline void   c_srotmg(float* d1, float* d2, float* a, const float b, float* param)
-{
-    MARRAY_FC_FUNC(srotmg,SROTMG)(d1, d2, a, &b, param);
+MARRAY_FOR_EACH_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline ctype c_##ch##dot  (const integer n, const ctype* x, const integer incx, \
+                                              const ctype* y, const integer incy) \
+{ \
+    return MARRAY_FC_FUNC(ch##dot,CH##DOT)(&n, x, &incx, y, &incy); \
+} \
+\
+static inline ctype c_##ch##nrm2 (const integer n, const ctype* x, const integer incx) \
+{ \
+    return MARRAY_FC_FUNC(ch##nrm2,CH##NRM2)(&n, x, &incx); \
+} \
+\
+static inline ctype c_##ch##asum (const integer n, const ctype* x, const integer incx) \
+{ \
+    return MARRAY_FC_FUNC(ch##asum,CH##ASUM)(&n, x, &incx); \
+} \
+\
+static inline void   c_##ch##rotmg(ctype* d1, ctype* d2, ctype* a, const ctype b, ctype* param) \
+{ \
+    MARRAY_FC_FUNC(ch##rotmg,CH##ROTMG)(d1, d2, a, &b, param); \
+} \
+\
+static inline void   c_##ch##rot  (const integer n, ctype* x, const integer incx, \
+                                               ctype* y, const integer incy, const ctype c, const ctype s) \
+{ \
+    MARRAY_FC_FUNC(ch##rot,CH##ROT)(&n, x, &incx, y, &incy, &c, &s); \
+} \
+\
+static inline void   c_##ch##rotm (const integer n, ctype* x, const integer incx, \
+                                               ctype* y, const integer incy, ctype* param) \
+{ \
+    MARRAY_FC_FUNC(ch##rotm,CH##ROTM)(&n, x, &incx, y, &incy, param); \
 }
 
-static inline void   c_srot  (const integer n, float* x, const integer incx,
-                                               float* y, const integer incy, const float c, const float s)
-{
-    MARRAY_FC_FUNC(srot,SROT)(&n, x, &incx, y, &incy, &c, &s);
+MARRAY_FOR_EACH_REAL_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline void   c_##ch##chr##rot  (const integer n, ctype* x, const integer incx, \
+                                                         ctype* y, const integer incy, const ctyper c, const ctyper s) \
+{ \
+    MARRAY_FC_FUNC(ch##chr##rot,CH##CHR##ROT)(&n, x, &incx, y, &incy, &c, &s); \
+} \
+\
+static inline void   c_##ch##chr##scal (const integer n, const ctyper alpha, ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##chr##scal,CH##CHR##SCAL)(&n, &alpha, x, &incx); \
+} \
+\
+static inline ctype c_##ch##dotu (const integer n, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy) \
+{ \
+    ctypef tmp = MARRAY_FC_FUNC(ch##dotu,CH##DOTU)(&n, x, &incx, y, &incy); \
+    return MAKE_COMPLEX(ctyper, tmp.real, tmp.imag); \
+} \
+\
+static inline ctype c_##ch##dotc (const integer n, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy) \
+{ \
+    ctypef tmp = MARRAY_FC_FUNC(ch##dotc,CH##DOTC)(&n, x, &incx, y, &incy); \
+    return MAKE_COMPLEX(ctyper, tmp.real, tmp.imag); \
+} \
+\
+static inline ctyper c_##chr##ch##nrm2 (const integer n, const ctype* x, const integer incx) \
+{ \
+    return MARRAY_FC_FUNC(chr##ch##nrm2,CHR##CH##NRM2)(&n, x, &incx); \
+} \
+\
+static inline ctyper c_##chr##ch##asum (const integer n, const ctype* x, const integer incx) \
+{ \
+    return MARRAY_FC_FUNC(chr##ch##asum,CHR##CH##ASUM)(&n, x, &incx); \
 }
 
-static inline void   c_srotm (const integer n, float* x, const integer incx,
-                                               float* y, const integer incy, float* param)
-{
-    MARRAY_FC_FUNC(srotm,SROTM)(&n, x, &incx, y, &incy, param);
-}
-
-static inline void   c_sswap (const integer n, float* x, const integer incx,
-                                               float* y, const integer incy)
-{
-    MARRAY_FC_FUNC(sswap,SSWAP)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_sscal (const integer n, const float alpha, float* x, const integer incx)
-{
-    MARRAY_FC_FUNC(sscal,SSCAL)(&n, &alpha, x, &incx);
-}
-
-static inline void   c_scopy (const integer n, const float* x, const integer incx,
-                                                     float* y, const integer incy)
-{
-    MARRAY_FC_FUNC(scopy,SCOPY)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_saxpy (const integer n, const float alpha, const float* x, const integer incx,
-                                                                        float* y, const integer incy)
-{
-    MARRAY_FC_FUNC(saxpy,SAXPY)(&n, &alpha, x, &incx, y, &incy);
-}
-
-static inline float c_sdot  (const integer n, const float* x, const integer incx,
-                                              const float* y, const integer incy)
-{
-    return MARRAY_FC_FUNC(sdot,SDOT)(&n, x, &incx, y, &incy);
-}
-
-static inline float c_snrm2 (const integer n, const float* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(snrm2,SNRM2)(&n, x, &incx);
-}
-
-static inline float c_sasum (const integer n, const float* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(sasum,SASUM)(&n, x, &incx);
-}
-
-static inline integer c_isamax(const integer n, const float* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(isamax,ISAMAX)(&n, x, &incx)-1;
-}
-
-static inline void   c_drotg (double* a, double* b, double* c, double* s)
-{
-    MARRAY_FC_FUNC(drotg,DROTG)(a, b, c, s);
-}
-
-static inline void   c_drotmg(double* d1, double* d2, double* a, const double b, double* param)
-{
-    MARRAY_FC_FUNC(drotmg,DROTMG)(d1, d2, a, &b, param);
-}
-
-static inline void   c_drot  (const integer n, double* x, const integer incx,
-                                               double* y, const integer incy, const double c, const double s)
-{
-    MARRAY_FC_FUNC(drot,DROT)(&n, x, &incx, y, &incy, &c, &s);
-}
-
-static inline void   c_drotm (const integer n, double* x, const integer incx,
-                                               double* y, const integer incy, double* param)
-{
-    MARRAY_FC_FUNC(drotm,DROTM)(&n, x, &incx, y, &incy, param);
-}
-
-static inline void   c_dswap (const integer n, double* x, const integer incx,
-                                               double* y, const integer incy)
-{
-    MARRAY_FC_FUNC(dswap,DSWAP)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_dscal (const integer n, const double alpha, double* x, const integer incx)
-{
-    MARRAY_FC_FUNC(dscal,DSCAL)(&n, &alpha, x, &incx);
-}
-
-static inline void   c_dcopy (const integer n, const double* x, const integer incx,
-                                                     double* y, const integer incy)
-{
-    MARRAY_FC_FUNC(dcopy,DCOPY)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_daxpy (const integer n, const double alpha, const double* x, const integer incx,
-                                                                         double* y, const integer incy)
-{
-    MARRAY_FC_FUNC(daxpy,DAXPY)(&n, &alpha, x, &incx, y, &incy);
-}
-
-static inline double c_ddot  (const integer n, const double* x, const integer incx,
-                                               const double* y, const integer incy)
-{
-    return MARRAY_FC_FUNC(ddot,DDOT)(&n, x, &incx, y, &incy);
-}
-
-static inline double c_dnrm2 (const integer n, const double* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(dnrm2,DNRM2)(&n, x, &incx);
-}
-
-static inline double c_dasum (const integer n, const double* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(dasum,DASUM)(&n, x, &incx);
-}
-
-static inline integer c_idamax(const integer n, const double* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(idamax,IDAMAX)(&n, x, &incx)-1;
-}
-
-static inline void   c_crotg (scomplex* a, scomplex* b, float* c, scomplex* s)
-{
-    MARRAY_FC_FUNC(crotg,CROTG)(a, b, c, s);
-}
-
-static inline void   c_csrot  (const integer n, scomplex* x, const integer incx,
-                                                scomplex* y, const integer incy, const float c, const float s)
-{
-    MARRAY_FC_FUNC(csrot,CSROT)(&n, x, &incx, y, &incy, &c, &s);
-}
-
-static inline void   c_cswap (const integer n, scomplex* x, const integer incx,
-                                               scomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(cswap,CSWAP)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_cscal (const integer n, const scomplex alpha, scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(cscal,CSCAL)(&n, &alpha, x, &incx);
-}
-
-static inline void   c_csscal (const integer n, const float alpha, scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(csscal,CSSCAL)(&n, &alpha, x, &incx);
-}
-
-static inline void   c_ccopy (const integer n, const scomplex* x, const integer incx,
-                                                     scomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(ccopy,CCOPY)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_caxpy (const integer n, const scomplex alpha, const scomplex* x, const integer incx,
-                                                                           scomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(caxpy,CAXPY)(&n, &alpha, x, &incx, y, &incy);
-}
-
-static inline scomplex c_cdotu (const integer n, const scomplex* x, const integer incx,
-                                                 const scomplex* y, const integer incy)
-{
-    scomplex_f tmp = MARRAY_FC_FUNC(cdotu,CDOTU)(&n, x, &incx, y, &incy);
-    return MAKE_COMPLEX(float, tmp.real, tmp.imag);
-}
-
-static inline scomplex c_cdotc (const integer n, const scomplex* x, const integer incx,
-                                                 const scomplex* y, const integer incy)
-{
-    scomplex_f tmp = MARRAY_FC_FUNC(cdotc,CDOTC)(&n, x, &incx, y, &incy);
-    return MAKE_COMPLEX(float, tmp.real, tmp.imag);
-}
-
-static inline float c_scnrm2 (const integer n, const scomplex* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(scnrm2,SCNRM2)(&n, x, &incx);
-}
-
-static inline float c_scasum (const integer n, const scomplex* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(scasum,SCASUM)(&n, x, &incx);
-}
-
-static inline integer c_icamax(const integer n, const scomplex* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(icamax,ICAMAX)(&n, x, &incx)-1;
-}
-
-static inline void   c_zrotg (dcomplex* a, dcomplex* b, double* c, dcomplex* s)
-{
-    MARRAY_FC_FUNC(zrotg,ZROTG)(a, b, c, s);
-}
-
-static inline void   c_zdrot  (const integer n, dcomplex* x, const integer incx,
-                                                dcomplex* y, const integer incy, const double c, const double s)
-{
-    MARRAY_FC_FUNC(zdrot,ZDROT)(&n, x, &incx, y, &incy, &c, &s);
-}
-
-static inline void   c_zswap (const integer n, dcomplex* x, const integer incx,
-                                               dcomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(zswap,ZSWAP)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_zscal (const integer n, const dcomplex alpha, dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(zscal,ZSCAL)(&n, &alpha, x, &incx);
-}
-
-static inline void   c_zdscal (const integer n, const double alpha, dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(zdscal,ZDSCAL)(&n, &alpha, x, &incx);
-}
-
-static inline void   c_zcopy (const integer n, const dcomplex* x, const integer incx,
-                                                     dcomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(zcopy,ZCOPY)(&n, x, &incx, y, &incy);
-}
-
-static inline void   c_zaxpy (const integer n, const dcomplex alpha, const dcomplex* x, const integer incx,
-                                                                           dcomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(zaxpy,ZAXPY)(&n, &alpha, x, &incx, y, &incy);
-}
-
-static inline dcomplex c_zdotu (const integer n, const dcomplex* x, const integer incx,
-                                                 const dcomplex* y, const integer incy)
-{
-    dcomplex_f tmp = MARRAY_FC_FUNC(zdotu,ZDOTU)(&n, x, &incx, y, &incy);
-    return MAKE_COMPLEX(double, tmp.real, tmp.imag);
-}
-
-static inline dcomplex c_zdotc (const integer n, const dcomplex* x, const integer incx,
-                                                 const dcomplex* y, const integer incy)
-{
-    dcomplex_f tmp = MARRAY_FC_FUNC(zdotc,ZDOTC)(&n, x, &incx, y, &incy);
-    return MAKE_COMPLEX(double, tmp.real, tmp.imag);
-}
-
-static inline double c_dznrm2 (const integer n, const dcomplex* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(dznrm2,DZNRM2)(&n, x, &incx);
-}
-
-static inline double c_dzasum (const integer n, const dcomplex* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(dzasum,DZASUM)(&n, x, &incx);
-}
-
-static inline integer c_izamax(const integer n, const dcomplex* x, const integer incx)
-{
-    return MARRAY_FC_FUNC(izamax,IZAMAX)(&n, x, &incx)-1;
-}
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
  * Level 2 BLAS, C wrappers
  *
  *****************************************************************************/
-static inline void c_sgemv(const char trans, const integer m, const integer n,
-                           const float alpha, const float* a, const integer lda,
-                                              const float* x, const integer incx,
-                           const float  beta,       float* y, const integer incy)
-{
-    MARRAY_FC_FUNC(sgemv,SGEMV)(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_sgbmv(const char trans,
-                           const integer m, const integer n, const integer kl, const integer ku,
-                           const float alpha, const float* a, const integer lda,
-                                              const float* x, const integer incx,
-                           const float  beta,       float* y, const integer incy)
-{
-    MARRAY_FC_FUNC(sgbmv,SGBMV)(&trans, &m, &n, &kl, &ku, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_ssymv(const char uplo, const integer n,
-                           const float alpha, const float* a, const integer lda,
-                                              const float* x, const integer incx,
-                           const float  beta,       float* y, const integer incy)
-{
-    MARRAY_FC_FUNC(ssymv,SSYMV)(&uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_ssbmv(const char uplo, const integer n, const integer k,
-                           const float alpha, const float* a, const integer lda,
-                                              const float* x, const integer incx,
-                           const float  beta,       float* y, const integer incy)
-{
-    MARRAY_FC_FUNC(ssbmv,SSBMV)(&uplo, &n, &k, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_sspmv(const char uplo, const integer n,
-                           const float alpha, const float* ap,
-                                              const float*  x, const integer incx,
-                           const float  beta,       float*  y, const integer incy)
-{
-    MARRAY_FC_FUNC(sspmv,SSPMV)(&uplo, &n, &alpha, ap, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_strmv(const char uplo, const char trans, const char diag, const integer n,
-                           const float* a, const integer lda,
-                                 float* x, const integer incx)
-{
-    MARRAY_FC_FUNC(strmv,STRMV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_stbmv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const float* a, const integer lda,
-                                 float* x, const integer incx)
-{
-    MARRAY_FC_FUNC(stbmv,STBMV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_stpmv(const char uplo, const char trans, const char diag, const integer n,
-                           const float* ap, float* x, const integer incx)
-{
-    MARRAY_FC_FUNC(stpmv,STPMV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_strsv(const char uplo, const char trans, const char diag, const integer n,
-                           const float* a, const integer lda,
-                                 float* x, const integer incx)
-{
-    MARRAY_FC_FUNC(strsv,STRSV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_stbsv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const float* a, const integer lda,
-                                 float* x, const integer incx)
-{
-    MARRAY_FC_FUNC(stbsv,STBSV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_stpsv(const char uplo, const char trans, const char diag, const integer n,
-                           const float* ap, float* x, const integer incx)
-{
-    MARRAY_FC_FUNC(stpsv,STPSV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_sger (const integer m, const integer n,
-                           const float alpha, const float* x, const integer incx,
-                                              const float* y, const integer incy,
-                                                    float* a, const integer lda)
-{
-    MARRAY_FC_FUNC(sger,SGER)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_ssyr (const char uplo, const integer n,
-                           const float alpha, const float* x, const integer incx,
-                                                    float* a, const integer lda)
-{
-    MARRAY_FC_FUNC(ssyr,SSYR)(&uplo, &n, &alpha, x, &incx, a, &lda);
-}
-
-static inline void c_sspr (const char uplo, const integer n,
-                           const float alpha, const float* x, const integer incx,
-                                                    float* ap)
-{
-    MARRAY_FC_FUNC(sspr,SSPR)(&uplo, &n, &alpha, x, &incx, ap);
-}
-
-static inline void c_ssyr2(const char uplo, const integer n,
-                           const float alpha, const float* x, const integer incx,
-                                              const float* y, const integer incy,
-                                                    float* a, const integer lda)
-{
-    MARRAY_FC_FUNC(ssyr2,SSYR2)(&uplo, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_sspr2(const char uplo, const integer n,
-                           const float alpha, const float* x, const integer incx,
-                                              const float* y, const integer incy,
-                                                    float* ap)
-{
-    MARRAY_FC_FUNC(sspr2,SSPR2)(&uplo, &n, &alpha, x, &incx, y, &incy, ap);
-}
-
-static inline void c_dgemv(const char trans, const integer m, const integer n,
-                           const double alpha, const double* a, const integer lda,
-                                               const double* x, const integer incx,
-                           const double  beta,       double* y, const integer incy)
-{
-    MARRAY_FC_FUNC(dgemv,DGEMV)(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_dgbmv(const char trans,
-                           const integer m, const integer n, const integer kl, const integer ku,
-                           const double alpha, const double* a, const integer lda,
-                                               const double* x, const integer incx,
-                           const double  beta,       double* y, const integer incy)
-{
-    MARRAY_FC_FUNC(dgbmv,DGBMV)(&trans, &m, &n, &kl, &ku, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_dsymv(const char uplo, const integer n,
-                           const double alpha, const double* a, const integer lda,
-                                               const double* x, const integer incx,
-                           const double  beta,       double* y, const integer incy)
-{
-    MARRAY_FC_FUNC(dsymv,DSYMV)(&uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_dsbmv(const char uplo, const integer n, const integer k,
-                           const double alpha, const double* a, const integer lda,
-                                               const double* x, const integer incx,
-                           const double  beta,       double* y, const integer incy)
-{
-    MARRAY_FC_FUNC(dsbmv,DSBMV)(&uplo, &n, &k, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_dspmv(const char uplo, const integer n,
-                           const double alpha, const double* ap,
-                                               const double*  x, const integer incx,
-                           const double  beta,       double*  y, const integer incy)
-{
-    MARRAY_FC_FUNC(dspmv,DSPMV)(&uplo, &n, &alpha, ap, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_dtrmv(const char uplo, const char trans, const char diag, const integer n,
-                           const double* a, const integer lda,
-                                 double* x, const integer incx)
-{
-    MARRAY_FC_FUNC(dtrmv,DTRMV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_dtbmv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const double* a, const integer lda,
-                                 double* x, const integer incx)
-{
-    MARRAY_FC_FUNC(dtbmv,DTBMV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_dtpmv(const char uplo, const char trans, const char diag, const integer n,
-                           const double* ap, double* x, const integer incx)
-{
-    MARRAY_FC_FUNC(dtpmv,DTPMV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_dtrsv(const char uplo, const char trans, const char diag, const integer n,
-                           const double* a, const integer lda,
-                                 double* x, const integer incx)
-{
-    MARRAY_FC_FUNC(dtrsv,DTRSV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_dtbsv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const double* a, const integer lda,
-                                 double* x, const integer incx)
-{
-    MARRAY_FC_FUNC(dtbsv,DTBSV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_dtpsv(const char uplo, const char trans, const char diag, const integer n,
-                           const double* ap, double* x, const integer incx)
-{
-    MARRAY_FC_FUNC(dtpsv,DTPSV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_dger (const integer m, const integer n,
-                           const double alpha, const double* x, const integer incx,
-                                               const double* y, const integer incy,
-                                                     double* a, const integer lda)
-{
-    MARRAY_FC_FUNC(dger,DGER)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_dsyr (const char uplo, const integer n,
-                           const double alpha, const double* x, const integer incx,
-                                                     double* a, const integer lda)
-{
-    MARRAY_FC_FUNC(dsyr,DSYR)(&uplo, &n, &alpha, x, &incx, a, &lda);
-}
-
-static inline void c_dspr (const char uplo, const integer n,
-                           const double alpha, const double* x, const integer incx,
-                                                     double* ap)
-{
-    MARRAY_FC_FUNC(dspr,DSPR)(&uplo, &n, &alpha, x, &incx, ap);
-}
-
-static inline void c_dsyr2(const char uplo, const integer n,
-                           const double alpha, const double* x, const integer incx,
-                                               const double* y, const integer incy,
-                                                     double* a, const integer lda)
-{
-    MARRAY_FC_FUNC(dsyr2,DSYR2)(&uplo, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_dspr2(const char uplo, const integer n,
-                           const double alpha, const double* x, const integer incx,
-                                               const double* y, const integer incy,
-                                                     double* ap)
-{
-    MARRAY_FC_FUNC(dspr2,DSPR2)(&uplo, &n, &alpha, x, &incx, y, &incy, ap);
-}
-
-static inline void c_cgemv(const char trans, const integer m, const integer n,
-                           const scomplex alpha, const scomplex* a, const integer lda,
-                                                 const scomplex* x, const integer incx,
-                           const scomplex  beta,       scomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(cgemv,CGEMV)(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_cgbmv(const char trans,
-                           const integer m, const integer n, const integer kl, const integer ku,
-                           const scomplex alpha, const scomplex* a, const integer lda,
-                                                 const scomplex* x, const integer incx,
-                           const scomplex  beta,       scomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(cgbmv,CGBMV)(&trans, &m, &n, &kl, &ku, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_chemv(const char uplo, const integer n,
-                           const scomplex alpha, const scomplex* a, const integer lda,
-                                                 const scomplex* x, const integer incx,
-                           const scomplex  beta,       scomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(chemv,CHEMV)(&uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_chbmv(const char uplo, const integer n, const integer k,
-                           const scomplex alpha, const scomplex* a, const integer lda,
-                                                 const scomplex* x, const integer incx,
-                           const scomplex  beta,       scomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(chbmv,CHBMV)(&uplo, &n, &k, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_chpmv(const char uplo, const integer n,
-                           const scomplex alpha, const scomplex* ap,
-                                                 const scomplex*  x, const integer incx,
-                           const scomplex  beta,       scomplex*  y, const integer incy)
-{
-    MARRAY_FC_FUNC(chpmv,CHPMV)(&uplo, &n, &alpha, ap, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_ctrmv(const char uplo, const char trans, const char diag, const integer n,
-                           const scomplex* a, const integer lda,
-                                 scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ctrmv,CTRMV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_ctbmv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const scomplex* a, const integer lda,
-                                 scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ctbmv,CTBMV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_ctpmv(const char uplo, const char trans, const char diag, const integer n,
-                           const scomplex* ap, scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ctpmv,CTPMV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_ctrsv(const char uplo, const char trans, const char diag, const integer n,
-                           const scomplex* a, const integer lda,
-                                 scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ctrsv,CTRSV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_ctbsv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const scomplex* a, const integer lda,
-                                 scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ctbsv,CTBSV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_ctpsv(const char uplo, const char trans, const char diag, const integer n,
-                           const scomplex* ap, scomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ctpsv,CTPSV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_cgeru(const integer m, const integer n,
-                           const scomplex alpha, const scomplex* x, const integer incx,
-                                                 const scomplex* y, const integer incy,
-                                                       scomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(cgeru,CGERU)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_cgerc(const integer m, const integer n,
-                           const scomplex alpha, const scomplex* x, const integer incx,
-                                                 const scomplex* y, const integer incy,
-                                                       scomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(cgerc,CGERC)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_cher (const char uplo, const integer n,
-                           const float alpha, const scomplex* x, const integer incx,
-                                                       scomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(cher,CHER)(&uplo, &n, &alpha, x, &incx, a, &lda);
-}
-
-static inline void c_chpr (const char uplo, const integer n,
-                           const float alpha, const scomplex* x, const integer incx,
-                                                       scomplex* ap)
-{
-    MARRAY_FC_FUNC(chpr,CHPR)(&uplo, &n, &alpha, x, &incx, ap);
-}
-
-static inline void c_cher2(const char uplo, const integer n,
-                           const scomplex alpha, const scomplex* x, const integer incx,
-                                                 const scomplex* y, const integer incy,
-                                                       scomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(cher2,CHER2)(&uplo, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_chpr2(const char uplo, const integer n,
-                           const scomplex alpha, const scomplex* x, const integer incx,
-                                                 const scomplex* y, const integer incy,
-                                                       scomplex* ap)
-{
-    MARRAY_FC_FUNC(chpr2,CHPR2)(&uplo, &n, &alpha, x, &incx, y, &incy, ap);
-}
-
-static inline void c_zgemv(const char trans, const integer m, const integer n,
-                           const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                 const dcomplex* x, const integer incx,
-                           const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(zgemv,ZGEMV)(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_zgbmv(const char trans,
-                           const integer m, const integer n, const integer kl, const integer ku,
-                           const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                 const dcomplex* x, const integer incx,
-                           const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(zgbmv,ZGBMV)(&trans, &m, &n, &kl, &ku, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_zhemv(const char uplo, const integer n,
-                           const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                 const dcomplex* x, const integer incx,
-                           const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(zhemv,ZHEMV)(&uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_zhbmv(const char uplo, const integer n, const integer k,
-                           const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                 const dcomplex* x, const integer incx,
-                           const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    MARRAY_FC_FUNC(zhbmv,ZHBMV)(&uplo, &n, &k, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_zhpmv(const char uplo, const integer n,
-                           const dcomplex alpha, const dcomplex* ap,
-                                                 const dcomplex*  x, const integer incx,
-                           const dcomplex  beta,       dcomplex*  y, const integer incy)
-{
-    MARRAY_FC_FUNC(zhpmv,ZHPMV)(&uplo, &n, &alpha, ap, x, &incx, &beta, y, &incy);
-}
-
-static inline void c_ztrmv(const char uplo, const char trans, const char diag, const integer n,
-                           const dcomplex* a, const integer lda,
-                                 dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ztrmv,ZTRMV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_ztbmv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const dcomplex* a, const integer lda,
-                                 dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ztbmv,ZTBMV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_ztpmv(const char uplo, const char trans, const char diag, const integer n,
-                           const dcomplex* ap, dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ztpmv,ZTPMV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_ztrsv(const char uplo, const char trans, const char diag, const integer n,
-                           const dcomplex* a, const integer lda,
-                                 dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ztrsv,ZTRSV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx);
-}
-
-static inline void c_ztbsv(const char uplo, const char trans, const char diag,
-                           const integer n, const integer k,
-                           const dcomplex* a, const integer lda,
-                                 dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ztbsv,ZTBSV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx);
-}
-
-static inline void c_ztpsv(const char uplo, const char trans, const char diag, const integer n,
-                           const dcomplex* ap, dcomplex* x, const integer incx)
-{
-    MARRAY_FC_FUNC(ztpsv,ZTPSV)(&uplo, &trans, &diag, &n, ap, x, &incx);
-}
-
-static inline void c_zgeru(const integer m, const integer n,
-                           const dcomplex alpha, const dcomplex* x, const integer incx,
-                                                 const dcomplex* y, const integer incy,
-                                                       dcomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(zgeru,ZGERU)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_zgerc(const integer m, const integer n,
-                           const dcomplex alpha, const dcomplex* x, const integer incx,
-                                                 const dcomplex* y, const integer incy,
-                                                       dcomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(zgerc,ZGERC)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_zher (const char uplo, const integer n,
-                           const double alpha, const dcomplex* x, const integer incx,
-                                                       dcomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(zher,ZHER)(&uplo, &n, &alpha, x, &incx, a, &lda);
-}
-
-static inline void c_zhpr (const char uplo, const integer n,
-                           const double alpha, const dcomplex* x, const integer incx,
-                                                       dcomplex* ap)
-{
-    MARRAY_FC_FUNC(zhpr,ZHPR)(&uplo, &n, &alpha, x, &incx, ap);
-}
-
-static inline void c_zher2(const char uplo, const integer n,
-                           const dcomplex alpha, const dcomplex* x, const integer incx,
-                                                 const dcomplex* y, const integer incy,
-                                                       dcomplex* a, const integer lda)
-{
-    MARRAY_FC_FUNC(zher2,ZHER2)(&uplo, &n, &alpha, x, &incx, y, &incy, a, &lda);
-}
-
-static inline void c_zhpr2(const char uplo, const integer n,
-                           const dcomplex alpha, const dcomplex* x, const integer incx,
-                                                 const dcomplex* y, const integer incy,
-                                                       dcomplex* ap)
-{
-    MARRAY_FC_FUNC(zhpr2,ZHPR2)(&uplo, &n, &alpha, x, &incx, y, &incy, ap);
-}
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline void c_##ch##gemv(const char trans, const integer m, const integer n, \
+                                const ctype alpha, const ctype* a, const integer lda, \
+                                                   const ctype* x, const integer incx, \
+                                const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##gemv,ZGEMV)(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##gbmv(const char trans, \
+                                const integer m, const integer n, const integer kl, const integer ku, \
+                                const ctype alpha, const ctype* a, const integer lda, \
+                                                   const ctype* x, const integer incx, \
+                                const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##gbmv,ZGBMV)(&trans, &m, &n, &kl, &ku, &alpha, a, &lda, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##trmv(const char uplo, const char trans, const char diag, const integer n, \
+                                const ctype* a, const integer lda, \
+                                      ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##trmv,ZTRMV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx); \
+} \
+\
+static inline void c_##ch##tbmv(const char uplo, const char trans, const char diag, \
+                                const integer n, const integer k, \
+                                const ctype* a, const integer lda, \
+                                      ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##tbmv,ZTBMV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx); \
+} \
+\
+static inline void c_##ch##tpmv(const char uplo, const char trans, const char diag, const integer n, \
+                                const ctype* ap, ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##tpmv,ZTPMV)(&uplo, &trans, &diag, &n, ap, x, &incx); \
+} \
+\
+static inline void c_##ch##trsv(const char uplo, const char trans, const char diag, const integer n, \
+                                const ctype* a, const integer lda, \
+                                      ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##trsv,ZTRSV)(&uplo, &trans, &diag, &n, a, &lda, x, &incx); \
+} \
+\
+static inline void c_##ch##tbsv(const char uplo, const char trans, const char diag, \
+                                const integer n, const integer k, \
+                                const ctype* a, const integer lda, \
+                                      ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##tbsv,ZTBSV)(&uplo, &trans, &diag, &n, &k, a, &lda, x, &incx); \
+} \
+\
+static inline void c_##ch##tpsv(const char uplo, const char trans, const char diag, const integer n, \
+                                const ctype* ap, ctype* x, const integer incx) \
+{ \
+    MARRAY_FC_FUNC(ch##tpsv,ZTPSV)(&uplo, &trans, &diag, &n, ap, x, &incx); \
+}
+
+MARRAY_FOR_EACH_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline void c_##ch##symv(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* a, const integer lda, \
+                                                   const ctype* x, const integer incx, \
+                                const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##symv,SSYMV)(&uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##sbmv(const char uplo, const integer n, const integer k, \
+                                const ctype alpha, const ctype* a, const integer lda, \
+                                                   const ctype* x, const integer incx, \
+                                const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##sbmv,SSBMV)(&uplo, &n, &k, &alpha, a, &lda, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##spmv(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* ap, \
+                                                   const ctype*  x, const integer incx, \
+                                const ctype  beta,       ctype*  y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##spmv,SSPMV)(&uplo, &n, &alpha, ap, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##ger (const integer m, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy, \
+                                                         ctype* a, const integer lda) \
+{ \
+    MARRAY_FC_FUNC(ch##ger,SGER)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda); \
+} \
+\
+static inline void c_##ch##syr (const char uplo, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                         ctype* a, const integer lda) \
+{ \
+    MARRAY_FC_FUNC(ch##syr,CH##SYR)(&uplo, &n, &alpha, x, &incx, a, &lda); \
+} \
+\
+static inline void c_##ch##spr (const char uplo, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                         ctype* ap) \
+{ \
+    MARRAY_FC_FUNC(ch##spr,CH##SPR)(&uplo, &n, &alpha, x, &incx, ap); \
+} \
+\
+static inline void c_##ch##syr2(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy, \
+                                                         ctype* a, const integer lda) \
+{ \
+    MARRAY_FC_FUNC(ch##syr2,CH##SYR2)(&uplo, &n, &alpha, x, &incx, y, &incy, a, &lda); \
+} \
+\
+static inline void c_##ch##spr2(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy, \
+                                                         ctype* ap) \
+{ \
+    MARRAY_FC_FUNC(ch##spr2,CH##SPR2)(&uplo, &n, &alpha, x, &incx, y, &incy, ap); \
+}
+
+MARRAY_FOR_EACH_REAL_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline void c_##ch##hemv(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* a, const integer lda, \
+                                                   const ctype* x, const integer incx, \
+                                const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##hemv,CH##HEMV)(&uplo, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##hbmv(const char uplo, const integer n, const integer k, \
+                                const ctype alpha, const ctype* a, const integer lda, \
+                                                   const ctype* x, const integer incx, \
+                                const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##hbmv,CH##HBMV)(&uplo, &n, &k, &alpha, a, &lda, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##hpmv(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* ap, \
+                                                   const ctype*  x, const integer incx, \
+                                const ctype  beta,       ctype*  y, const integer incy) \
+{ \
+    MARRAY_FC_FUNC(ch##hpmv,CH##HPMV)(&uplo, &n, &alpha, ap, x, &incx, &beta, y, &incy); \
+} \
+\
+static inline void c_##ch##geru(const integer m, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy, \
+                                                         ctype* a, const integer lda) \
+{ \
+    MARRAY_FC_FUNC(ch##geru,CH##GERU)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda); \
+} \
+\
+static inline void c_##ch##gerc(const integer m, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy, \
+                                                         ctype* a, const integer lda) \
+{ \
+    MARRAY_FC_FUNC(ch##gerc,CH##GERC)(&m, &n, &alpha, x, &incx, y, &incy, a, &lda); \
+} \
+\
+static inline void c_##ch##her (const char uplo, const integer n, \
+                                const ctyper alpha, const ctype* x, const integer incx, \
+                                                          ctype* a, const integer lda) \
+{ \
+    MARRAY_FC_FUNC(ch##her,CH##HER)(&uplo, &n, &alpha, x, &incx, a, &lda); \
+} \
+\
+static inline void c_##ch##hpr (const char uplo, const integer n, \
+                                const ctyper alpha, const ctype* x, const integer incx, \
+                                                          ctype* ap) \
+{ \
+    MARRAY_FC_FUNC(ch##hpr,CH##HPR)(&uplo, &n, &alpha, x, &incx, ap); \
+} \
+\
+static inline void c_##ch##her2(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy, \
+                                                         ctype* a, const integer lda) \
+{ \
+    MARRAY_FC_FUNC(ch##her2,CH##HER2)(&uplo, &n, &alpha, x, &incx, y, &incy, a, &lda); \
+} \
+\
+static inline void c_##ch##hpr2(const char uplo, const integer n, \
+                                const ctype alpha, const ctype* x, const integer incx, \
+                                                   const ctype* y, const integer incy, \
+                                                         ctype* ap) \
+{ \
+    MARRAY_FC_FUNC(ch##hpr2,CH##HPR2)(&uplo, &n, &alpha, x, &incx, y, &incy, ap); \
+}
+
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
  * Level 3 BLAS, C wrappers
  *
  *****************************************************************************/
-static inline void c_sgemm (const char transa, const char transb,
-                            const integer m, const integer n, const integer k,
-                            const float alpha, const float* a, const integer lda,
-                                               const float* b, const integer ldb,
-                            const float  beta,       float* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(sgemm,SGEMM)(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline void c_##ch##gemm (const char transa, const char transb, \
+                                 const integer m, const integer n, const integer k, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                                    const ctype* b, const integer ldb, \
+                                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    MARRAY_FC_FUNC(ch##gemm,CH##GEMM)(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc); \
+} \
+\
+static inline void c_##ch##symm (const char side, const char uplo, \
+                                 const integer m, const integer n, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                                    const ctype* b, const integer ldb, \
+                                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    MARRAY_FC_FUNC(ch##symm,CH##SYMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc); \
+} \
+\
+static inline void c_##ch##syrk (const char uplo, const char trans, \
+                                 const integer n, const integer k, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    MARRAY_FC_FUNC(ch##syrk,CH##SYRK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc); \
+} \
+\
+static inline void c_##ch##syr2k(const char uplo, const char trans, \
+                                 const integer n, const integer k, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                                    const ctype* b, const integer ldb, \
+                                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    MARRAY_FC_FUNC(ch##syr2k,CH##SYR2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc); \
+} \
+\
+static inline void c_##ch##trmm (const char side, const char uplo, const char transa, const char diag, \
+                                 const integer m, const integer n, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                                          ctype* b, const integer ldb) \
+{ \
+    MARRAY_FC_FUNC(ch##trmm,CH##TRMM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb); \
+} \
+\
+static inline void c_##ch##trsm (const char side, const char uplo, const char transa, const char diag, \
+                                 const integer m, const integer n, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                                          ctype* b, const integer ldb) \
+{ \
+    MARRAY_FC_FUNC(ch##trsm,CH##TRSM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb); \
 }
 
-static inline void c_ssymm (const char side, const char uplo,
-                            const integer m, const integer n,
-                            const float alpha, const float* a, const integer lda,
-                                               const float* b, const integer ldb,
-                            const float  beta,       float* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(ssymm,SSYMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+MARRAY_FOR_EACH_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+static inline void c_##ch##hemm (const char side, const char uplo, \
+                                 const integer m, const integer n, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                                    const ctype* b, const integer ldb, \
+                                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    MARRAY_FC_FUNC(ch##hemm,CH##HEMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc); \
+} \
+\
+static inline void c_##ch##herk (const char uplo, const char trans, \
+                                 const integer n, const integer k, \
+                                 const ctyper alpha, const ctype* a, const integer lda, \
+                                 const ctyper  beta,       ctype* c, const integer ldc) \
+{ \
+    MARRAY_FC_FUNC(ch##herk,CH##HERK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc); \
+} \
+\
+static inline void c_##ch##her2k(const char uplo, const char trans, \
+                                 const integer n, const integer k, \
+                                 const ctype alpha, const ctype* a, const integer lda, \
+                                                    const ctype* b, const integer ldb, \
+                                 const ctyper beta,       ctype* c, const integer ldc) \
+{ \
+    MARRAY_FC_FUNC(ch##her2k,CH##HER2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc); \
 }
 
-static inline void c_ssyrk (const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const float alpha, const float* a, const integer lda,
-                            const float  beta,       float* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(ssyrk,SSYRK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc);
-}
-
-static inline void c_ssyr2k(const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const float alpha, const float* a, const integer lda,
-                                               const float* b, const integer ldb,
-                            const float  beta,       float* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(ssyr2k,SSYR2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_strmm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const float alpha, const float* a, const integer lda,
-                                                     float* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(strmm,STRMM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
-
-static inline void c_strsm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const float alpha, const float* a, const integer lda,
-                                                     float* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(strsm,STRSM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
-
-static inline void c_dgemm (const char transa, const char transb,
-                            const integer m, const integer n, const integer k,
-                            const double alpha, const double* a, const integer lda,
-                                                const double* b, const integer ldb,
-                            const double  beta,       double* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(dgemm,DGEMM)(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_dsymm (const char side, const char uplo,
-                            const integer m, const integer n,
-                            const double alpha, const double* a, const integer lda,
-                                                const double* b, const integer ldb,
-                            const double  beta,       double* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(dsymm,DSYMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_dsyrk (const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const double alpha, const double* a, const integer lda,
-                            const double  beta,       double* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(dsyrk,DSYRK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc);
-}
-
-static inline void c_dsyr2k(const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const double alpha, const double* a, const integer lda,
-                                                const double* b, const integer ldb,
-                            const double  beta,       double* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(dsyr2k,DSYR2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_dtrmm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const double alpha, const double* a, const integer lda,
-                                                      double* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(dtrmm,DTRMM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
-
-static inline void c_dtrsm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const double alpha, const double* a, const integer lda,
-                                                      double* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(dtrsm,DTRSM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
-
-static inline void c_cgemm (const char transa, const char transb,
-                            const integer m, const integer n, const integer k,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                                                  const scomplex* b, const integer ldb,
-                            const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(cgemm,CGEMM)(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_chemm (const char side, const char uplo,
-                            const integer m, const integer n,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                                                  const scomplex* b, const integer ldb,
-                            const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(chemm,CHEMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_csymm (const char side, const char uplo,
-                            const integer m, const integer n,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                                                  const scomplex* b, const integer ldb,
-                            const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(csymm,CSYMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_csyrk (const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                            const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(csyrk,CSYRK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc);
-}
-
-static inline void c_csyr2k(const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                                                  const scomplex* b, const integer ldb,
-                            const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(csyr2k,CSYR2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_cherk (const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const float alpha, const scomplex* a, const integer lda,
-                            const float  beta,       scomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(cherk,CHERK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc);
-}
-
-static inline void c_cher2k(const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                                                  const scomplex* b, const integer ldb,
-                            const    float  beta,       scomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(cher2k,CHER2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_ctrmm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                                                        scomplex* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(ctrmm,CTRMM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
-
-static inline void c_ctrsm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const scomplex alpha, const scomplex* a, const integer lda,
-                                                        scomplex* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(ctrsm,CTRSM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
-
-static inline void c_zgemm (const char transa, const char transb,
-                            const integer m, const integer n, const integer k,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                  const dcomplex* b, const integer ldb,
-                            const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(zgemm,ZGEMM)(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_zhemm (const char side, const char uplo,
-                            const integer m, const integer n,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                  const dcomplex* b, const integer ldb,
-                            const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(zhemm,ZHEMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_zsymm (const char side, const char uplo,
-                            const integer m, const integer n,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                  const dcomplex* b, const integer ldb,
-                            const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(zsymm,ZSYMM)(&side, &uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_zsyrk (const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                            const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(zsyrk,ZSYRK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc);
-}
-
-static inline void c_zsyr2k(const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                  const dcomplex* b, const integer ldb,
-                            const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(zsyr2k,ZSYR2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_zherk (const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const double alpha, const dcomplex* a, const integer lda,
-                            const double  beta,       dcomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(zherk,ZHERK)(&uplo, &trans, &n, &k, &alpha, a, &lda, &beta, c, &ldc);
-}
-
-static inline void c_zher2k(const char uplo, const char trans,
-                            const integer n, const integer k,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                  const dcomplex* b, const integer ldb,
-                            const   double  beta,       dcomplex* c, const integer ldc)
-{
-    MARRAY_FC_FUNC(zher2k,ZHER2K)(&uplo, &trans, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
-}
-
-static inline void c_ztrmm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                        dcomplex* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(ztrmm,ZTRMM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
-
-static inline void c_ztrsm (const char side, const char uplo, const char transa, const char diag,
-                            const integer m, const integer n,
-                            const dcomplex alpha, const dcomplex* a, const integer lda,
-                                                        dcomplex* b, const integer ldb)
-{
-    MARRAY_FC_FUNC(ztrsm,ZTRSM)(&side, &uplo, &transa, &diag, &m, &n, &alpha, a, &lda, b, &ldb);
-}
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 #ifdef __cplusplus
 }
@@ -1380,1226 +720,1259 @@ static inline void c_ztrsm (const char side, const char uplo, const char transa,
 
 namespace MArray
 {
-namespace blas
-{
 
 namespace detail
 {
 
-using namespace MArray::detail;
-
 template <typename T>
-decltype(auto) view(T&& x)
+using value_type = std::remove_cv_t<typename std::decay_t<T>::value_type>;
+
+}
+
+namespace blas
 {
-    if constexpr (MArray::detail::is_marray_v<T> ||
-                  MArray::detail::is_marray_slice_v<T>)
-    {
-        return x.view();
-    }
-    else
-    {
-        return std::forward<T>(x);
-    }
-}
-
-#define MARRAY_FORWARD_AS_VIEW(name) \
-template <typename... Args> \
-auto name(Args&&... args) \
-{ \
-    name##_(detail::view(std::forward<Args>(args))...); \
-}
-
-}
 
 /******************************************************************************
  *
  * Level 1 BLAS, C++ overloads
  *
  *****************************************************************************/
-inline void rotg(float* a, float* b, float* c, float* s)
-{
-    srotg(a, b, c, s);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void rotg(ctype* a, ctype* b, ctyper* c, ctype* s) \
+{ \
+    ch##rotg(a, b, c, s); \
+} \
+\
+inline void swap(const integer n, ctype* x, const integer incx, \
+                                  ctype* y, const integer incy) \
+{ \
+    ch##swap(n, x, incx, y, incy); \
+} \
+\
+inline void scal(const integer n, const ctype alpha, ctype* x, const integer incx) \
+{ \
+    ch##scal(n, alpha, x, incx); \
+} \
+\
+inline void copy(const integer n, const ctype* x, const integer incx, \
+                                        ctype* y, const integer incy) \
+{ \
+    ch##copy(n, x, incx, y, incy); \
+} \
+\
+inline void axpy(const integer n, const ctype alpha, const ctype* x, const integer incx, \
+                                                           ctype* y, const integer incy) \
+{ \
+    ch##axpy(n, alpha, x, incx, y, incy); \
+} \
+\
+inline integer iamax(const integer n, const ctype* x, const integer incx) \
+{ \
+    return i##ch##amax(n, x, incx); \
+} \
+\
+inline ctyper amax(const integer n, const ctype* x, const integer incx) \
+{ \
+    return std::abs(x[i##ch##amax(n, x, incx)]); \
 }
 
-inline void rotg(double* a, double* b, double* c, double* s)
-{
-    drotg(a, b, c, s);
+MARRAY_FOR_EACH_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void rotmg(ctype* d1, ctype* d2, ctype* a, const ctype b, ctype* param) \
+{ \
+    ch##rotmg(d1, d2, a, b, param); \
+} \
+\
+inline void rot(const integer n, ctype* x, const integer incx, \
+                                 ctype* y, const integer incy, const ctype c, const ctype s) \
+{ \
+    ch##rot(n, x, incx, y, incy, c, s); \
+} \
+\
+inline void rotm(const integer n, ctype* x, const integer incx, \
+                                  ctype* y, const integer incy, ctype* param) \
+{ \
+    ch##rotm(n, x, incx, y, incy, param); \
+} \
+\
+inline ctype dot(const integer n, const ctype* x, const integer incx, \
+                                  const ctype* y, const integer incy) \
+{ \
+    return ch##dot(n, x, incx, y, incy); \
+} \
+\
+inline ctype dotc(const integer n, const ctype* x, const integer incx, \
+                                   const ctype* y, const integer incy) \
+{ \
+    return ch##dot(n, x, incx, y, incy); \
+} \
+\
+inline ctype dotu(const integer n, const ctype* x, const integer incx, \
+                                   const ctype* y, const integer incy) \
+{ \
+    return ch##dot(n, x, incx, y, incy); \
+} \
+\
+inline ctype nrm2(const integer n, const ctype* x, const integer incx) \
+{ \
+    return ch##nrm2(n, x, incx); \
+} \
+\
+inline ctype asum(const integer n, const ctype* x, const integer incx) \
+{ \
+    return ch##asum(n, x, incx); \
 }
 
-inline void rotg(scomplex* a, scomplex* b, float* c, scomplex* s)
-{
-    crotg(a, b, c, s);
+MARRAY_FOR_EACH_REAL_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void rot(const integer n, ctype* x, const integer incx, \
+                                 ctype* y, const integer incy, const ctyper c, const ctyper s) \
+{ \
+    ch##chr##rot(n, x, incx, y, incy, c, s); \
+} \
+\
+inline void scal(const integer n, const ctyper alpha, ctype* x, const integer incx) \
+{ \
+    ch##chr##scal(n, alpha, x, incx); \
+} \
+\
+inline ctype dot(const integer n, const ctype* x, const integer incx, \
+                                  const ctype* y, const integer incy) \
+{ \
+    return ch##dotc(n, x, incx, y, incy); \
+} \
+\
+inline ctype dotc(const integer n, const ctype* x, const integer incx, \
+                                   const ctype* y, const integer incy) \
+{ \
+    return ch##dotc(n, x, incx, y, incy); \
+} \
+\
+inline ctype dotu(const integer n, const ctype* x, const integer incx, \
+                                   const ctype* y, const integer incy) \
+{ \
+    return ch##dotu(n, x, incx, y, incy); \
+} \
+\
+inline ctyper nrm2(const integer n, const ctype* x, const integer incx) \
+{ \
+    return chr##ch##nrm2(n, x, incx); \
+} \
+\
+inline ctyper asum(const integer n, const ctype* x, const integer incx) \
+{ \
+    return chr##ch##asum(n, x, incx); \
 }
 
-inline void rotg(dcomplex* a, dcomplex* b, double* c, dcomplex* s)
-{
-    zrotg(a, b, c, s);
-}
-
-inline void rotmg(float* d1, float* d2, float* a, const float b, float* param)
-{
-    srotmg(d1, d2, a, b, param);
-}
-
-inline void rotmg(double* d1, double* d2, double* a, const double b, double* param)
-{
-    drotmg(d1, d2, a, b, param);
-}
-
-inline void rot(const integer n, float* x, const integer incx,
-                                 float* y, const integer incy, const float c, const float s)
-{
-    srot(n, x, incx, y, incy, c, s);
-}
-
-inline void rot(const integer n, double* x, const integer incx,
-                                 double* y, const integer incy, const double c, const double s)
-{
-    drot(n, x, incx, y, incy, c, s);
-}
-
-inline void rot(const integer n, scomplex* x, const integer incx,
-                                 scomplex* y, const integer incy, const float c, const float s)
-{
-    csrot(n, x, incx, y, incy, c, s);
-}
-
-inline void rot(const integer n, dcomplex* x, const integer incx,
-                                 dcomplex* y, const integer incy, const double c, const double s)
-{
-    zdrot(n, x, incx, y, incy, c, s);
-}
-
-inline void rotm(const integer n, float* x, const integer incx,
-                                  float* y, const integer incy, float* param)
-{
-    srotm(n, x, incx, y, incy, param);
-}
-
-inline void rotm(const integer n, double* x, const integer incx,
-                                  double* y, const integer incy, double* param)
-{
-    drotm(n, x, incx, y, incy, param);
-}
-
-inline void swap(const integer n, float* x, const integer incx,
-                                  float* y, const integer incy)
-{
-    sswap(n, x, incx, y, incy);
-}
-
-inline void swap(const integer n, double* x, const integer incx,
-                                  double* y, const integer incy)
-{
-    dswap(n, x, incx, y, incy);
-}
-
-inline void swap(const integer n, scomplex* x, const integer incx,
-                                  scomplex* y, const integer incy)
-{
-    cswap(n, x, incx, y, incy);
-}
-
-inline void swap(const integer n, dcomplex* x, const integer incx,
-                                  dcomplex* y, const integer incy)
-{
-    zswap(n, x, incx, y, incy);
-}
-
-inline void scal(const integer n, const float alpha, float* x, const integer incx)
-{
-    sscal(n, alpha, x, incx);
-}
-
-inline void scal(const integer n, const double alpha, double* x, const integer incx)
-{
-    dscal(n, alpha, x, incx);
-}
-
-inline void scal(const integer n, const scomplex alpha, scomplex* x, const integer incx)
-{
-    cscal(n, alpha, x, incx);
-}
-
-inline void scal(const integer n, const dcomplex alpha, dcomplex* x, const integer incx)
-{
-    zscal(n, alpha, x, incx);
-}
-
-inline void scal(const integer n, const float alpha, scomplex* x, const integer incx)
-{
-    csscal(n, alpha, x, incx);
-}
-
-inline void scal(const integer n, const double alpha, dcomplex* x, const integer incx)
-{
-    zdscal(n, alpha, x, incx);
-}
-
-inline void copy(const integer n, const float* x, const integer incx,
-                                        float* y, const integer incy)
-{
-    scopy(n, x, incx, y, incy);
-}
-
-inline void copy(const integer n, const double* x, const integer incx,
-                                        double* y, const integer incy)
-{
-    dcopy(n, x, incx, y, incy);
-}
-
-inline void copy(const integer n, const scomplex* x, const integer incx,
-                                        scomplex* y, const integer incy)
-{
-    ccopy(n, x, incx, y, incy);
-}
-
-inline void copy(const integer n, const dcomplex* x, const integer incx,
-                                        dcomplex* y, const integer incy)
-{
-    zcopy(n, x, incx, y, incy);
-}
-
-inline void axpy(const integer n, const float alpha, const float* x, const integer incx,
-                                                           float* y, const integer incy)
-{
-    saxpy(n, alpha, x, incx, y, incy);
-}
-
-inline void axpy(const integer n, const double alpha, const double* x, const integer incx,
-                                                            double* y, const integer incy)
-{
-    daxpy(n, alpha, x, incx, y, incy);
-}
-
-inline void axpy(const integer n, const scomplex alpha, const scomplex* x, const integer incx,
-                                                              scomplex* y, const integer incy)
-{
-    caxpy(n, alpha, x, incx, y, incy);
-}
-
-inline void axpy(const integer n, const dcomplex alpha, const dcomplex* x, const integer incx,
-                                                              dcomplex* y, const integer incy)
-{
-    zaxpy(n, alpha, x, incx, y, incy);
-}
-
-inline float dot(const integer n, const float* x, const integer incx,
-                                  const float* y, const integer incy)
-{
-    return sdot(n, x, incx, y, incy);
-}
-
-inline double dot(const integer n, const double* x, const integer incx,
-                                   const double* y, const integer incy)
-{
-    return ddot(n, x, incx, y, incy);
-}
-
-inline scomplex dot(const integer n, const scomplex* x, const integer incx,
-                                     const scomplex* y, const integer incy)
-{
-    return cdotc(n, x, incx, y, incy);
-}
-
-inline dcomplex dot(const integer n, const dcomplex* x, const integer incx,
-                                     const dcomplex* y, const integer incy)
-{
-    return zdotc(n, x, incx, y, incy);
-}
-
-inline float dotc(const integer n, const float* x, const integer incx,
-                                   const float* y, const integer incy)
-{
-    return sdot(n, x, incx, y, incy);
-}
-
-inline double dotc(const integer n, const double* x, const integer incx,
-                                    const double* y, const integer incy)
-{
-    return ddot(n, x, incx, y, incy);
-}
-
-inline scomplex dotc(const integer n, const scomplex* x, const integer incx,
-                                      const scomplex* y, const integer incy)
-{
-    return cdotc(n, x, incx, y, incy);
-}
-
-inline dcomplex dotc(const integer n, const dcomplex* x, const integer incx,
-                                      const dcomplex* y, const integer incy)
-{
-    return zdotc(n, x, incx, y, incy);
-}
-
-inline float dotu(const integer n, const float* x, const integer incx,
-                                   const float* y, const integer incy)
-{
-    return sdot(n, x, incx, y, incy);
-}
-
-inline double dotu(const integer n, const double* x, const integer incx,
-                                    const double* y, const integer incy)
-{
-    return ddot(n, x, incx, y, incy);
-}
-
-inline scomplex dotu(const integer n, const scomplex* x, const integer incx,
-                                      const scomplex* y, const integer incy)
-{
-    return cdotu(n, x, incx, y, incy);
-}
-
-inline dcomplex dotu(const integer n, const dcomplex* x, const integer incx,
-                                      const dcomplex* y, const integer incy)
-{
-    return zdotu(n, x, incx, y, incy);
-}
-
-inline float nrm2(const integer n, const float* x, const integer incx)
-{
-    return snrm2(n, x, incx);
-}
-
-inline double nrm2(const integer n, const double* x, const integer incx)
-{
-    return dnrm2(n, x, incx);
-}
-
-inline float nrm2(const integer n, const scomplex* x, const integer incx)
-{
-    return scnrm2(n, x, incx);
-}
-
-inline double nrm2(const integer n, const dcomplex* x, const integer incx)
-{
-    return dznrm2(n, x, incx);
-}
-
-inline float asum(const integer n, const float* x, const integer incx)
-{
-    return sasum(n, x, incx);
-}
-
-inline double asum(const integer n, const double* x, const integer incx)
-{
-    return dasum(n, x, incx);
-}
-
-inline float asum(const integer n, const scomplex* x, const integer incx)
-{
-    return scasum(n, x, incx);
-}
-
-inline double asum(const integer n, const dcomplex* x, const integer incx)
-{
-    return dzasum(n, x, incx);
-}
-
-inline integer iamax(const integer n, const float* x, const integer incx)
-{
-    return isamax(n, x, incx);
-}
-
-inline integer iamax(const integer n, const double* x, const integer incx)
-{
-    return idamax(n, x, incx);
-}
-
-inline integer iamax(const integer n, const scomplex* x, const integer incx)
-{
-    return icamax(n, x, incx);
-}
-
-inline integer iamax(const integer n, const dcomplex* x, const integer incx)
-{
-    return izamax(n, x, incx);
-}
-
-inline float amax(const integer n, const float* x, const integer incx)
-{
-    return std::abs(x[isamax(n, x, incx)]);
-}
-
-inline double amax(const integer n, const double* x, const integer incx)
-{
-    return std::abs(x[idamax(n, x, incx)]);
-}
-
-inline float amax(const integer n, const scomplex* x, const integer incx)
-{
-    return std::abs(x[icamax(n, x, incx)]);
-}
-
-inline double amax(const integer n, const dcomplex* x, const integer incx)
-{
-    return std::abs(x[izamax(n, x, incx)]);
-}
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
  * Level 2 BLAS, C++ overloads
  *
  *****************************************************************************/
-inline void gemv(const char trans, const integer m, const integer n,
-                 const float alpha, const float* a, const integer lda,
-                                    const float* x, const integer incx,
-                 const float  beta,       float* y, const integer incy)
-{
-    sgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void gemv(const char trans, const integer m, const integer n,
-                 const double alpha, const double* a, const integer lda,
-                                     const double* x, const integer incx,
-                 const double  beta,       double* y, const integer incy)
-{
-    dgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void gemv(const char trans, const integer m, const integer n,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                       const scomplex* x, const integer incx,
-                 const scomplex  beta,       scomplex* y, const integer incy)
-{
-    cgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void gemv(const char trans, const integer m, const integer n,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                       const dcomplex* x, const integer incx,
-                 const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    zgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void gbmv(const char trans,
-                 const integer m, const integer n, const integer kl, const integer ku,
-                 const float alpha, const float* a, const integer lda,
-                                    const float* x, const integer incx,
-                 const float  beta,       float* y, const integer incy)
-{
-    sgbmv(trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void gbmv(const char trans,
-                 const integer m, const integer n, const integer kl, const integer ku,
-                 const double alpha, const double* a, const integer lda,
-                                     const double* x, const integer incx,
-                 const double  beta,       double* y, const integer incy)
-{
-    dgbmv(trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void gbmv(const char trans,
-                 const integer m, const integer n, const integer kl, const integer ku,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                       const scomplex* x, const integer incx,
-                 const scomplex  beta,       scomplex* y, const integer incy)
-{
-    cgbmv(trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void gbmv(const char trans,
-                 const integer m, const integer n, const integer kl, const integer ku,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                       const dcomplex* x, const integer incx,
-                 const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    zgbmv(trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hemv(const char uplo, const integer n,
-                 const float alpha, const float* a, const integer lda,
-                                    const float* x, const integer incx,
-                 const float  beta,       float* y, const integer incy)
-{
-    ssymv(uplo, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hemv(const char uplo, const integer n,
-                 const double alpha, const double* a, const integer lda,
-                                     const double* x, const integer incx,
-                 const double  beta,       double* y, const integer incy)
-{
-    dsymv(uplo, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hemv(const char uplo, const integer n,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                       const scomplex* x, const integer incx,
-                 const scomplex  beta,       scomplex* y, const integer incy)
-{
-    chemv(uplo, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hemv(const char uplo, const integer n,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                       const dcomplex* x, const integer incx,
-                 const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    zhemv(uplo, n, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hbmv(const char uplo, const integer n, const integer k,
-                 const float alpha, const float* a, const integer lda,
-                                    const float* x, const integer incx,
-                 const float  beta,       float* y, const integer incy)
-{
-    ssbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hbmv(const char uplo, const integer n, const integer k,
-                 const double alpha, const double* a, const integer lda,
-                                     const double* x, const integer incx,
-                 const double  beta,       double* y, const integer incy)
-{
-    dsbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hbmv(const char uplo, const integer n, const integer k,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                       const scomplex* x, const integer incx,
-                 const scomplex  beta,       scomplex* y, const integer incy)
-{
-    chbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hbmv(const char uplo, const integer n, const integer k,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                       const dcomplex* x, const integer incx,
-                 const dcomplex  beta,       dcomplex* y, const integer incy)
-{
-    zhbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
-}
-
-inline void hpmv(const char uplo, const integer n,
-                 const float alpha, const float* ap,
-                                    const float*  x, const integer incx,
-                 const float  beta,       float*  y, const integer incy)
-{
-    sspmv(uplo, n, alpha, ap, x, incx, beta, y, incy);
-}
-
-inline void hpmv(const char uplo, const integer n,
-                 const double alpha, const double* ap,
-                                     const double*  x, const integer incx,
-                 const double  beta,       double*  y, const integer incy)
-{
-    dspmv(uplo, n, alpha, ap, x, incx, beta, y, incy);
-}
-
-inline void hpmv(const char uplo, const integer n,
-                 const scomplex alpha, const scomplex* ap,
-                                       const scomplex*  x, const integer incx,
-                 const scomplex  beta,       scomplex*  y, const integer incy)
-{
-    chpmv(uplo, n, alpha, ap, x, incx, beta, y, incy);
-}
-
-inline void hpmv(const char uplo, const integer n,
-                 const dcomplex alpha, const dcomplex* ap,
-                                       const dcomplex*  x, const integer incx,
-                 const dcomplex  beta,       dcomplex*  y, const integer incy)
-{
-    zhpmv(uplo, n, alpha, ap, x, incx, beta, y, incy);
-}
-
-inline void trmv(const char uplo, const char trans, const char diag, const integer n,
-                 const float* a, const integer lda,
-                       float* x, const integer incx)
-{
-    strmv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void trmv(const char uplo, const char trans, const char diag, const integer n,
-                 const double* a, const integer lda,
-                       double* x, const integer incx)
-{
-    dtrmv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void trmv(const char uplo, const char trans, const char diag, const integer n,
-                 const scomplex* a, const integer lda,
-                       scomplex* x, const integer incx)
-{
-    ctrmv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void trmv(const char uplo, const char trans, const char diag, const integer n,
-                 const dcomplex* a, const integer lda,
-                       dcomplex* x, const integer incx)
-{
-    ztrmv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void tbmv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const float* a, const integer lda,
-                       float* x, const integer incx)
-{
-    stbmv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tbmv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const double* a, const integer lda,
-                       double* x, const integer incx)
-{
-    dtbmv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tbmv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const scomplex* a, const integer lda,
-                       scomplex* x, const integer incx)
-{
-    ctbmv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tbmv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const dcomplex* a, const integer lda,
-                       dcomplex* x, const integer incx)
-{
-    ztbmv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tpmv(const char uplo, const char trans, const char diag, const integer n,
-                 const float* ap, float* x, const integer incx)
-{
-    stpmv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void tpmv(const char uplo, const char trans, const char diag, const integer n,
-                 const double* ap, double* x, const integer incx)
-{
-    dtpmv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void tpmv(const char uplo, const char trans, const char diag, const integer n,
-                 const scomplex* ap, scomplex* x, const integer incx)
-{
-    ctpmv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void tpmv(const char uplo, const char trans, const char diag, const integer n,
-                 const dcomplex* ap, dcomplex* x, const integer incx)
-{
-    ztpmv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void trsv(const char uplo, const char trans, const char diag, const integer n,
-                 const float* a, const integer lda,
-                       float* x, const integer incx)
-{
-    strsv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void trsv(const char uplo, const char trans, const char diag, const integer n,
-                 const double* a, const integer lda,
-                       double* x, const integer incx)
-{
-    dtrsv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void trsv(const char uplo, const char trans, const char diag, const integer n,
-                 const scomplex* a, const integer lda,
-                       scomplex* x, const integer incx)
-{
-    ctrsv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void trsv(const char uplo, const char trans, const char diag, const integer n,
-                 const dcomplex* a, const integer lda,
-                       dcomplex* x, const integer incx)
-{
-    ztrsv(uplo, trans, diag, n, a, lda, x, incx);
-}
-
-inline void tbsv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const float* a, const integer lda,
-                       float* x, const integer incx)
-{
-    stbsv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tbsv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const double* a, const integer lda,
-                       double* x, const integer incx)
-{
-    dtbsv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tbsv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const scomplex* a, const integer lda,
-                       scomplex* x, const integer incx)
-{
-    ctbsv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tbsv(const char uplo, const char trans, const char diag,
-                 const integer n, const integer k,
-                 const dcomplex* a, const integer lda,
-                       dcomplex* x, const integer incx)
-{
-    ztbsv(uplo, trans, diag, n, k, a, lda, x, incx);
-}
-
-inline void tpsv(const char uplo, const char trans, const char diag, const integer n,
-                 const float* ap, float* x, const integer incx)
-{
-    stpsv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void tpsv(const char uplo, const char trans, const char diag, const integer n,
-                 const double* ap, double* x, const integer incx)
-{
-    dtpsv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void tpsv(const char uplo, const char trans, const char diag, const integer n,
-                 const scomplex* ap, scomplex* x, const integer incx)
-{
-    ctpsv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void tpsv(const char uplo, const char trans, const char diag, const integer n,
-                const dcomplex* ap, dcomplex* x, const integer incx)
-{
-    ztpsv(uplo, trans, diag, n, ap, x, incx);
-}
-
-inline void ger(const integer m, const integer n,
-                const float alpha, const float* x, const integer incx,
-                                   const float* y, const integer incy,
-                                         float* a, const integer lda)
-{
-    sger(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void ger(const integer m, const integer n,
-                const double alpha, const double* x, const integer incx,
-                                    const double* y, const integer incy,
-                                          double* a, const integer lda)
-{
-    dger(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void ger(const integer m, const integer n,
-                const scomplex alpha, const scomplex* x, const integer incx,
-                                      const scomplex* y, const integer incy,
-                                            scomplex* a, const integer lda)
-{
-    cgerc(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void ger(const integer m, const integer n,
-                const dcomplex alpha, const dcomplex* x, const integer incx,
-                                      const dcomplex* y, const integer incy,
-                                            dcomplex* a, const integer lda)
-{
-    zgerc(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void gerc(const integer m, const integer n,
-                 const float alpha, const float* x, const integer incx,
-                                    const float* y, const integer incy,
-                                          float* a, const integer lda)
-{
-    sger(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void gerc(const integer m, const integer n,
-                 const double alpha, const double* x, const integer incx,
-                                     const double* y, const integer incy,
-                                           double* a, const integer lda)
-{
-    dger(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void gerc(const integer m, const integer n,
-                 const scomplex alpha, const scomplex* x, const integer incx,
-                                       const scomplex* y, const integer incy,
-                                             scomplex* a, const integer lda)
-{
-    cgerc(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void gerc(const integer m, const integer n,
-                 const dcomplex alpha, const dcomplex* x, const integer incx,
-                                       const dcomplex* y, const integer incy,
-                                             dcomplex* a, const integer lda)
-{
-    zgerc(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void geru(const integer m, const integer n,
-                 const float alpha, const float* x, const integer incx,
-                                    const float* y, const integer incy,
-                                          float* a, const integer lda)
-{
-    sger(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void geru(const integer m, const integer n,
-                 const double alpha, const double* x, const integer incx,
-                                     const double* y, const integer incy,
-                                           double* a, const integer lda)
-{
-    dger(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void geru(const integer m, const integer n,
-                 const scomplex alpha, const scomplex* x, const integer incx,
-                                       const scomplex* y, const integer incy,
-                                             scomplex* a, const integer lda)
-{
-    cgeru(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void geru(const integer m, const integer n,
-                 const dcomplex alpha, const dcomplex* x, const integer incx,
-                                       const dcomplex* y, const integer incy,
-                                             dcomplex* a, const integer lda)
-{
-    zgeru(m, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void her(const char uplo, const integer n,
-                const float alpha, const float* x, const integer incx,
-                                         float* a, const integer lda)
-{
-    ssyr(uplo, n, alpha, x, incx, a, lda);
-}
-
-inline void her(const char uplo, const integer n,
-                const double alpha, const double* x, const integer incx,
-                                          double* a, const integer lda)
-{
-    dsyr(uplo, n, alpha, x, incx, a, lda);
-}
-
-inline void her(const char uplo, const integer n,
-                const float alpha, const scomplex* x, const integer incx,
-                                            scomplex* a, const integer lda)
-{
-    cher(uplo, n, alpha, x, incx, a, lda);
-}
-
-inline void her(const char uplo, const integer n,
-                const double alpha, const dcomplex* x, const integer incx,
-                                            dcomplex* a, const integer lda)
-{
-    zher(uplo, n, alpha, x, incx, a, lda);
-}
-
-inline void hpr(const char uplo, const integer n,
-                const float alpha, const float* x, const integer incx,
-                                         float* ap)
-{
-    sspr(uplo, n, alpha, x, incx, ap);
-}
-
-inline void hpr(const char uplo, const integer n,
-                const double alpha, const double* x, const integer incx,
-                                          double* ap)
-{
-    dspr(uplo, n, alpha, x, incx, ap);
-}
-
-inline void hpr(const char uplo, const integer n,
-                const float alpha, const scomplex* x, const integer incx,
-                                            scomplex* ap)
-{
-    chpr(uplo, n, alpha, x, incx, ap);
-}
-
-inline void hpr(const char uplo, const integer n,
-                const double alpha, const dcomplex* x, const integer incx,
-                                            dcomplex* ap)
-{
-    zhpr(uplo, n, alpha, x, incx, ap);
-}
-
-inline void her2(const char uplo, const integer n,
-                 const float alpha, const float* x, const integer incx,
-                                    const float* y, const integer incy,
-                                          float* a, const integer lda)
-{
-    ssyr2(uplo, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void her2(const char uplo, const integer n,
-                 const double alpha, const double* x, const integer incx,
-                                     const double* y, const integer incy,
-                                           double* a, const integer lda)
-{
-    dsyr2(uplo, n, alpha, x, incx, y, incy, a, lda);
-}
-inline void her2(const char uplo, const integer n,
-                 const scomplex alpha, const scomplex* x, const integer incx,
-                                       const scomplex* y, const integer incy,
-                                             scomplex* a, const integer lda)
-{
-    cher2(uplo, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void her2(const char uplo, const integer n,
-                 const dcomplex alpha, const dcomplex* x, const integer incx,
-                                       const dcomplex* y, const integer incy,
-                                             dcomplex* a, const integer lda)
-{
-    zher2(uplo, n, alpha, x, incx, y, incy, a, lda);
-}
-
-inline void hpr2(const char uplo, const integer n,
-                 const float alpha, const float* x, const integer incx,
-                                    const float* y, const integer incy,
-                                          float* ap)
-{
-    sspr2(uplo, n, alpha, x, incx, y, incy, ap);
-}
-
-inline void hpr2(const char uplo, const integer n,
-                 const double alpha, const double* x, const integer incx,
-                                     const double* y, const integer incy,
-                                           double* ap)
-{
-    dspr2(uplo, n, alpha, x, incx, y, incy, ap);
-}
-
-inline void hpr2(const char uplo, const integer n,
-                 const scomplex alpha, const scomplex* x, const integer incx,
-                                       const scomplex* y, const integer incy,
-                                             scomplex* ap)
-{
-    chpr2(uplo, n, alpha, x, incx, y, incy, ap);
-}
-
-inline void hpr2(const char uplo, const integer n,
-                 const dcomplex alpha, const dcomplex* x, const integer incx,
-                                       const dcomplex* y, const integer incy,
-                                             dcomplex* ap)
-{
-    zhpr2(uplo, n, alpha, x, incx, y, incy, ap);
-}
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void gemv(const char trans, const integer m, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* x, const integer incx, \
+                 const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    ch##gemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy); \
+} \
+\
+inline void gbmv(const char trans, \
+                 const integer m, const integer n, const integer kl, const integer ku, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* x, const integer incx, \
+                 const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    ch##gbmv(trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy); \
+} \
+\
+inline void trmv(const char uplo, const char trans, const char diag, const integer n, \
+                 const ctype* a, const integer lda, \
+                       ctype* x, const integer incx) \
+{ \
+    ch##trmv(uplo, trans, diag, n, a, lda, x, incx); \
+} \
+\
+inline void tbmv(const char uplo, const char trans, const char diag, \
+                 const integer n, const integer k, \
+                 const ctype* a, const integer lda, \
+                       ctype* x, const integer incx) \
+{ \
+    ch##tbmv(uplo, trans, diag, n, k, a, lda, x, incx); \
+} \
+\
+inline void tpmv(const char uplo, const char trans, const char diag, const integer n, \
+                 const ctype* ap, ctype* x, const integer incx) \
+{ \
+    ch##tpmv(uplo, trans, diag, n, ap, x, incx); \
+} \
+\
+inline void trsv(const char uplo, const char trans, const char diag, const integer n, \
+                 const ctype* a, const integer lda, \
+                       ctype* x, const integer incx) \
+{ \
+    ch##trsv(uplo, trans, diag, n, a, lda, x, incx); \
+} \
+\
+inline void tbsv(const char uplo, const char trans, const char diag, \
+                 const integer n, const integer k, \
+                 const ctype* a, const integer lda, \
+                       ctype* x, const integer incx) \
+{ \
+    ch##tbsv(uplo, trans, diag, n, k, a, lda, x, incx); \
+} \
+\
+inline void tpsv(const char uplo, const char trans, const char diag, const integer n, \
+                 const ctype* ap, ctype* x, const integer incx) \
+{ \
+    ch##tpsv(uplo, trans, diag, n, ap, x, incx); \
+}
+
+MARRAY_FOR_EACH_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void hemv(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* x, const integer incx, \
+                 const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    ch##symv(uplo, n, alpha, a, lda, x, incx, beta, y, incy); \
+} \
+\
+inline void hbmv(const char uplo, const integer n, const integer k, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* x, const integer incx, \
+                 const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    ch##sbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy); \
+} \
+\
+inline void hpmv(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* ap, \
+                                    const ctype*  x, const integer incx, \
+                 const ctype  beta,       ctype*  y, const integer incy) \
+{ \
+    ch##spmv(uplo, n, alpha, ap, x, incx, beta, y, incy); \
+} \
+\
+inline void ger(const integer m, const integer n, \
+                const ctype alpha, const ctype* x, const integer incx, \
+                                   const ctype* y, const integer incy, \
+                                         ctype* a, const integer lda) \
+{ \
+    ch##ger(m, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void gerc(const integer m, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* a, const integer lda) \
+{ \
+    ch##ger(m, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void geru(const integer m, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* a, const integer lda) \
+{ \
+    ch##ger(m, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void her(const char uplo, const integer n, \
+                const ctype alpha, const ctype* x, const integer incx, \
+                                         ctype* a, const integer lda) \
+{ \
+    ch##syr(uplo, n, alpha, x, incx, a, lda); \
+} \
+\
+inline void hpr(const char uplo, const integer n, \
+                const ctype alpha, const ctype* x, const integer incx, \
+                                         ctype* ap) \
+{ \
+    ch##spr(uplo, n, alpha, x, incx, ap); \
+} \
+\
+inline void her2(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* a, const integer lda) \
+{ \
+    ch##syr2(uplo, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void hpr2(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* ap) \
+{ \
+    ch##spr2(uplo, n, alpha, x, incx, y, incy, ap); \
+}
+
+MARRAY_FOR_EACH_REAL_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void hemv(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* x, const integer incx, \
+                 const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    ch##hemv(uplo, n, alpha, a, lda, x, incx, beta, y, incy); \
+} \
+\
+inline void hbmv(const char uplo, const integer n, const integer k, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* x, const integer incx, \
+                 const ctype  beta,       ctype* y, const integer incy) \
+{ \
+    ch##hbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy); \
+} \
+\
+inline void hpmv(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* ap, \
+                                    const ctype*  x, const integer incx, \
+                 const ctype  beta,       ctype*  y, const integer incy) \
+{ \
+    ch##hpmv(uplo, n, alpha, ap, x, incx, beta, y, incy); \
+} \
+\
+inline void ger(const integer m, const integer n, \
+                const ctype alpha, const ctype* x, const integer incx, \
+                                   const ctype* y, const integer incy, \
+                                         ctype* a, const integer lda) \
+{ \
+    ch##gerc(m, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void gerc(const integer m, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* a, const integer lda) \
+{ \
+    ch##gerc(m, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void geru(const integer m, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* a, const integer lda) \
+{ \
+    ch##geru(m, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void her(const char uplo, const integer n, \
+                const ctyper alpha, const ctype* x, const integer incx, \
+                                          ctype* a, const integer lda) \
+{ \
+    ch##her(uplo, n, alpha, x, incx, a, lda); \
+} \
+\
+inline void hpr(const char uplo, const integer n, \
+                const ctyper alpha, const ctype* x, const integer incx, \
+                                          ctype* ap) \
+{ \
+    ch##hpr(uplo, n, alpha, x, incx, ap); \
+} \
+\
+inline void her2(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* a, const integer lda) \
+{ \
+    ch##her2(uplo, n, alpha, x, incx, y, incy, a, lda); \
+} \
+\
+inline void hpr2(const char uplo, const integer n, \
+                 const ctype alpha, const ctype* x, const integer incx, \
+                                    const ctype* y, const integer incy, \
+                                          ctype* ap) \
+{ \
+    ch##hpr2(uplo, n, alpha, x, incx, y, incy, ap); \
+}
+
+MARRAY_FOR_EACH_COMPLEX_TYPE
 
 /******************************************************************************
  *
  * Level 3 BLAS, C++ overloads
  *
  *****************************************************************************/
-inline void gemm(const char transa, const char transb,
-                 const integer m, const integer n, const integer k,
-                 const float alpha, const float* a, const integer lda,
-                                    const float* b, const integer ldb,
-                 const float  beta,       float* c, const integer ldc)
-{
-    sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void gemm(const char transa, const char transb, \
+                 const integer m, const integer n, const integer k, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* b, const integer ldb, \
+                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##gemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc); \
+} \
+\
+inline void symm(const char side, const char uplo, \
+                 const integer m, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* b, const integer ldb, \
+                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##symm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc); \
+} \
+\
+inline void syrk(const char uplo, const char trans, \
+                 const integer n, const integer k, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##syrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc); \
+} \
+\
+inline void syr2k(const char uplo, const char trans, \
+                  const integer n, const integer k, \
+                  const ctype alpha, const ctype* a, const integer lda, \
+                                     const ctype* b, const integer ldb, \
+                  const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##syr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc); \
+} \
+\
+inline void trmm(const char side, const char uplo, const char transa, const char diag, \
+                 const integer m, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                          ctype* b, const integer ldb) \
+{ \
+    ch##trmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb); \
+} \
+\
+inline void trsm(const char side, const char uplo, const char transa, const char diag, \
+                 const integer m, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                          ctype* b, const integer ldb) \
+{ \
+    ch##trsm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb); \
 }
 
-inline void gemm(const char transa, const char transb,
-                 const integer m, const integer n, const integer k,
-                 const double alpha, const double* a, const integer lda,
-                                     const double* b, const integer ldb,
-                 const double  beta,       double* c, const integer ldc)
-{
-    dgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+MARRAY_FOR_EACH_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void hemm(const char side, const char uplo, \
+                 const integer m, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* b, const integer ldb, \
+                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##symm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc); \
+} \
+\
+inline void herk(const char uplo, const char trans, \
+                 const integer n, const integer k, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##syrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc); \
+} \
+\
+inline void her2k(const char uplo, const char trans, \
+                  const integer n, const integer k, \
+                  const ctype alpha, const ctype* a, const integer lda, \
+                                     const ctype* b, const integer ldb, \
+                  const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##syr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc); \
 }
 
-inline void gemm(const char transa, const char transb,
-                 const integer m, const integer n, const integer k,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                       const scomplex* b, const integer ldb,
-                 const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    cgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+MARRAY_FOR_EACH_REAL_TYPE
+
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void hemm(const char side, const char uplo, \
+                 const integer m, const integer n, \
+                 const ctype alpha, const ctype* a, const integer lda, \
+                                    const ctype* b, const integer ldb, \
+                 const ctype  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##hemm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc); \
+} \
+\
+inline void herk(const char uplo, const char trans, \
+                 const integer n, const integer k, \
+                 const ctyper alpha, const ctype* a, const integer lda, \
+                 const ctyper  beta,       ctype* c, const integer ldc) \
+{ \
+    ch##herk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc); \
+} \
+\
+inline void her2k(const char uplo, const char trans, \
+                  const integer n, const integer k, \
+                  const ctype alpha, const ctype* a, const integer lda, \
+                                     const ctype* b, const integer ldb, \
+                  const ctyper beta,       ctype* c, const integer ldc) \
+{ \
+    ch##her2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc); \
 }
 
-inline void gemm(const char transa, const char transb,
-                 const integer m, const integer n, const integer k,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                       const dcomplex* b, const integer ldb,
-                 const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    zgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+MARRAY_FOR_EACH_COMPLEX_TYPE
+
+#ifdef BLIS_H
+
+/******************************************************************************
+ *
+ * Level 1 BLIS, C++ overloads
+ *
+ *****************************************************************************/
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void bli_addv \
+      ( \
+              conj_t conjx, \
+              dim_t  n, \
+        const ctype* x, inc_t incx, \
+              ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##addv( conjx, n, x, incx, y, incy ); \
+} \
+\
+inline void bli_copyv \
+      ( \
+              conj_t conjx, \
+              dim_t  n, \
+        const ctype* x, inc_t incx, \
+              ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##copyv( conjx, n, x, incx, y, incy ); \
+} \
+\
+inline void bli_subv \
+      ( \
+              conj_t conjx, \
+              dim_t  n, \
+        const ctype* x, inc_t incx, \
+              ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##subv( conjx, n, x, incx, y, incy ); \
+} \
+\
+inline dim_t bli_amaxv \
+     ( \
+             dim_t  n, \
+       const ctype* x, inc_t incx \
+      ) \
+{ \
+    dim_t index; \
+    bli_##ch##amaxv( n, x, incx, &index ); \
+    return index; \
+} \
+\
+inline void bli_axpbyv \
+     ( \
+             conj_t conjx, \
+             dim_t  n, \
+       const ctype& alpha, \
+       const ctype* x, inc_t incx, \
+       const ctype& beta, \
+             ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##axpbyv( conjx, n, &alpha, x, incx, &beta, y, incy ); \
+} \
+\
+inline void bli_axpyv \
+     ( \
+             conj_t conjx, \
+             dim_t  n, \
+       const ctype& alpha, \
+       const ctype* x, inc_t incx, \
+             ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##axpyv( conjx, n, &alpha, x, incx, y, incy ); \
+} \
+\
+inline void bli_scal2v \
+     ( \
+             conj_t conjx, \
+             dim_t  n, \
+       const ctype& alpha, \
+       const ctype* x, inc_t incx, \
+             ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##scal2v( conjx, n, &alpha, x, incx, y, incy ); \
+} \
+\
+inline ctype bli_dotv \
+     ( \
+             conj_t conjx, \
+             conj_t conjy, \
+             dim_t  n, \
+       const ctype* x, inc_t incx, \
+       const ctype* y, inc_t incy \
+      ) \
+{ \
+    ctype rho; \
+    bli_##ch##dotv( conjx, conjy, n, x, incx, y, incy, &rho ); \
+    return rho; \
+} \
+\
+inline void bli_dotxv \
+     ( \
+             conj_t conjx, \
+             conj_t conjy, \
+             dim_t  n, \
+       const ctype& alpha, \
+       const ctype* x, inc_t incx, \
+       const ctype* y, inc_t incy, \
+       const ctype& beta, \
+             ctype& rho  \
+      ) \
+{ \
+    bli_##ch##dotxv( conjx, conjy, n, &alpha, x, incx, y, incy, &beta, &rho ); \
+} \
+\
+inline void bli_invertv \
+     ( \
+       dim_t  n, \
+       ctype* x, inc_t incx  \
+      ) \
+{ \
+    bli_##ch##invertv( n, x, incx ); \
+} \
+\
+inline void bli_invscalv \
+     ( \
+             conj_t conjalpha, \
+             dim_t  n, \
+       const ctype& alpha, \
+             ctype* x, inc_t incx  \
+      ) \
+{ \
+    bli_##ch##invscalv( conjalpha, n, &alpha, x, incx ); \
+} \
+\
+inline void bli_scalv \
+     ( \
+             conj_t conjalpha, \
+             dim_t  n, \
+       const ctype& alpha, \
+             ctype* x, inc_t incx  \
+      ) \
+{ \
+    bli_##ch##scalv( conjalpha, n, &alpha, x, incx ); \
+} \
+\
+inline void bli_setv \
+     ( \
+             conj_t conjalpha, \
+             dim_t  n, \
+       const ctype& alpha, \
+             ctype* x, inc_t incx  \
+      ) \
+{ \
+    bli_##ch##setv( conjalpha, n, &alpha, x, incx ); \
+} \
+\
+inline void bli_swapv \
+     ( \
+       dim_t  n, \
+       ctype* x, inc_t incx, \
+       ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##swapv( n, x, incx, y, incy ); \
+} \
+\
+inline void bli_xpbyv \
+     ( \
+             conj_t conjx, \
+             dim_t  n, \
+       const ctype* x, inc_t incx, \
+       const ctype& beta, \
+             ctype* y, inc_t incy  \
+      ) \
+{ \
+    bli_##ch##xpbyv( conjx, n, x, incx, &beta, y, incy ); \
+} \
+\
+inline ctyper bli_asumv \
+     ( \
+             dim_t    n, \
+       const ctype*   x, inc_t incx \
+     ) \
+{ \
+    ctyper asum; \
+    bli_##ch##asumv( n, x, incx, &asum ); \
+    return asum; \
+} \
+\
+inline ctyper norm1v \
+     ( \
+             dim_t    n, \
+       const ctype*   x, inc_t incx \
+     ) \
+{ \
+    ctyper norm; \
+    bli_##ch##norm1v( n, x, incx, &norm ); \
+    return norm; \
+} \
+\
+inline ctyper normfv \
+     ( \
+             dim_t    n, \
+       const ctype*   x, inc_t incx \
+     ) \
+{ \
+    ctyper norm; \
+    bli_##ch##normfv( n, x, incx, &norm ); \
+    return norm; \
+} \
+\
+inline ctyper normiv \
+     ( \
+             dim_t    n, \
+       const ctype*   x, inc_t incx \
+     ) \
+{ \
+    ctyper norm; \
+    bli_##ch##normiv( n, x, incx, &norm ); \
+    return norm; \
 }
 
-inline void hemm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const float alpha, const float* a, const integer lda,
-                                    const float* b, const integer ldb,
-                 const float  beta,       float* c, const integer ldc)
-{
-    ssymm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+MARRAY_FOR_EACH_TYPE
+
+/******************************************************************************
+ *
+ * Level 2 BLAS, C++ overloads
+ *
+ *****************************************************************************/
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void bli_gemv \
+     ( \
+             trans_t transa, \
+             conj_t  conjx, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype*  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  x, inc_t incx, \
+       const ctype*  beta, \
+             ctype*  y, inc_t incy  \
+     ) \
+{ \
+    bli_##ch##gemv( transa, conjx, m, n, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+} \
+\
+inline void bli_ger \
+     ( \
+             conj_t conjx, \
+             conj_t conjy, \
+             dim_t  m, \
+             dim_t  n, \
+       const ctype* alpha, \
+       const ctype* x, inc_t incx, \
+       const ctype* y, inc_t incy, \
+             ctype* a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##ger( conjx, conjy, m, n, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_hemv \
+     ( \
+             uplo_t uploa, \
+             conj_t conja, \
+             conj_t conjx, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* a, inc_t rs_a, inc_t cs_a, \
+       const ctype* x, inc_t incx, \
+       const ctype* beta, \
+             ctype* y, inc_t incy  \
+     ) \
+{ \
+    bli_##ch##hemv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+} \
+\
+inline void bli_symv \
+     ( \
+             uplo_t uploa, \
+             conj_t conja, \
+             conj_t conjx, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* a, inc_t rs_a, inc_t cs_a, \
+       const ctype* x, inc_t incx, \
+       const ctype* beta, \
+             ctype* y, inc_t incy  \
+     ) \
+{ \
+    bli_##ch##symv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+} \
+\
+inline void bli_shmv \
+     ( \
+             uplo_t uploa, \
+             conj_t conja, \
+             conj_t conjx, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* a, inc_t rs_a, inc_t cs_a, \
+       const ctype* x, inc_t incx, \
+       const ctype* beta, \
+             ctype* y, inc_t incy  \
+     ) \
+{ \
+    bli_##ch##shmv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+} \
+\
+inline void bli_skmv \
+     ( \
+             uplo_t uploa, \
+             conj_t conja, \
+             conj_t conjx, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* a, inc_t rs_a, inc_t cs_a, \
+       const ctype* x, inc_t incx, \
+       const ctype* beta, \
+             ctype* y, inc_t incy  \
+     ) \
+{ \
+    bli_##ch##skmv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+} \
+\
+inline void bli_her \
+     ( \
+             uplo_t   uploa, \
+             conj_t   conjx, \
+             dim_t    m, \
+       const ctyper* alpha, \
+       const ctype*   x, inc_t incx, \
+             ctype*   a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##her( uploa, conjx, m, alpha, x, incx, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_syr \
+     ( \
+             uplo_t uploa, \
+             conj_t conjx, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* x, inc_t incx, \
+             ctype* a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##syr( uploa, conjx, m, alpha, x, incx, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_shr \
+     ( \
+             uplo_t   uploa, \
+             conj_t   conjx, \
+             dim_t    m, \
+       const ctyper* alpha, \
+       const ctype*   x, inc_t incx, \
+             ctype*   a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##shr( uploa, conjx, m, alpha, x, incx, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_skr \
+     ( \
+             uplo_t uploa, \
+             conj_t conjx, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* x, inc_t incx, \
+             ctype* a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##skr( uploa, conjx, m, alpha, x, incx, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_her2 \
+     ( \
+             uplo_t uploa, \
+             conj_t conjx, \
+             conj_t conjy, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* x, inc_t incx, \
+       const ctype* y, inc_t incy, \
+             ctype* a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##her2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_syr2 \
+     ( \
+             uplo_t uploa, \
+             conj_t conjx, \
+             conj_t conjy, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* x, inc_t incx, \
+       const ctype* y, inc_t incy, \
+             ctype* a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##syr2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_shr2 \
+     ( \
+             uplo_t uploa, \
+             conj_t conjx, \
+             conj_t conjy, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* x, inc_t incx, \
+       const ctype* y, inc_t incy, \
+             ctype* a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##shr2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_skr2 \
+     ( \
+             uplo_t uploa, \
+             conj_t conjx, \
+             conj_t conjy, \
+             dim_t  m, \
+       const ctype* alpha, \
+       const ctype* x, inc_t incx, \
+       const ctype* y, inc_t incy, \
+             ctype* a, inc_t rs_a, inc_t cs_a  \
+     ) \
+{ \
+    bli_##ch##skr2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+} \
+\
+inline void bli_trmv \
+     ( \
+             uplo_t  uploa, \
+             trans_t transa, \
+             diag_t  diaga, \
+             dim_t   m, \
+       const ctype*  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+             ctype*  x, inc_t incx  \
+     ) \
+{ \
+    bli_##ch##trmv( uploa, transa, diaga, m, alpha, a, rs_a, cs_a, x, incx ); \
+} \
+\
+inline void bli_trsv \
+     ( \
+             uplo_t  uploa, \
+             trans_t transa, \
+             diag_t  diaga, \
+             dim_t   m, \
+       const ctype*  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+             ctype*  x, inc_t incx  \
+     ) \
+{ \
+    bli_##ch##trsv( uploa, transa, diaga, m, alpha, a, rs_a, cs_a, x, incx ); \
 }
 
-inline void hemm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const double alpha, const double* a, const integer lda,
-                                     const double* b, const integer ldb,
-                 const double  beta,       double* c, const integer ldc)
-{
-    dsymm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+MARRAY_FOR_EACH_TYPE
+
+/******************************************************************************
+ *
+ * Level 3 BLAS, C++ overloads
+ *
+ *****************************************************************************/
+#undef MARRAY_FOR_EACH_TYPE_BODY
+#define MARRAY_FOR_EACH_TYPE_BODY(ctype, ctypef, ctyper, CH, ch, CHR, chr) \
+\
+inline void bli_gemm \
+     ( \
+             trans_t transa, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   n, \
+             dim_t   k, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##gemm( transa, transb, m, n, k, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_hemm \
+     ( \
+             side_t  side, \
+             uplo_t  uploa, \
+             conj_t  conja, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##hemm( side, uploa, conja, transb, m, n, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_symm \
+     ( \
+             side_t  side, \
+             uplo_t  uploa, \
+             conj_t  conja, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##symm( side, uploa, conja, transb, m, n, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_shmm \
+     ( \
+             side_t  side, \
+             uplo_t  uploa, \
+             conj_t  conja, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##shmm( side, uploa, conja, transb, m, n, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_skmm \
+     ( \
+             side_t  side, \
+             uplo_t  uploa, \
+             conj_t  conja, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##skmm( side, uploa, conja, transb, m, n, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_herk \
+     ( \
+             uplo_t   uploc, \
+             trans_t  transa, \
+             dim_t    m, \
+             dim_t    k, \
+       const ctyper&  alpha, \
+       const ctype*   a, inc_t rs_a, inc_t cs_a, \
+       const ctyper&  beta, \
+             ctype*   c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##herk( uploc, transa, m, k, &alpha, a, rs_a, cs_a, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_her2k \
+     ( \
+             uplo_t   uploc, \
+             trans_t  transa, \
+             trans_t  transb, \
+             dim_t    m, \
+             dim_t    k, \
+       const ctype&   alpha, \
+       const ctype*   a, inc_t rs_a, inc_t cs_a, \
+       const ctype*   b, inc_t rs_b, inc_t cs_b, \
+       const ctyper&  beta, \
+             ctype*   c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##her2k( uploc, transa, transb, m, k, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_syrk \
+     ( \
+             uplo_t  uploc, \
+             trans_t transa, \
+             dim_t   m, \
+             dim_t   k, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##syrk( uploc, transa, m, k, &alpha, a, rs_a, cs_a, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_syr2k \
+     ( \
+             uplo_t  uploc, \
+             trans_t transa, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   k, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##syr2k( uploc, transa, transb, m, k, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_shr2k \
+     ( \
+             uplo_t   uploc, \
+             trans_t  transa, \
+             trans_t  transb, \
+             dim_t    m, \
+             dim_t    k, \
+       const ctype&   alpha, \
+       const ctype*   a, inc_t rs_a, inc_t cs_a, \
+       const ctype*   b, inc_t rs_b, inc_t cs_b, \
+       const ctyper&  beta, \
+             ctype*   c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##shr2k( uploc, transa, transb, m, k, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_skr2k \
+     ( \
+             uplo_t  uploc, \
+             trans_t transa, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   k, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##skr2k( uploc, transa, transb, m, k, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_gemmt \
+     ( \
+             uplo_t  uploc, \
+             trans_t transa, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   k, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##gemmt( uploc, transa, transb, m, k, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_trmm3 \
+     ( \
+             side_t  side, \
+             uplo_t  uploa, \
+             trans_t transa, \
+             diag_t  diaga, \
+             trans_t transb, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+       const ctype*  b, inc_t rs_b, inc_t cs_b, \
+       const ctype&  beta, \
+             ctype*  c, inc_t rs_c, inc_t cs_c  \
+     ) \
+{ \
+    bli_##ch##trmm3( side, uploa, transa, diaga, transb, m, n, &alpha, a, rs_a, cs_a, b, rs_b, cs_b, &beta, c, rs_c, cs_c ); \
+} \
+\
+inline void bli_trmm \
+     ( \
+             side_t  side, \
+             uplo_t  uploa, \
+             trans_t transa, \
+             diag_t  diaga, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+             ctype*  b, inc_t rs_b, inc_t cs_b  \
+     ) \
+{ \
+    bli_##ch##trmm( side, uploa, transa, diaga, m, n, &alpha, a, rs_a, cs_a, b, rs_b, cs_b ); \
+} \
+\
+inline void bli_trsm \
+     ( \
+             side_t  side, \
+             uplo_t  uploa, \
+             trans_t transa, \
+             diag_t  diaga, \
+             dim_t   m, \
+             dim_t   n, \
+       const ctype&  alpha, \
+       const ctype*  a, inc_t rs_a, inc_t cs_a, \
+             ctype*  b, inc_t rs_b, inc_t cs_b  \
+     ) \
+{ \
+    bli_##ch##trsm( side, uploa, transa, diaga, m, n, &alpha, a, rs_a, cs_a, b, rs_b, cs_b ); \
 }
 
-inline void hemm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                       const scomplex* b, const integer ldb,
-                 const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    chemm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
-}
+MARRAY_FOR_EACH_TYPE
 
-inline void hemm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                       const dcomplex* b, const integer ldb,
-                 const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    zhemm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void symm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const float alpha, const float* a, const integer lda,
-                                    const float* b, const integer ldb,
-                 const float  beta,       float* c, const integer ldc)
-{
-    ssymm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void symm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const double alpha, const double* a, const integer lda,
-                                     const double* b, const integer ldb,
-                 const double  beta,       double* c, const integer ldc)
-{
-    dsymm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void symm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                       const scomplex* b, const integer ldb,
-                 const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    csymm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void symm(const char side, const char uplo,
-                 const integer m, const integer n,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                       const dcomplex* b, const integer ldb,
-                 const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    zsymm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void syrk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const float alpha, const float* a, const integer lda,
-                 const float  beta,       float* c, const integer ldc)
-{
-    ssyrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void syrk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const double alpha, const double* a, const integer lda,
-                 const double  beta,       double* c, const integer ldc)
-{
-    dsyrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void syrk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                 const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    csyrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void syrk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                 const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    zsyrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void herk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const float alpha, const float* a, const integer lda,
-                 const float  beta,       float* c, const integer ldc)
-{
-    ssyrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void herk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const double alpha, const double* a, const integer lda,
-                 const double  beta,       double* c, const integer ldc)
-{
-    dsyrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void herk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const float alpha, const scomplex* a, const integer lda,
-                 const float  beta,       scomplex* c, const integer ldc)
-{
-    cherk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void herk(const char uplo, const char trans,
-                 const integer n, const integer k,
-                 const double alpha, const dcomplex* a, const integer lda,
-                 const double  beta,       dcomplex* c, const integer ldc)
-{
-    zherk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
-}
-
-inline void syr2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const float alpha, const float* a, const integer lda,
-                                     const float* b, const integer ldb,
-                  const float  beta,       float* c, const integer ldc)
-{
-    ssyr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void syr2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const double alpha, const double* a, const integer lda,
-                                      const double* b, const integer ldb,
-                  const double  beta,       double* c, const integer ldc)
-{
-    dsyr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void syr2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const scomplex alpha, const scomplex* a, const integer lda,
-                                        const scomplex* b, const integer ldb,
-                  const scomplex  beta,       scomplex* c, const integer ldc)
-{
-    csyr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void syr2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const dcomplex alpha, const dcomplex* a, const integer lda,
-                                        const dcomplex* b, const integer ldb,
-                  const dcomplex  beta,       dcomplex* c, const integer ldc)
-{
-    zsyr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void her2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const float alpha, const float* a, const integer lda,
-                                     const float* b, const integer ldb,
-                  const float  beta,       float* c, const integer ldc)
-{
-    ssyr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void her2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const double alpha, const double* a, const integer lda,
-                                      const double* b, const integer ldb,
-                  const double  beta,       double* c, const integer ldc)
-{
-    dsyr2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void her2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const scomplex alpha, const scomplex* a, const integer lda,
-                                        const scomplex* b, const integer ldb,
-                  const    float  beta,       scomplex* c, const integer ldc)
-{
-    cher2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void her2k(const char uplo, const char trans,
-                  const integer n, const integer k,
-                  const dcomplex alpha, const dcomplex* a, const integer lda,
-                                        const dcomplex* b, const integer ldb,
-                  const   double  beta,       dcomplex* c, const integer ldc)
-{
-    zher2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
-}
-
-inline void trmm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const float alpha, const float* a, const integer lda,
-                                          float* b, const integer ldb)
-{
-    strmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
-
-inline void trmm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const double alpha, const double* a, const integer lda,
-                                           double* b, const integer ldb)
-{
-    dtrmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
-
-inline void trmm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                             scomplex* b, const integer ldb)
-{
-    ctrmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
-
-inline void trmm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                             dcomplex* b, const integer ldb)
-{
-    ztrmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
-
-inline void trsm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const float alpha, const float* a, const integer lda,
-                                          float* b, const integer ldb)
-{
-    strsm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
-
-inline void trsm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const double alpha, const double* a, const integer lda,
-                                           double* b, const integer ldb)
-{
-    dtrsm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
-
-inline void trsm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const scomplex alpha, const scomplex* a, const integer lda,
-                                             scomplex* b, const integer ldb)
-{
-    ctrsm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
-
-inline void trsm(const char side, const char uplo, const char transa, const char diag,
-                 const integer m, const integer n,
-                 const dcomplex alpha, const dcomplex* a, const integer lda,
-                                             dcomplex* b, const integer ldb)
-{
-    ztrsm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
-}
+#endif //BLIS_H
 
 /******************************************************************************
  *
@@ -2614,7 +1987,12 @@ swapv(T&& x_, U&& y_)
     auto x = x_.view();
     auto y = y_.view();
     MARRAY_ASSERT(x.length() == y.length());
+
+#ifdef BLIS_H
+    bli_swapv(x.length(), x.data(), x.stride(), y.data(), y.stride());
+#else
     swap(x.length(), x.data(), x.stride(), y.data(), y.stride());
+#endif
 }
 
 template <typename T>
@@ -2622,11 +2000,16 @@ std::enable_if_t<detail::is_marray_like_v<T,1>>
 conj(T&& x_)
 {
     auto x = x_.view();
+
+#ifdef BLIS_H
+    bli_scalv(BLIS_CONJUGATE, x.length(), detail::value_type<T>{1}, x.data(), x.stride());
+#else
     auto n = x.length();
     auto ptr = x.data();
     auto stride = x.stride();
     for (len_type i = 0;i < n;i++)
         ptr[i*stride] = std::conj(ptr[i*stride]);
+#endif
 }
 
 template <typename T, typename U>
@@ -2634,7 +2017,12 @@ std::enable_if_t<detail::is_marray_like_v<U,1>>
 scal(T alpha, U&& x_)
 {
     auto x = x_.view();
+
+#ifdef BLIS_H
+    bli_scalv(BLIS_NO_CONJUGATE, x.length(), alpha, x.data(), x.stride());
+#else
     scal(x.length(), alpha, x.data(), x.stride());
+#endif
 }
 
 template <typename T, typename U>
@@ -2645,7 +2033,12 @@ copy(T&& x_, U&& y_)
     auto x = x_.view();
     auto y = y_.view();
     MARRAY_ASSERT(x.length() == y.length());
+
+#ifdef BLIS_H
+    bli_copyv(BLIS_NO_CONJUGATE, x.length(), x.data(), x.stride(), y.data(), y.stride());
+#else
     copy(x.length(), x.data(), x.stride(), y.data(), y.stride());
+#endif
 }
 
 template <typename T, typename U, typename V>
@@ -2656,7 +2049,12 @@ axpy(T alpha, U&& x_, V&& y_)
     auto x = x_.view();
     auto y = y_.view();
     MARRAY_ASSERT(x.length() == y.length());
+
+#ifdef BLIS_H
+    bli_axpyv(BLIS_NO_CONJUGATE, x.length(), alpha, x.data(), x.stride(), y.data(), y.stride());
+#else
     axpy(x.length(), alpha, x.data(), x.stride(), y.data(), y.stride());
+#endif
 }
 
 template <typename T, typename U, typename=
@@ -2667,7 +2065,12 @@ auto dotu(T&& x_, U&& y_)
     auto x = x_.view();
     auto y = y_.view();
     MARRAY_ASSERT(x.length() == y.length());
+
+#ifdef BLIS_H
+    return bli_dotv(BLIS_NO_CONJUGATE, BLIS_NO_CONJUGATE, x.length(), x.data(), x.stride(), y.data(), y.stride());
+#else
     return dotu(x.length(), x.data(), x.stride(), y.data(), y.stride());
+#endif
 }
 
 template <typename T, typename U, typename=
@@ -2678,7 +2081,12 @@ auto dotc(T&& x_, U&& y_)
     auto x = x_.view();
     auto y = y_.view();
     MARRAY_ASSERT(x.length() == y.length());
+
+#ifdef BLIS_H
+    return bli_dotv(BLIS_NO_CONJUGATE, BLIS_CONJUGATE, x.length(), x.data(), x.stride(), y.data(), y.stride());
+#else
     return dotc(x.length(), x.data(), x.stride(), y.data(), y.stride());
+#endif
 }
 
 template <typename T, typename U, typename=
@@ -2689,7 +2097,12 @@ auto dot(T&& x_, U&& y_)
     auto x = x_.view();
     auto y = y_.view();
     MARRAY_ASSERT(x.length() == y.length());
+
+#ifdef BLIS_H
+    return bli_dotv(BLIS_NO_CONJUGATE, BLIS_CONJUGATE, x.length(), x.data(), x.stride(), y.data(), y.stride());
+#else
     return dot(x.length(), x.data(), x.stride(), y.data(), y.stride());
+#endif
 }
 
 template <typename T, typename=
@@ -2697,7 +2110,12 @@ template <typename T, typename=
 auto nrm2(T&& x_)
 {
     auto x = x_.view();
+
+#ifdef BLIS_H
+    return bli_normfv(x.length(), x.data(), x.stride());
+#else
     return nrm2(x.length(), x.data(), x.stride());
+#endif
 }
 
 template <typename T, typename=
@@ -2705,7 +2123,12 @@ template <typename T, typename=
 auto asum(T&& x_)
 {
     auto x = x_.view();
+
+#ifdef BLIS_H
+    return bli_norm1v(x.length(), x.data(), x.stride());
+#else
     return asum(x.length(), x.data(), x.stride());
+#endif
 }
 
 template <typename T, typename=
@@ -2713,7 +2136,12 @@ template <typename T, typename=
 auto iamax(T&& x_)
 {
     auto x = x_.view();
+
+#ifdef BLIS_H
+    return bli_amaxv(x.length(), x.data(), x.stride());
+#else
     return iamax(x.length(), x.data(), x.stride());
+#endif
 }
 
 template <typename T, typename=
@@ -2721,7 +2149,12 @@ template <typename T, typename=
 auto amax(T&& x_)
 {
     auto x = x_.view();
+
+#ifdef BLIS_H
+    return bli_normiv(x.length(), x.data(), x.stride());
+#else
     return amax(x.length(), x.data(), x.stride());
+#endif
 }
 
 /******************************************************************************
@@ -2763,6 +2196,12 @@ gemv(T alpha, U&& A, V&& x, W beta, X&& y)
     MARRAY_ASSERT(y_.length() == m);
     MARRAY_ASSERT(x_.length() == n);
 
+#ifdef BLIS_H
+    bli_gemv(BLIS_NO_TRANSPOSE, BLIS_NO_CONJUGATE, m, n,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    x_.data(), x_.stride(),
+              beta, y_.data(), y_.stride());
+#else
     char transa = 'N';
 
     if (A_.stride(0) > 1)
@@ -2777,6 +2216,7 @@ gemv(T alpha, U&& A, V&& x, W beta, X&& y)
          alpha, A_.data(), A_.stride(1),
                 x_.data(), x_.stride(),
           beta, y_.data(), y_.stride());
+#endif
 }
 
 /**
@@ -2821,7 +2261,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,1>>>
 auto gemv(T alpha, U&& A, V&& x)
 {
-    marray<std::decay_t<typename U::value_type>,1> y({A.length(0)}, uninitialized);
+    marray<detail::value_type<U>,1> y({A.length(0)}, uninitialized);
     gemv(alpha, A, x, 0.0, y);
     return y;
 }
@@ -2879,19 +2319,26 @@ hemv(char uplo, T alpha, U&& A, V&& x, W beta, X&& y)
     MARRAY_ASSERT(x_.length() == m);
     MARRAY_ASSERT(A_.length(1) == m);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'U' || uplo == 'L');
+    bli_hemv(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_CONJUGATE, BLIS_NO_CONJUGATE, m,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    x_.data(), x_.stride(),
+              beta, y_.data(), y_.stride());
+#else
     if (A_.stride(0) > 1)
     {
         A_.transpose();
         uplo = uplo == 'L' ? 'U' :
                uplo == 'U' ? 'L' : uplo;
 
-        if constexpr (detail::is_complex_v<std::decay_t<typename V::value_type>>)
+        if constexpr (detail::is_complex_v<detail::value_type<V>>)
         {
             // Compute (alpha Ax + beta y)^H = alpha' x^H A + beta' y^H
 
             MARRAY_ASSERT(A_.stride(0) == 1);
 
-            marray<std::decay_t<typename V::value_type>,1> conjx(x_);
+            marray<detail::value_type<V>,1> conjx(x_);
 
             alpha = std::conj(alpha);
             beta = std::conj(beta);
@@ -2915,6 +2362,7 @@ hemv(char uplo, T alpha, U&& A, V&& x, W beta, X&& y)
          alpha, A_.data(), A_.stride(1),
                 x_.data(), x_.stride(),
           beta, y_.data(), y_.stride());
+#endif
 }
 
 /**
@@ -2955,7 +2403,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,1>>>
 auto hemv(char uplo, T alpha, U&& A, V&& x)
 {
-    marray<std::decay_t<typename U::value_type>,1> y({A.length(0)}, uninitialized);
+    marray<detail::value_type<U>,1> y({A.length(0)}, uninitialized);
     hemv(uplo, alpha, A, x, 0.0, y);
     return y;
 }
@@ -3016,6 +2464,21 @@ trmv(char uplo, char diag, T alpha, U&& A, V&& x, W beta, X&& y)
     MARRAY_ASSERT(x_.length() == m);
     MARRAY_ASSERT(A_.length(1) == m);
 
+    marray<detail::value_type<X>,1> y0;
+
+    if (beta != 0.0)
+        y0.reset(y);
+
+    copy(x, y);
+
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'U' || uplo == 'L');
+    MARRAY_ASSERT(diag == 'U' || diag == 'N');
+    bli_trmv(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE,
+             diag == 'U' ? BLIS_UNIT_DIAG : BLIS_NONUNIT_DIAG, m,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    y_.data(), y_.stride());
+#else
     char transa = 'N';
 
     if (A_.stride(0) > 1)
@@ -3030,8 +2493,11 @@ trmv(char uplo, char diag, T alpha, U&& A, V&& x, W beta, X&& y)
 
     trmv(uplo, transa, diag, m,
          alpha, A_.data(), A_.stride(1),
-                x_.data(), x_.stride(),
-          beta, y_.data(), y_.stride());
+                y_.data(), y_.stride());
+#endif
+
+    if (beta != 0.0)
+        axpy(beta, y0, y);
 }
 
 /**
@@ -3084,7 +2550,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,1>>>
 auto trmv(char uplo, char diag, T alpha, U&& A, V&& x)
 {
-    marray<std::decay_t<typename U::value_type>,1> y({A.length(0)}, uninitialized);
+    marray<detail::value_type<U>,1> y({A.length(0)}, uninitialized);
     trmv(uplo, diag, alpha, A, x, 0.0, y);
     return y;
 }
@@ -3142,6 +2608,14 @@ trsv(char uplo, char diag, T&& A, U&& x)
     MARRAY_ASSERT(x_.length() == m);
     MARRAY_ASSERT(A_.length(1) == m);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'U' || uplo == 'L');
+    MARRAY_ASSERT(diag == 'U' || diag == 'N');
+    bli_trsv(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE,
+             diag == 'U' ? BLIS_UNIT_DIAG : BLIS_NONUNIT_DIAG, m,
+             A_.data(), A_.stride(0), A_.stride(1),
+             x_.data(), x_.stride());
+#else
     char transa = 'N';
 
     if (A_.stride(0) > 1)
@@ -3157,6 +2631,7 @@ trsv(char uplo, char diag, T&& A, U&& x)
     trsv(uplo, transa, diag, m,
          A_.data(), A_.stride(1),
          x_.data(), x_.stride());
+#endif
 }
 
 /**
@@ -3190,17 +2665,23 @@ her(char uplo, T alpha, U&& x, V beta, W&& A)
     if (beta == 0.0) A_ = 0;
     else if (beta != 1.0) A_ *= beta;
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'U' || uplo == 'L');
+    bli_her(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_CONJUGATE, m,
+            alpha, x_.data(), x_.stride(),
+                   A_.data(), A_.stride(0), A_.stride(1));
+#else
     if (A_.stride(0) > 1 && 0)
     {
         A_.transpose();
         uplo = uplo == 'L' ? 'U' :
                uplo == 'U' ? 'L' : uplo;
 
-        if constexpr (detail::is_complex_v<std::decay_t<typename U::value_type>>)
+        if constexpr (detail::is_complex_v<detail::value_type<U>>)
         {
             MARRAY_ASSERT(A_.stride(0) == 1);
 
-            marray<std::decay_t<typename U::value_type>,1> conjx(x_);
+            marray<detail::value_type<U>,1> conjx(x_);
             conj(conjx);
 
             her(uplo, m,
@@ -3216,6 +2697,7 @@ her(char uplo, T alpha, U&& x, V beta, W&& A)
     her(uplo, m,
         alpha, x_.data(), x_.stride(),
                A_.data(), A_.stride(1));
+#endif
 }
 
 /**
@@ -3249,7 +2731,7 @@ template <typename T, typename U, typename=
     std::enable_if_t<detail::is_marray_like_v<U,1>>>
 auto her(char uplo, T alpha, U&& x)
 {
-    marray<std::decay_t<typename U::value_type>,2> A({x.length(), x.length()}, uninitialized);
+    marray<detail::value_type<U>,2> A({x.length(), x.length()}, uninitialized);
     her(uplo, alpha, x, 0.0, A);
     return A;
 }
@@ -3303,25 +2785,32 @@ her2(char uplo, T alpha, U&& x, V&& y, W beta, X&& A)
     if (beta == 0.0) A_ = 0;
     else if (beta != 1.0) A_ *= beta;
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'U' || uplo == 'L');
+    bli_her2(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_CONJUGATE, BLIS_NO_CONJUGATE, m,
+             alpha, x_.data(), x_.stride(),
+                    y_.data(), y_.stride(),
+                    A_.data(), A_.stride(0), A_.stride(1));
+#else
     if (A_.stride(0) > 1)
     {
         A_.transpose();
         uplo = uplo == 'L' ? 'U' :
                uplo == 'U' ? 'L' : uplo;
 
-        if constexpr (detail::is_complex_v<std::decay_t<typename U::value_type>>)
+        if constexpr (detail::is_complex_v<detail::value_type<U>>)
         {
             MARRAY_ASSERT(A_.stride(0) == 1);
 
-            marray<std::decay_t<typename U::value_type>,1> conjx(x_);
-            marray<std::decay_t<typename V::value_type>,1> conjy(y_);
+            marray<detail::value_type<U>,1> conjx(x_);
+            marray<detail::value_type<V>,1> conjy(y_);
             conj(conjx);
             conj(conjy);
 
             her2(uplo, m,
-                alpha, conjx.data(), conjx.stride(),
-                       conjy.data(), conjy.stride(),
-                       A_.data(), A_.stride(1));
+                 alpha, conjx.data(), conjx.stride(),
+                        conjy.data(), conjy.stride(),
+                        A_.data(), A_.stride(1));
 
             return;
         }
@@ -3333,6 +2822,7 @@ her2(char uplo, T alpha, U&& x, V&& y, W beta, X&& A)
          alpha, x_.data(), x_.stride(),
                 y_.data(), y_.stride(),
                 A_.data(), A_.stride(1));
+#endif
 }
 
 /**
@@ -3372,7 +2862,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,1>>>
 auto her2(char uplo, T alpha, U&& x, V&& y)
 {
-    marray<std::decay_t<typename U::value_type>,2> A({x.length(), x.length()}, uninitialized);
+    marray<detail::value_type<U>,2> A({x.length(), x.length()}, uninitialized);
     her2(uplo, alpha, x, y, 0.0, A);
     return A;
 }
@@ -3427,16 +2917,22 @@ ger(T alpha, U&& x, V&& y, W beta, X&& A)
     if (beta == 0.0) A_ = 0;
     else if (beta != 1.0) A_ *= beta;
 
+#ifdef BLIS_H
+    bli_ger(BLIS_NO_CONJUGATE, BLIS_CONJUGATE, m, n,
+            alpha, x_.data(), x_.stride(),
+                   y_.data(), y_.stride(),
+                   A_.data(), A_.stride(0), A_.stride(1));
+#else
     if (A_.stride(0) > 1)
     {
         A_.transpose();
         x_.swap(y_);
 
-        if constexpr (detail::is_complex_v<std::decay_t<typename V::value_type>>)
+        if constexpr (detail::is_complex_v<detail::value_type<V>>)
         {
             MARRAY_ASSERT(A_.stride(0) == 1);
 
-            marray<std::decay_t<typename V::value_type>,1> conjx(x_);
+            marray<detail::value_type<V>,1> conjx(x_);
             conj(conjx);
 
             geru(A_.length(0), A_.length(1),
@@ -3450,10 +2946,11 @@ ger(T alpha, U&& x, V&& y, W beta, X&& A)
 
     MARRAY_ASSERT(A_.stride(0) == 1);
 
-    ger(A_.length(0), A_.length(1),
-        alpha, x_.data(), x_.stride(),
-               y_.data(), y_.stride(),
-               A_.data(), A_.stride(1));
+    gerc(A_.length(0), A_.length(1),
+         alpha, x_.data(), x_.stride(),
+                y_.data(), y_.stride(),
+                A_.data(), A_.stride(1));
+#endif
 }
 
 /**
@@ -3491,7 +2988,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,1>>>
 auto ger(T alpha, U&& x, V&& y)
 {
-    marray<std::decay_t<typename U::value_type>,2> A({x.length(), y.length()}, uninitialized);
+    marray<detail::value_type<U>,2> A({x.length(), y.length()}, uninitialized);
     ger(alpha, x, y, 0.0, A);
     return A;
 }
@@ -3546,16 +3043,22 @@ gerc(T alpha, U&& x, V&& y, W beta, X&& A)
     if (beta == 0.0) A_ = 0;
     else if (beta != 1.0) A_ *= beta;
 
+#ifdef BLIS_H
+    bli_ger(BLIS_NO_CONJUGATE, BLIS_CONJUGATE, m, n,
+            alpha, x_.data(), x_.stride(),
+                   y_.data(), y_.stride(),
+                   A_.data(), A_.stride(0), A_.stride(1));
+#else
     if (A_.stride(0) > 1)
     {
         A_.transpose();
         x_.swap(y_);
 
-        if constexpr (detail::is_complex_v<std::decay_t<typename V::value_type>>)
+        if constexpr (detail::is_complex_v<detail::value_type<V>>)
         {
             MARRAY_ASSERT(A_.stride(0) == 1);
 
-            marray<std::decay_t<typename V::value_type>,1> conjx(x_);
+            marray<detail::value_type<V>,1> conjx(x_);
             conj(conjx);
 
             geru(A_.length(0), A_.length(1),
@@ -3573,6 +3076,7 @@ gerc(T alpha, U&& x, V&& y, W beta, X&& A)
          alpha, x_.data(), x_.stride(),
                 y_.data(), y_.stride(),
                 A_.data(), A_.stride(1));
+#endif
 }
 
 /**
@@ -3610,7 +3114,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,1>>>
 auto gerc(T alpha, U&& x, V&& y)
 {
-    marray<std::decay_t<typename U::value_type>,2> A({x.length(), y.length()}, uninitialized);
+    marray<detail::value_type<U>,2> A({x.length(), y.length()}, uninitialized);
     gerc(alpha, x, y, 0.0, A);
     return A;
 }
@@ -3665,6 +3169,12 @@ geru(T alpha, U&& x, V&& y, W beta, X&& A)
     if (beta == 0.0) A_ = 0;
     else if (beta != 1.0) A_ *= beta;
 
+#ifdef BLIS_H
+    bli_ger(BLIS_NO_CONJUGATE, BLIS_NO_CONJUGATE, m, n,
+            alpha, x_.data(), x_.stride(),
+                   y_.data(), y_.stride(),
+                   A_.data(), A_.stride(0), A_.stride(1));
+#else
     if (A_.stride(0) > 1)
     {
         A_.transpose();
@@ -3677,6 +3187,7 @@ geru(T alpha, U&& x, V&& y, W beta, X&& A)
          alpha, x_.data(), x_.stride(),
                 y_.data(), y_.stride(),
                 A_.data(), A_.stride(1));
+#endif
 }
 
 /**
@@ -3714,7 +3225,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,1>>>
 auto geru(T alpha, U&& x, V&& y)
 {
-    marray<std::decay_t<typename U::value_type>,2> A({x.length(), y.length()}, uninitialized);
+    marray<detail::value_type<U>,2> A({x.length(), y.length()}, uninitialized);
     geru(alpha, x, y, 0.0, A);
     return A;
 }
@@ -3735,6 +3246,214 @@ auto geru(T&& x, U&& y)
 {
     return geru(1.0, x, y);
 }
+
+
+
+
+#ifdef BLIS_H
+
+/**
+ * Perform the skew-Hermitian matrix-vector multiplication \f$ y = \alpha Ax + \beta y \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `Ax`.
+ *
+ * @param A     A `m`x`m` skew-Hermitian matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param x     A vector or vector view of length `m`.
+ *
+ * @param beta  Scalar factor for the original vector `y`.
+ *
+ * @param y     A vector or vector view of length `m`.
+ */
+template <typename T, typename U, typename V, typename W, typename X>
+std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,1> &&
+                 detail::is_marray_like_v<X,1>>
+shmv(char uplo, T alpha, U&& A, V&& x, W beta, X&& y)
+{
+    auto A_ = A.view();
+    auto x_ = x.view();
+    auto y_ = y.view();
+
+    auto m = A_.length(0);
+
+    MARRAY_ASSERT(y_.length() == m);
+    MARRAY_ASSERT(x_.length() == m);
+    MARRAY_ASSERT(A_.length(1) == m);
+
+    MARRAY_ASSERT(uplo == 'U' || uplo == 'L');
+    bli_shmv(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_CONJUGATE, BLIS_NO_CONJUGATE, m,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    x_.data(), x_.stride(),
+              beta, y_.data(), y_.stride());
+}
+
+/**
+ * Perform the skew-Hermitian matrix-vector multiplication \f$ y = Ax \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param A     A `m`x`m` skew-Hermitian matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param x     A vector or vector view of length `m`.
+ *
+ * @param y     A vector or vector view of length `m`.
+ */
+template <typename T, typename U, typename V>
+std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                 detail::is_marray_like_v<U,1> &&
+                 detail::is_marray_like_v<V,1>>
+shmv(char uplo, T&& A, U&& x, V&& y)
+{
+    shmv(uplo, 1.0, A, x, 0.0, y);
+}
+
+/**
+ * Return the result of the skew-Hermitian matrix-vector multiplication \f$ y = \alpha Ax \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `Ax`.
+ *
+ * @param A     A `m`x`m` skew-Hermitian matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param x     A vector or vector view of length `m`.
+ */
+template <typename T, typename U, typename V, typename=
+    std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                     detail::is_marray_like_v<V,1>>>
+auto shmv(char uplo, T alpha, U&& A, V&& x)
+{
+    marray<detail::value_type<U>,1> y({A.length(0)}, uninitialized);
+    shmv(uplo, alpha, A, x, 0.0, y);
+    return y;
+}
+
+/**
+ * Return the result of the skew-Hermitian matrix-vector multiplication \f$ y = Ax \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param A     A `m`x`m` skew-Hermitian matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param x     A vector or vector view of length `m`.
+ */
+template <typename T, typename U, typename=
+    std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                     detail::is_marray_like_v<U,1>>>
+auto shmv(char uplo, T&& A, U&& x)
+{
+    return shmv(uplo, 1.0, A, x);
+}
+
+/**
+ * Perform the skew-Hermitian outer product \f$ A = \alpha xy^\text{H} - \alpha' yx^\text{H} + \beta A \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product \f$ xy^\text{H} \f$.
+ *
+ * @param x     A vector or vector view of length `m`.
+ *
+ * @param y     A vector or vector view of length `m`.
+ *
+ * @param beta  Scalar factor for the original matrix `A`.
+ *
+ * @param A     A `m`x`m` skew-Hermitian matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename W, typename X>
+std::enable_if_t<detail::is_marray_like_v<U,1> &&
+                 detail::is_marray_like_v<V,1> &&
+                 detail::is_marray_like_v<X,2>>
+shr2(char uplo, T alpha, U&& x, V&& y, W beta, X&& A)
+{
+    auto A_ = A.view();
+    auto x_ = x.view();
+    auto y_ = y.view();
+
+    auto m = A_.length(0);
+
+    MARRAY_ASSERT(x_.length() == m);
+    MARRAY_ASSERT(y_.length() == m);
+    MARRAY_ASSERT(A_.length(1) == m);
+
+    if (beta == 0.0) A_ = 0;
+    else if (beta != 1.0) A_ *= beta;
+
+    MARRAY_ASSERT(uplo == 'U' || uplo == 'L');
+    bli_shr2(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_CONJUGATE, BLIS_NO_CONJUGATE, m,
+             alpha, x_.data(), x_.stride(),
+                    y_.data(), y_.stride(),
+                    A_.data(), A_.stride(0), A_.stride(1));
+}
+
+/**
+ * Perform the skew-Hermitian outer product \f$ A = xy^\text{H} - yx^\text{H} \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param x     A vector or vector view of length `m`.
+ *
+ * @param y     A vector or vector view of length `m`.
+ *
+ * @param A     A `m`x`m` skew-Hermitian matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V>
+std::enable_if_t<detail::is_marray_like_v<T,1> &&
+                 detail::is_marray_like_v<U,1> &&
+                 detail::is_marray_like_v<V,2>>
+shr2(char uplo, T&& x, U&& y, V&& A)
+{
+    shr2(uplo, 1.0, x, y, 0.0, A);
+}
+
+/**
+ * Return the result of the skew-Hermitian outer product \f$ A = \alpha xy^\text{H} - \alpha' yx^\text{H} \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product \f$ xy^\text{H} \f$.
+ *
+ * @param x     A vector or vector view of length `m`.
+ *
+ * @param y     A vector or vector view of length `m`.
+ */
+template <typename T, typename U, typename V, typename=
+    std::enable_if_t<detail::is_marray_like_v<U,1> &&
+                     detail::is_marray_like_v<V,1>>>
+auto shr2(char uplo, T alpha, U&& x, V&& y)
+{
+    marray<detail::value_type<U>,2> A({x.length(), x.length()}, uninitialized);
+    shr2(uplo, alpha, x, y, 0.0, A);
+    return A;
+}
+
+/**
+ * Return the result of the skew-Hermitian outer product \f$ A = xy^\text{H} - yx^\text{H} \f$.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param x     A vector or vector view of length `m`.
+ *
+ * @param y     A vector or vector view of length `m`.
+ */
+template <typename T, typename U, typename=
+    std::enable_if_t<detail::is_marray_like_v<T,1> &&
+                     detail::is_marray_like_v<U,1>>>
+auto shr2(char uplo, T&& x, U&& y)
+{
+    return shr2(uplo, 1.0, x, y);
+}
+
+#endif
 
 /******************************************************************************
  *
@@ -3772,10 +3491,16 @@ gemm(T alpha, U&& A, V&& B, W beta, X&& C)
     auto n = C_.length(1);
     auto k = A_.length(1);
 
-    ALWAYS_ASSERT(A_.length(0) == m);
-    ALWAYS_ASSERT(B_.length(1) == n);
-    ALWAYS_ASSERT(B_.length(0) == k);
+    MARRAY_ASSERT(A_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == n);
+    MARRAY_ASSERT(B_.length(0) == k);
 
+#ifdef BLIS_H
+    bli_gemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, n, k,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    B_.data(), B_.stride(0), B_.stride(1),
+              beta, C_.data(), C_.stride(0), C_.stride(1));
+#else
     if (C.stride(0) > 1)
     {
         std::swap(m, n);
@@ -3799,6 +3524,7 @@ gemm(T alpha, U&& A, V&& B, W beta, X&& C)
          alpha, A_.data(), A_.stride(1),
                 B_.data(), B_.stride(1),
           beta, C_.data(), C_.stride(1));
+#endif
 }
 
 /**
@@ -3840,7 +3566,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,2>>>
 auto gemm(T alpha, U&& A, V&& B)
 {
-    marray<std::decay_t<typename U::value_type>,2> C({A.length(0), B.length(1)}, uninitialized);
+    marray<detail::value_type<U>,2> C({A.length(0), B.length(1)}, uninitialized);
     gemm(alpha, A, B, 0.0, C);
     return C;
 }
@@ -3898,11 +3624,20 @@ symm(char side, char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
     auto m = C_.length(0);
     auto n = C_.length(1);
 
-    ALWAYS_ASSERT(B_.length(0) == m);
-    ALWAYS_ASSERT(B_.length(1) == n);
-    ALWAYS_ASSERT(A_.length(0) == side == 'L' ? m : n);
-    ALWAYS_ASSERT(A_.length(1) == side == 'L' ? m : n);
+    MARRAY_ASSERT(B_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == n);
+    MARRAY_ASSERT(A_.length(0) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(1) == side == 'L' ? m : n);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(side == 'L' || side == 'R');
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_symm(side == 'L' ? BLIS_LEFT : BLIS_RIGHT, uplo == 'U' ? BLIS_UPPER : BLIS_LOWER,
+             BLIS_NO_CONJUGATE, BLIS_NO_TRANSPOSE, m, n,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    B_.data(), B_.stride(0), B_.stride(1),
+              beta, C_.data(), C_.stride(0), C_.stride(1));
+#else
     if (C.stride(0) > 1)
     {
         side = side == 'L' ? 'R' :
@@ -3923,6 +3658,7 @@ symm(char side, char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
          alpha, A_.data(), A_.stride(1),
                 B_.data(), B_.stride(1),
           beta, C_.data(), C_.stride(1));
+#endif
 }
 
 /**
@@ -3972,7 +3708,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,2>>>
 auto symm(char side, char uplo, T alpha, U&& A, V&& B)
 {
-    marray<std::decay_t<typename U::value_type>,2> C({B.length(0), B.length(1)}, uninitialized);
+    marray<detail::value_type<U>,2> C({B.length(0), B.length(1)}, uninitialized);
     symm(side, uplo, alpha, A, B, 0.0, C);
     return C;
 }
@@ -4033,11 +3769,20 @@ hemm(char side, char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
     auto m = C_.length(0);
     auto n = C_.length(1);
 
-    ALWAYS_ASSERT(B_.length(0) == m);
-    ALWAYS_ASSERT(B_.length(1) == n);
-    ALWAYS_ASSERT(A_.length(0) == side == 'L' ? m : n);
-    ALWAYS_ASSERT(A_.length(1) == side == 'L' ? m : n);
+    MARRAY_ASSERT(B_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == n);
+    MARRAY_ASSERT(A_.length(0) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(1) == side == 'L' ? m : n);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(side == 'L' || side == 'R');
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_hemm(side == 'L' ? BLIS_LEFT : BLIS_RIGHT, uplo == 'U' ? BLIS_UPPER : BLIS_LOWER,
+             BLIS_NO_CONJUGATE, BLIS_NO_TRANSPOSE, m, n,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    B_.data(), B_.stride(0), B_.stride(1),
+              beta, C_.data(), C_.stride(0), C_.stride(1));
+#else
     if (C.stride(0) > 1)
     {
         side = side == 'L' ? 'R' :
@@ -4058,6 +3803,7 @@ hemm(char side, char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
          alpha, A_.data(), A_.stride(1),
                 B_.data(), B_.stride(1),
           beta, C_.data(), C_.stride(1));
+#endif
 }
 
 /**
@@ -4107,7 +3853,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,2>>>
 auto hemm(char side, char uplo, T alpha, U&& A, V&& B)
 {
-    marray<std::decay_t<typename U::value_type>,2> C({B.length(0), B.length(1)}, uninitialized);
+    marray<detail::value_type<U>,2> C({B.length(0), B.length(1)}, uninitialized);
     hemm(side, uplo, alpha, A, B, 0.0, C);
     return C;
 }
@@ -4163,9 +3909,18 @@ trmm(char side, char uplo, char diag, T alpha, U&& A, V&& B)
     auto m = B_.length(0);
     auto n = B_.length(1);
 
-    ALWAYS_ASSERT(A_.length(0) == side == 'L' ? m : n);
-    ALWAYS_ASSERT(A_.length(1) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(0) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(1) == side == 'L' ? m : n);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(side == 'L' || side == 'R');
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    MARRAY_ASSERT(diag == 'N' || diag == 'U');
+    bli_trmm(side == 'L' ? BLIS_LEFT : BLIS_RIGHT, uplo == 'U' ? BLIS_UPPER : BLIS_LOWER,
+             BLIS_NO_TRANSPOSE, diag == 'N' ? BLIS_NONUNIT_DIAG : BLIS_UNIT_DIAG, m, n,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    B_.data(), B_.stride(0), B_.stride(1));
+#else
     if (A.stride(0) > 1)
     {
         uplo = uplo == 'L' ? 'U' :
@@ -4187,6 +3942,7 @@ trmm(char side, char uplo, char diag, T alpha, U&& A, V&& B)
     trmm(side, uplo, diag, m, n,
          alpha, A_.data(), A_.stride(1),
                 B_.data(), B_.stride(1));
+#endif
 }
 
 /**
@@ -4218,9 +3974,18 @@ trsm(char side, char uplo, char diag, T alpha, U&& A, V&& B)
     auto m = B_.length(0);
     auto n = B_.length(1);
 
-    ALWAYS_ASSERT(A_.length(0) == side == 'L' ? m : n);
-    ALWAYS_ASSERT(A_.length(1) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(0) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(1) == side == 'L' ? m : n);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(side == 'L' || side == 'R');
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    MARRAY_ASSERT(diag == 'N' || diag == 'U');
+    bli_trsm(side == 'L' ? BLIS_LEFT : BLIS_RIGHT, uplo == 'U' ? BLIS_UPPER : BLIS_LOWER,
+             BLIS_NO_TRANSPOSE, diag == 'N' ? BLIS_NONUNIT_DIAG : BLIS_UNIT_DIAG, m, n,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    B_.data(), B_.stride(0), B_.stride(1));
+#else
     if (A.stride(0) > 1)
     {
         uplo = uplo == 'L' ? 'U' :
@@ -4242,6 +4007,7 @@ trsm(char side, char uplo, char diag, T alpha, U&& A, V&& B)
     trsm(side, uplo, diag, m, n,
          alpha, A_.data(), A_.stride(1),
                 B_.data(), B_.stride(1));
+#endif
 }
 
 /**
@@ -4273,6 +4039,12 @@ syrk(char uplo, T alpha, U&& A, V beta, W&& C)
     MARRAY_ASSERT(C_.length(0) == m);
     MARRAY_ASSERT(C_.length(1) == m);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_syrk(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE, m, k,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+              beta, C_.data(), C_.stride(0), C_.stride(1));
+#else
     if (C_.stride(0) > 1)
     {
         uplo = uplo == 'L' ? 'U' :
@@ -4295,6 +4067,7 @@ syrk(char uplo, T alpha, U&& A, V beta, W&& C)
     syrk(uplo, trans, m, k,
          alpha, A_.data(), A_.stride(1),
           beta, C_.data(), C_.stride(1));
+#endif
 }
 
 /**
@@ -4332,7 +4105,7 @@ template <typename T, typename U, typename=
     std::enable_if_t<detail::is_marray_like_v<U,2>>>
 auto syrk(char uplo, T alpha, U&& A)
 {
-    marray<std::decay_t<typename U::value_type>,2> C({A.length(0), A.length(0)}, uninitialized);
+    marray<detail::value_type<U>,2> C({A.length(0), A.length(0)}, uninitialized);
     syrk(uplo, alpha, A, 0.0, C);
     return C;
 }
@@ -4390,6 +4163,13 @@ syr2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
     MARRAY_ASSERT(B_.length(0) == m);
     MARRAY_ASSERT(B_.length(1) == k);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_syr2k(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, k,
+              alpha, A_.data(), A_.stride(0), A_.stride(1),
+                     B_.data(), B_.stride(0), B_.stride(1),
+               beta, C_.data(), C_.stride(0), C_.stride(1));
+#else
     if (C_.stride(0) > 1)
     {
         uplo = uplo == 'L' ? 'U' :
@@ -4417,6 +4197,7 @@ syr2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
           alpha, A_.data(), A_.stride(1),
                  B_.data(), B_.stride(1),
            beta, C_.data(), C_.stride(1));
+#endif
 }
 
 /**
@@ -4462,7 +4243,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,2>>>
 auto syr2k(char uplo, T alpha, U&& A, V&& B)
 {
-    marray<std::decay_t<typename U::value_type>,2> C({A.length(0), B.length(0)}, uninitialized);
+    marray<detail::value_type<U>,2> C({A.length(0), B.length(0)}, uninitialized);
     syr2k(uplo, alpha, A, B, 0.0, C);
     return C;
 }
@@ -4517,6 +4298,12 @@ herk(char uplo, T alpha, U&& A, V beta, W&& C)
     MARRAY_ASSERT(C_.length(0) == m);
     MARRAY_ASSERT(C_.length(1) == m);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_herk(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE, m, k,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+              beta, C_.data(), C_.stride(0), C_.stride(1));
+#else
     char trans = 'N';
 
     if (C_.stride(0) > 1)
@@ -4534,6 +4321,7 @@ herk(char uplo, T alpha, U&& A, V beta, W&& C)
     herk(uplo, trans, m, k,
          alpha, A_.data(), A_.stride(1),
           beta, C_.data(), C_.stride(1));
+#endif
 }
 
 /**
@@ -4571,7 +4359,7 @@ template <typename T, typename U, typename=
     std::enable_if_t<detail::is_marray_like_v<U,2>>>
 auto herk(char uplo, T alpha, U&& A)
 {
-    marray<std::decay_t<typename U::value_type>,2> C({A.length(0), A.length(0)}, uninitialized);
+    marray<detail::value_type<U>,2> C({A.length(0), A.length(0)}, uninitialized);
     herk(uplo, alpha, A, 0.0, C);
     return C;
 }
@@ -4629,6 +4417,13 @@ her2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
     MARRAY_ASSERT(B_.length(0) == m);
     MARRAY_ASSERT(B_.length(1) == k);
 
+#ifdef BLIS_H
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_her2k(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, k,
+              alpha, A_.data(), A_.stride(0), A_.stride(1),
+                     B_.data(), B_.stride(0), B_.stride(1),
+               beta, C_.data(), C_.stride(0), C_.stride(1));
+#else
     char trans = 'N';
 
     if (C_.stride(0) > 1)
@@ -4650,6 +4445,7 @@ her2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
           alpha, A_.data(), A_.stride(1),
                  B_.data(), B_.stride(1),
            beta, C_.data(), C_.stride(1));
+#endif
 }
 
 /**
@@ -4695,7 +4491,7 @@ template <typename T, typename U, typename V, typename=
                      detail::is_marray_like_v<V,2>>>
 auto her2k(char uplo, T alpha, U&& A, V&& B)
 {
-    marray<std::decay_t<typename U::value_type>,2> C({A.length(0), B.length(0)}, uninitialized);
+    marray<detail::value_type<U>,2> C({A.length(0), B.length(0)}, uninitialized);
     her2k(uplo, alpha, A, B, 0.0, C);
     return C;
 }
@@ -4720,6 +4516,584 @@ auto her2k(char uplo, T&& A, U&& B)
 {
     return her2k(uplo, 1.0, A, B);
 }
+
+#ifdef BLIS_H
+
+/**
+ * Perform the matrix multiplication \f$ C = \alpha AB + \beta C \f$ or
+ * \f$ C = \alpha BA + \beta C \f$, where A is a skew-symmetric matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB` or `BA`.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param beta  Scalar factor for the original matrix `C`.
+ *
+ * @param C     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename W, typename X>
+std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2> &&
+                 detail::is_marray_like_v<W,2>>
+skmm(char side, char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
+{
+    auto A_ = A.view();
+    auto B_ = B.view();
+    auto C_ = C.view();
+
+    auto m = C_.length(0);
+    auto n = C_.length(1);
+
+    MARRAY_ASSERT(B_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == n);
+    MARRAY_ASSERT(A_.length(0) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(1) == side == 'L' ? m : n);
+
+    MARRAY_ASSERT(side == 'L' || side == 'R');
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_skmm(side == 'L' ? BLIS_LEFT : BLIS_RIGHT, uplo == 'U' ? BLIS_UPPER : BLIS_LOWER,
+             BLIS_NO_CONJUGATE, BLIS_NO_TRANSPOSE, m, n,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    B_.data(), B_.stride(0), B_.stride(1),
+              beta, C_.data(), C_.stride(0), C_.stride(1));
+}
+
+/**
+ * Perform the matrix multiplication \f$ C = AB \f$ or
+ * \f$ C = BA \f$, where A is a skew-symmetric matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param C     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V>
+std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                 detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2>>
+skmm(char side, char uplo, T&& A, U&& B, V&& C)
+{
+    skmm(side, uplo, 1.0, A, B, 0.0, C);
+}
+
+/**
+ * Return the result of the matrix multiplication \f$ C = \alpha AB \f$ or
+ * \f$ C = \alpha BA \f$, where A is a skew-symmetric matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB` or `BA`.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename=
+    std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                     detail::is_marray_like_v<V,2>>>
+auto skmm(char side, char uplo, T alpha, U&& A, V&& B)
+{
+    marray<detail::value_type<U>,2> C({B.length(0), B.length(1)}, uninitialized);
+    skmm(side, uplo, alpha, A, B, 0.0, C);
+    return C;
+}
+
+/**
+ * Return the result of the matrix multiplication \f$ C = AB \f$ or
+ * \f$ C = BA \f$, where A is a skew-symmetric matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename=
+    std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                     detail::is_marray_like_v<U,2>>>
+auto skmm(char side, char uplo, T&& A, U&& B)
+{
+    return skmm(side, uplo, 1.0, A, B);
+}
+
+/**
+ * Perform the matrix multiplication \f$ C = \alpha AB + \beta C \f$ or
+ * \f$ C = \alpha BA + \beta C \f$, where A is a skew-Hermitian matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB` or `BA`.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param beta  Scalar factor for the original matrix `C`.
+ *
+ * @param C     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename W, typename X>
+std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2> &&
+                 detail::is_marray_like_v<W,2>>
+shmm(char side, char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
+{
+    auto A_ = A.view();
+    auto B_ = B.view();
+    auto C_ = C.view();
+
+    auto m = C_.length(0);
+    auto n = C_.length(1);
+
+    MARRAY_ASSERT(B_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == n);
+    MARRAY_ASSERT(A_.length(0) == side == 'L' ? m : n);
+    MARRAY_ASSERT(A_.length(1) == side == 'L' ? m : n);
+
+    MARRAY_ASSERT(side == 'L' || side == 'R');
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_shmm(side == 'L' ? BLIS_LEFT : BLIS_RIGHT, uplo == 'U' ? BLIS_UPPER : BLIS_LOWER,
+             BLIS_NO_CONJUGATE, BLIS_NO_TRANSPOSE, m, n,
+             alpha, A_.data(), A_.stride(0), A_.stride(1),
+                    B_.data(), B_.stride(0), B_.stride(1),
+              beta, C_.data(), C_.stride(0), C_.stride(1));
+}
+
+/**
+ * Perform the matrix multiplication \f$ C = AB \f$ or
+ * \f$ C = BA \f$, where A is a skew-Hermitian matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param C     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V>
+std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                 detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2>>
+shmm(char side, char uplo, T&& A, U&& B, V&& C)
+{
+    shmm(side, uplo, 1.0, A, B, 0.0, C);
+}
+
+/**
+ * Return the result of the matrix multiplication \f$ C = \alpha AB \f$ or
+ * \f$ C = \alpha BA \f$, where A is a skew-Hermitian matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB` or `BA`.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename=
+    std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                     detail::is_marray_like_v<V,2>>>
+auto shmm(char side, char uplo, T alpha, U&& A, V&& B)
+{
+    marray<detail::value_type<U>,2> C({B.length(0), B.length(1)}, uninitialized);
+    shmm(side, uplo, alpha, A, B, 0.0, C);
+    return C;
+}
+
+/**
+ * Return the result of the matrix multiplication \f$ C = AB \f$ or
+ * \f$ C = BA \f$, where A is a skew-Hermitian matrix.
+ *
+ * @param side  'L' if `AB` is to be computed, or 'R' is `BA' is to be computed.
+ *
+ * @param uplo  'L' if A is stored lower-triangular or 'U' if A is stored upper-triangular.
+ *
+ * @param A     A `m`x`m` (side == 'L') or `n`x`n` (side == 'R') matrix or matrix view.
+ *              Must have either a row or column stride of one.
+ *
+ * @param B     A `m`x`n` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename=
+    std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                     detail::is_marray_like_v<U,2>>>
+auto shmm(char side, char uplo, T&& A, U&& B)
+{
+    return shmm(side, uplo, 1.0, A, B);
+}
+
+/**
+ * Perform the upper or lower triangular portion of the matrix multiplication \f$ C = \alpha AB + \beta C \f$.
+ *
+ * @param uplo  'L' if C is lower-triangular or 'U' if C is upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB`.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param beta  Scalar factor for the original matrix `C`.
+ *
+ * @param C     A `m`x`m` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename W, typename X>
+std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2> &&
+                 detail::is_marray_like_v<W,2>>
+gemmt(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
+{
+    auto A_ = A.view();
+    auto B_ = B.view();
+    auto C_ = C.view();
+
+    auto m = A_.length(0);
+    auto k = A_.length(1);
+
+    MARRAY_ASSERT(C_.length(0) == m);
+    MARRAY_ASSERT(C_.length(1) == m);
+    MARRAY_ASSERT(B_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == k);
+
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    bli_gemmt(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, k,
+              alpha, A_.data(), A_.stride(0), A_.stride(1),
+                     B_.data(), B_.stride(0), B_.stride(1),
+               beta, C_.data(), C_.stride(0), C_.stride(1));
+}
+
+/**
+ * Perform the upper or lower triangular portion of the matrix multiplication \f$ C = AB \f$.
+ *
+ * @param uplo  'L' if C is lower-triangular or 'U' if C is upper-triangular.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param C     A `m`x`m` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V>
+std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                 detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2>>
+gemmt(char uplo, T&& A, U&& B, V&& C)
+{
+    gemmt(uplo, 1.0, A, B, 0.0, C);
+}
+
+/**
+ * Return the upper or lower triangular portion of the matrix multiplication \f$ \alpha AB \f$.
+ *
+ * @param uplo  'L' if C is lower-triangular or 'U' if C is upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB`.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @return      A `m`x`m` matrix holding the scaled product.
+ */
+template <typename T, typename U, typename V, typename=
+    std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                     detail::is_marray_like_v<V,2>>>
+auto gemmt(char uplo, T alpha, U&& A, V&& B)
+{
+    marray<detail::value_type<U>,2> C({A.length(0), B.length(0)}, uninitialized);
+    gemmt(uplo, alpha, A, B, 0.0, C);
+    return C;
+}
+
+/**
+ * Return the upper or lower triangular portion of the matrix multiplication \f$ AB \f$.
+ *
+ * @param uplo  'L' if C is lower-triangular or 'U' if C is upper-triangular.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @return      A `m`x`m` matrix holding the product.
+ */
+template <typename T, typename U, typename=
+    std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                     detail::is_marray_like_v<U,2>>>
+auto gemmt(char uplo, T&& A, U&& B)
+{
+    return gemmt(uplo, 1.0, A, B);
+}
+
+/**
+ * Perform the skew-symmetric matrix multiplication \f$ C = \alpha (AB^T - BA^T) + \beta C \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB^T`.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param beta  Scalar factor for the original matrix `C`.
+ *
+ * @param C     A `m`x`m` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename W, typename X>
+std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2> &&
+                 detail::is_marray_like_v<W,2>>
+skr2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
+{
+    auto A_ = A.view();
+    auto B_ = B.view();
+    auto C_ = C.view();
+
+    auto m = A_.length(0);
+    auto k = A_.length(1);
+
+    MARRAY_ASSERT(C_.length(0) == m);
+    MARRAY_ASSERT(C_.length(1) == m);
+    MARRAY_ASSERT(B_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == k);
+
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    //TODO
+}
+
+/**
+ * Perform the skew-symmetric matrix multiplication \f$ C = AB^T - BA^T \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param C     A `m`x`m` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V>
+std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                 detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2>>
+skr2k(char uplo, T&& A, U&& B, V&& C)
+{
+    skr2k(uplo, 1.0, A, B, 0.0, C);
+}
+
+/**
+ * Return the result of the skew-symmetric matrix multiplication \f$ \alpha (AB^T - BA^T) \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB^T`.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @return      A `m`x`m` matrix holding the scaled product.
+ */
+template <typename T, typename U, typename V, typename=
+    std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                     detail::is_marray_like_v<V,2>>>
+auto skr2k(char uplo, T alpha, U&& A, V&& B)
+{
+    marray<detail::value_type<U>,2> C({A.length(0), B.length(0)}, uninitialized);
+    skr2k(uplo, alpha, A, B, 0.0, C);
+    return C;
+}
+
+/**
+ * Return the result of the skew-symmetric matrix multiplication \f$ AB^T - BA^T \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @return      A `m`x`m` matrix holding the product.
+ */
+template <typename T, typename U, typename=
+    std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                     detail::is_marray_like_v<U,2>>>
+auto skr2k(char uplo, T&& A, U&& B)
+{
+    return skr2k(uplo, 1.0, A, B);
+}
+
+/**
+ * Perform the skew-Hermitian matrix multiplication \f$ C = \alpha AB^H - \alpha' BA^H + \beta C \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB^H`.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param beta  Scalar factor for the original matrix `C`.
+ *
+ * @param C     A `m`x`m` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V, typename W, typename X>
+std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2> &&
+                 detail::is_marray_like_v<W,2>>
+shr2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
+{
+    auto A_ = A.view();
+    auto B_ = B.view();
+    auto C_ = C.view();
+
+    auto m = A_.length(0);
+    auto k = A_.length(1);
+
+    MARRAY_ASSERT(C_.length(0) == m);
+    MARRAY_ASSERT(C_.length(1) == m);
+    MARRAY_ASSERT(B_.length(0) == m);
+    MARRAY_ASSERT(B_.length(1) == k);
+
+    MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
+    //TODO
+}
+
+/**
+ * Perform the skew-Hermitian matrix multiplication \f$ C = AB^H - BA^H \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param C     A `m`x`m` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ */
+template <typename T, typename U, typename V>
+std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                 detail::is_marray_like_v<U,2> &&
+                 detail::is_marray_like_v<V,2>>
+shr2k(char uplo, T&& A, U&& B, V&& C)
+{
+    shr2k(uplo, 1.0, A, B, 0.0, C);
+}
+
+/**
+ * Return the result of the skew-Hermitian matrix multiplication \f$ \alpha AB^H - \alpha' BA^H \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param alpha Scalar factor for the product `AB^H`.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @return      A `m`x`m` matrix holding the scaled product.
+ */
+template <typename T, typename U, typename V, typename=
+    std::enable_if_t<detail::is_marray_like_v<U,2> &&
+                     detail::is_marray_like_v<V,2>>>
+auto shr2k(char uplo, T alpha, U&& A, V&& B)
+{
+    marray<detail::value_type<U>,2> C({A.length(0), B.length(0)}, uninitialized);
+    shr2k(uplo, alpha, A, B, 0.0, C);
+    return C;
+}
+
+/**
+ * Return the result of the skew-Hermitian matrix multiplication \f$ AB^H - BA^H \f$.
+ *
+ * @param uplo  'L' if C is stored lower-triangular or 'U' if C is stored upper-triangular.
+ *
+ * @param A     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @param B     A `m`x`k` matrix or matrix view. Must have either a row or
+ *              column stride of one.
+ *
+ * @return      A `m`x`m` matrix holding the product.
+ */
+template <typename T, typename U, typename=
+    std::enable_if_t<detail::is_marray_like_v<T,2> &&
+                     detail::is_marray_like_v<U,2>>>
+auto shr2k(char uplo, T&& A, U&& B)
+{
+    return shr2k(uplo, 1.0, A, B);
+}
+
+#endif
 
 } //namespace blas
 } //namespace MArray
