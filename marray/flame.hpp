@@ -23,17 +23,17 @@ struct direction
     bool operator!=(const direction& other) const { return dir != other.dir; }
 };
 
-constexpr static direction DOWN{0};
-constexpr static direction UP{1};
+constexpr inline direction DOWN{0};
+constexpr inline direction UP{1};
 
-constexpr static const direction& RIGHT = DOWN;
-constexpr static const direction& LEFT = UP;
+constexpr inline const direction& RIGHT = DOWN;
+constexpr inline const direction& LEFT = UP;
 
-constexpr static const direction& BOTTOM_RIGHT = DOWN;
-constexpr static const direction& TOP_LEFT = UP;
+constexpr inline const direction& BOTTOM_RIGHT = DOWN;
+constexpr inline const direction& TOP_LEFT = UP;
 
-constexpr static const direction& FORWARD = DOWN;
-constexpr static const direction& BACKWARD = UP;
+constexpr inline const direction& FORWARD = DOWN;
+constexpr inline const direction& BACKWARD = UP;
 
 namespace detail
 {
@@ -48,6 +48,37 @@ template <typename I, I N>
 std::enable_if_t<N != I{1},range_t<I>> make_range(I from, I to)
 {
     return range(from, to);
+}
+
+template <typename I>
+range_t<len_type> convert(const range_t<I>& x)
+{
+    return x;
+}
+
+inline len_type convert(len_type i) { return i; }
+
+template <typename I>
+I front(const range_t<I>& x) { return x.front(); };
+template <typename I>
+I back(const range_t<I>& x) { return x.back(); };
+template <typename I>
+I size(const range_t<I>& x) { return x.size(); };
+
+inline len_type front(len_type x) { return x; };
+inline len_type back(len_type x) { return x; };
+inline len_type size(len_type) { return 1; };
+
+template <typename T> struct is_range : std::false_type {};
+template <typename I> struct is_range<range_t<I>> : std::true_type {};
+
+template <typename T> constexpr auto is_range_v = is_range<T>::value;
+
+template <size_t I, typename... Args> using nth_type = std::tuple_element_t<I, std::tuple<Args...>>;
+
+template <size_t I, typename... Args> decltype(auto) nth_arg(Args&&... args)
+{
+    return std::get<I>(std::forward_as_tuple(std::forward<Args>(args)...));
 }
 
 template <typename I, I... Sizes, size_t... Idx>
@@ -83,41 +114,101 @@ auto partition(const range_t<I>& x, direction dir, std::integer_sequence<I, Size
 
     return std::make_tuple(make_range<I,Sizes>(sizes[Idx], sizes[Idx+1])...);
 }
-
-// Unblocked repartition helper
-
-template <typename I, typename... B, I... MIdx, I... NIdx>
-auto repartition(const range_t<I>& A, const range_t<I>& C, direction dir,
-                 std::integer_sequence<I,MIdx...>,
-                 std::integer_sequence<I,NIdx...>, B... b)
+template <len_type... Sizes, size_t... NewIdx, size_t... OldIdx, size_t... FirstIdx, typename... Args>
+auto repartition(len_type bs, direction dir,
+                 std::integer_sequence<len_type, Sizes...>,
+                 std::index_sequence<NewIdx...>,
+                 std::index_sequence<OldIdx...>,
+                 std::index_sequence<FirstIdx...>,
+                 const Args&... args)
 {
-    constexpr I M = sizeof...(B);
-    constexpr I N = sizeof...(NIdx);
-    MARRAY_ASSERT(A.back()+M+1 == C.front());
-    (MARRAY_ASSERT(A.back()+MIdx+1 == b), ...);
+    constexpr auto NOld = sizeof...(OldIdx);
+    constexpr auto NNew = sizeof...(NewIdx);
+    constexpr auto NFixed = ((Sizes == DYNAMIC ? 0 : Sizes) + ...);
+    constexpr auto Blocked = ((Sizes == DYNAMIC) + ...) == 1;
+
+    static_assert(NNew >= 1, "At least one exposed range is required");
+    static_assert(((Sizes == DYNAMIC) + ...) < 2, "At most one of the exposed ranges may be dynamic");
+    static_assert(detail::is_range_v<detail::nth_type<0, Args...>> &&
+                  detail::is_range_v<detail::nth_type<NOld-1, Args...>>,
+                  "The first and last input ranges must be blocked");
+
+    if (Blocked) MARRAY_ASSERT(bs >= NFixed);
+    bs -= NFixed;
 
     if (dir == FORWARD)
     {
-        MARRAY_ASSERT(C.size() >= N);
-        return std::make_tuple(A, (I)b..., C.from()+NIdx..., range(C.from()+N, C.to()));
+        auto& last = detail::nth_arg<NOld-1>(args...);
+        MARRAY_ASSERT(last.size() >= bs + NFixed);
+
+        std::array<len_type,NNew+1> sizes{last.front(), (Sizes == DYNAMIC ? bs : Sizes)...};
+        ((sizes[NewIdx+1] += sizes[NewIdx]), ...);
+
+        return std::make_tuple(convert(nth_arg<FirstIdx>(args...))...,
+                               make_range<Sizes>(sizes[NewIdx], sizes[NewIdx+1])...,
+                               range_t<len_type>{last.front()+bs+NFixed, last.back()+1});
     }
     else
     {
-        MARRAY_ASSERT(A.size() >= N);
-        return std::make_tuple(range(A.from(), A.to()-N), A.to()-N+NIdx..., (I)b..., C);
+        auto& first = detail::nth_arg<NOld-1>(args...);
+        MARRAY_ASSERT(first.size() >= bs + NFixed);
+
+        constexpr std::array rev{Sizes...};
+
+        std::array<len_type,NNew+1> sizes{(rev[NNew-1-NewIdx] == DYNAMIC ? bs : rev[NNew-1-NewIdx])..., first.back()+1};
+        (..., (sizes[NewIdx] = sizes[NewIdx+1]-sizes[NewIdx]));
+
+        return std::make_tuple(range_t<len_type>{first.front(), first.back()+1-bs-NFixed},
+                               make_range<rev[NNew-1-NewIdx]>(sizes[NewIdx], sizes[NewIdx+1])...,
+                               convert(nth_arg<FirstIdx+1>(args...))...);
     }
 }
 
-template <int N, typename I, typename... B>
-auto repartition(const range_t<I>& A, const range_t<I>& C, direction dir, B... b)
+template <size_t N, len_type... Sizes, typename... Args>
+auto repartition(len_type bs, direction dir, const Args&... args)
 {
-    return repartition(A, C, dir, std::make_integer_sequence<I,sizeof...(B)>{},
-                                  std::make_integer_sequence<I,N>{}, b...);
+    constexpr auto NNew = sizeof...(Sizes);
+    static_assert(N >= 2, "At least two input ranges are required");
+
+    return repartition(bs, dir,
+                       std::integer_sequence<len_type, Sizes...>{},
+                       std::make_index_sequence<NNew>{},
+                       std::make_index_sequence<N>{},
+                       std::make_index_sequence<N-1>{},
+                       args...);
 }
 
-} //namespace detail
+template <size_t... Idx, size_t... FirstIdx, typename... Args>
+auto continue_with(direction dir,
+                   std::index_sequence<Idx...>,
+                   std::index_sequence<FirstIdx...>,
+                   const Args&... args)
+{
+    constexpr auto NOld = sizeof...(Idx);
+    constexpr auto NNew = sizeof...(FirstIdx)+1;
 
-//partitioning
+    static_assert(detail::is_range_v<detail::nth_type<0, Args...>> &&
+                  detail::is_range_v<detail::nth_type<NOld-1, Args...>>,
+                  "The first and last input ranges must be blocked");
+
+    auto first = nth_arg<0>(args...).front();
+    auto last = nth_arg<NOld-1>(args...).back();
+    (MARRAY_ASSERT(back(nth_arg<Idx == NOld-1 ? NOld-2 : Idx>(args...))+1 ==
+                   front(nth_arg<Idx == NOld-1 ? NOld-1 : Idx+1>(args..., last+1))), ...);
+
+    if (dir == FORWARD)
+    {
+        return std::make_tuple(range(first, back(nth_arg<NOld-NNew>(args...))+1), nth_arg<NOld-NNew+1+FirstIdx>(args...)...);
+    }
+    else
+    {
+        return std::make_tuple(nth_arg<FirstIdx>(args...)..., range(front(nth_arg<NNew-1>(args...)), last+1));
+    }
+}
+
+} // namespace detail
+
+// Partitioning
 
 template <len_type Size0, len_type... Sizes, typename I>
 auto partition(const range_t<I>& x, direction dir = FORWARD)
@@ -139,7 +230,7 @@ auto partition(const MArray& A, int dim, direction dir = FORWARD)
     return partition<Sizes...>(range(A.length(dim)), dir);
 }
 
-//row and column partitioning
+// Row and column partitioning
 
 template <typename MArray>
 auto rows(const MArray& A)
@@ -165,120 +256,98 @@ auto partition_columns(const MArray& A, direction dir = FORWARD)
     return partition<Sizes...>(A, 1, dir);
 }
 
-// Unblocked repartition
+// Blocked/unblocked repartition
 
-template <int N, typename I>
-auto repartition(const range_t<I>& A, const range_t<I>& B, direction dir = FORWARD)
+template <len_type... Sizes, typename... Args>
+auto repartition(const Args&... args)
 {
-    return detail::repartition<N>(A, B, dir);
-}
+    constexpr auto NNew = sizeof...(Sizes);
+    constexpr auto NArgs = sizeof...(args);
+    constexpr auto NFixed = ((Sizes == DYNAMIC ? 0 : Sizes) + ... + 0);
 
-template <int N, typename I>
-auto repartition(const range_t<I>& A, I b, const range_t<I>& C, direction dir = FORWARD)
-{
-    return detail::repartition<N>(A, C, dir, b);
-}
+    auto bs = NFixed+1;
+    auto dir = FORWARD;
 
-template <int N, typename I>
-auto repartition(const range_t<I>& A, I b, I c, const range_t<I>& D, direction dir = FORWARD)
-{
-    return detail::repartition<N>(A, D, dir, b, c);
-}
-
-template <typename I, typename... Args>
-auto repartition(const range_t<I>& A, Args&&... args)
-{
-    return repartition<1>(A, std::forward<Args>(args)...);
-}
-
-// Blocked repartition
-
-template <typename I>
-auto repartition(const range_t<I>& A, const range_t<I>& B, I n, direction dir = FORWARD)
-{
-    MARRAY_ASSERT(A.back()+1 == B.front());
-
-    if (dir == FORWARD)
+    if constexpr (NArgs > 1 && std::is_same_v<detail::nth_type<NArgs-1, Args...>, direction> &&
+                               std::is_convertible_v<detail::nth_type<NArgs-2, Args...>, len_type>)
     {
-        if (n < B.size()) n = B.size();
-        return std::make_tuple(A, range(B.front(), B.front()+n), range(B.front()+n, B.back()+1));
+        dir = detail::nth_arg<NArgs-1>(args...);
+        bs = detail::nth_arg<NArgs-2>(args...);
+
+        if constexpr (NNew == 0)
+            return detail::repartition<NArgs-2, DYNAMIC>(bs, dir, args...);
+        else
+            return detail::repartition<NArgs-2, Sizes...>(bs, dir, args...);
+    }
+    else if constexpr (NArgs > 1 && std::is_same_v<detail::nth_type<NArgs-2, Args...>, direction> &&
+                                    std::is_convertible_v<detail::nth_type<NArgs-1, Args...>, len_type>)
+    {
+        dir = detail::nth_arg<NArgs-2>(args...);
+        bs = detail::nth_arg<NArgs-1>(args...);
+
+        if constexpr (NNew == 0)
+            return detail::repartition<NArgs-2, DYNAMIC>(bs, dir, args...);
+        else
+            return detail::repartition<NArgs-2, Sizes...>(bs, dir, args...);
+    }
+    else if constexpr (NArgs > 0 && std::is_same_v<detail::nth_type<NArgs-1, Args...>, direction>)
+    {
+        dir = detail::nth_arg<NArgs-1>(args...);
+
+        if constexpr (NNew == 0)
+            return detail::repartition<NArgs-1, 1>(bs, dir, args...);
+        else
+            return detail::repartition<NArgs-1, Sizes...>(bs, dir, args...);
+    }
+    else if constexpr (NArgs > 0 && std::is_convertible_v<detail::nth_type<NArgs-1, Args...>, len_type>)
+    {
+        bs = detail::nth_arg<NArgs-1>(args...);
+
+        if constexpr (NNew == 0)
+            return detail::repartition<NArgs-1, DYNAMIC>(bs, dir, args...);
+        else
+            return detail::repartition<NArgs-1, Sizes...>(bs, dir, args...);
     }
     else
     {
-        if (n < A.size()) n = A.size();
-        return std::make_tuple(range(A.front(), A.back()+1-n), range(A.back()+1-n, A.back()+1), B);
+        if constexpr (NNew == 0)
+            return detail::repartition<NArgs, 1>(bs, dir, args...);
+        else
+            return detail::repartition<NArgs, Sizes...>(bs, dir, args...);
     }
 }
 
-// Unblocked continue with
+// Blocked/unblocked continue with
 
-template <typename I>
-auto continue_with(const range_t<I>& R0, I r1, const range_t<I>& R2, direction dir = FORWARD)
+template <size_t N, typename... Args>
+auto continue_with(const Args&... args)
 {
-    MARRAY_ASSERT(R0.back()+1 == r1);
-    MARRAY_ASSERT(r1+1 == R2.front());
+    constexpr auto NArgs = sizeof...(args);
 
-    if (dir == FORWARD)
+    static_assert(N >= 1, "At least one range must be merged");
+
+    if constexpr (NArgs > 0 && std::is_same_v<detail::nth_type<NArgs-1, Args...>, direction>)
     {
-        return std::make_tuple(range(R0.from(), R0.to()+1), R2);
+        static_assert(NArgs >= N+3, "At least two ranges must left after merging");
+        return detail::continue_with(detail::nth_arg<NArgs-1>(args...),
+                                     std::make_index_sequence<NArgs-1>{},
+                                     std::make_index_sequence<NArgs-N-2>{},
+                                     args...);
     }
     else
     {
-        return std::make_tuple(R0, range(R2.from()-1, R2.to()));
+        static_assert(NArgs >= N+2, "At least two ranges must left after merging");
+        return detail::continue_with(FORWARD,
+                                     std::make_index_sequence<NArgs>{},
+                                     std::make_index_sequence<NArgs-N-1>{},
+                                     args...);
     }
 }
 
-template <typename I>
-auto continue_with(const range_t<I>& R0, I r1, I r2, const range_t<I>& R3, direction dir = FORWARD)
+template <typename... Args>
+auto continue_with(const Args&... args)
 {
-    MARRAY_ASSERT(R0.back()+1 == r1);
-    MARRAY_ASSERT(r1+1 == r2);
-    MARRAY_ASSERT(r2+1 == R3.front());
-
-    if (dir == FORWARD)
-    {
-        return std::make_tuple(range(R0.from(), R0.to()+1), r2, R3);
-    }
-    else
-    {
-        return std::make_tuple(R0, r1, range(R3.from()-1, R3.to()));
-    }
-}
-
-template <typename I>
-auto continue_with(const range_t<I>& R0, I r1, I r2, I r3, const range_t<I>& R4, direction dir = FORWARD)
-{
-    MARRAY_ASSERT(R0.back()+1 == r1);
-    MARRAY_ASSERT(r1+1 == r2);
-    MARRAY_ASSERT(r2+1 == r3);
-    MARRAY_ASSERT(r3+1 == R4.front());
-
-    if (dir == FORWARD)
-    {
-        return std::make_tuple(range(R0.from(), R0.to()+2), r3, R4);
-    }
-    else
-    {
-        return std::make_tuple(R0, r1, range(R4.from()-2, R4.to()));
-    }
-}
-
-// Blocked continue with
-
-template <typename I>
-auto continue_with(const range_t<I>& R0, const range_t<I>& R1, const range_t<I>& R2, direction dir = FORWARD)
-{
-    MARRAY_ASSERT(R0.back()+1 == R1.front());
-    MARRAY_ASSERT(R1.back()+1 == R2.front());
-
-    if (dir == FORWARD)
-    {
-        return std::make_tuple(range(R0.from(), R1.to()), R2);
-    }
-    else
-    {
-        return std::make_tuple(R0, range(R1.from(), R2.to()));
-    }
+    return continue_with<1>(args...);
 }
 
 } //namespace MArray
