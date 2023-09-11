@@ -269,11 +269,6 @@ class range_t
             return to_;
         }
 
-        value_type delta() const
-        {
-            return delta_;
-        }
-
         value_type operator[](size_type n) const
         {
             return from_+n*delta_;
@@ -322,6 +317,25 @@ class range_t
         friend range_t operator-(T shift, const range_t& other)
         {
             return range_t(shift - other.from_, shift - other.to_, -other.delta_);
+        }
+
+        range_t operator|(const range_t& other) const
+        {
+            MARRAY_ASSERT(step() == other.step());
+            MARRAY_ASSERT(to() == other.from());
+            return range_t{from(), other.to(), step()};
+        }
+
+        friend range_t operator|(const range_t& lhs, T rhs)
+        {
+            MARRAY_ASSERT(lhs.to() == rhs);
+            return range_t{lhs.from(), lhs.to()+lhs.step(), lhs.step()};
+        }
+
+        friend range_t operator|(T lhs, const range_t& rhs)
+        {
+            MARRAY_ASSERT(lhs+rhs.step() == rhs.from());
+            return range_t{lhs, rhs.to(), rhs.step()};
         }
 
         range_t reverse()
