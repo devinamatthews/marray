@@ -350,6 +350,66 @@ auto continue_with(const Args&... args)
     return continue_with<1>(args...);
 }
 
+// Diagonal extraction
+
+template <typename MArray>
+auto diag(const MArray& A, len_type off=0)
+{
+    MARRAY_ASSERT(A.dimension() == 2);
+
+    using T = typename MArray::value_type;
+
+    auto m = A.length(0);
+    auto n = A.length(1);
+
+    auto m_begin = std::max(len_type{}, off);
+    auto n_begin = std::max(len_type{}, -off);
+
+    MARRAY_ASSERT(m_begin <= m);
+    MARRAY_ASSERT(n_begin <= n);
+
+    return marray_view<T>{{std::min(m - m_begin, n - n_begin)},
+                          A.data() + m_begin*A.stride(0) + n_begin*A.stride(1),
+                          {A.stride(0) + A.stride(1)}};
+}
+
+template <typename MArray>
+auto subdiag(const MArray& A)
+{
+    return diag(A, 1);
+}
+
+template <typename MArray>
+void pivot_rows(const MArray& A, len_type pi)
+{
+    MARRAY_ASSERT(A.dimension() == 2);
+    MARRAY_ASSERT(pi >= 0 && pi < A.length(0));
+
+    if (pi == 0) return;
+
+    blas::swap(A.length(1), A.data(), A.stride(1),
+               A.data() + pi*A.stride(0), A.stride(1));
+}
+
+template <typename MArray>
+void pivot_columns(const MArray& A, len_type pi)
+{
+    MARRAY_ASSERT(A.dimension() == 2);
+    MARRAY_ASSERT(pi >= 0 && pi < A.length(1));
+
+    if (pi == 0) return;
+
+    blas::swap(A.length(0), A.data(), A.stride(0),
+               A.data() + pi*A.stride(1), A.stride(0));
+}
+
+template <typename MArray>
+void pivot_both(const MArray& A, len_type pi)
+{
+    pivot_rows(A, pi);
+    pivot_colums(A, pi);
+}
+
 } //namespace MArray
 
 #endif //MARRAY_FLAME_HPP
