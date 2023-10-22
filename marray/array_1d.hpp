@@ -119,17 +119,21 @@ class array_1d : public detail::array_type_t<T, NDim>
         template <int N=NDim>
         array_1d(std::initializer_list<len_wrapper> il, std::enable_if_t<N != DYNAMIC>* = nullptr)
         {
-            std::copy(il.begin(), il.end(), this->data());
+            MARRAY_ASSERT(il.size() == NDim);
+            std::copy_n(il.begin(), NDim, this->data());
         }
 
-        template <typename U, int N=NDim, typename=detail::enable_if_1d_container_of_t<U,T>>
+        template <typename U, int N=NDim, typename=std::enable_if_t<detail::is_1d_container_of<U,T>::value &&
+                                                                    !std::is_same_v<U,std::initializer_list<len_wrapper>>>>
         array_1d(const U& data, std::enable_if_t<N == DYNAMIC>* = nullptr)
         : base(data.begin(), data.end()) {}
 
-        template <typename U, int N=NDim, typename=detail::enable_if_1d_container_of_t<U,T>>
+        template <typename U, int N=NDim, typename=std::enable_if_t<detail::is_1d_container_of<U,T>::value &&
+                                                                    !std::is_same_v<U,std::initializer_list<len_wrapper>>>>
         array_1d(const U& data, std::enable_if_t<N != DYNAMIC>* = nullptr)
         {
-            std::copy(data.begin(), data.end(), this->data());
+            MARRAY_ASSERT(data.size() == NDim);
+            std::copy_n(data.begin(), NDim, this->data());
         }
 
         void slurp(base& other)

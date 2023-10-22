@@ -46,7 +46,7 @@ inline stride_vector strides(const array_1d<len_type>& len, layout layout = DEFA
 }
 
 template <typename Type, int NDim>
-struct layout_like : protected array_1d<stride_type>
+struct layout_like : protected array_1d<stride_type, NDim>
 {
     struct no_layout : layout { constexpr no_layout() : layout(-1, construct{}) {} };
 
@@ -54,8 +54,9 @@ struct layout_like : protected array_1d<stride_type>
 
     layout_like(layout layout) : layout_(layout) {}
 
-    using array_1d<stride_type>::array_1d;
-    using array_1d<stride_type>::size;
+    using array_1d<stride_type, NDim>::array_1d;
+    using array_1d<stride_type, NDim>::size;
+    using array_1d<stride_type, NDim>::slurp;
 
     void stride(const detail::array_type_t<len_type, NDim>& len,
                 detail::array_type_t<stride_type, NDim>& strides) const
@@ -90,7 +91,7 @@ struct layout_like : protected array_1d<stride_type>
 };
 
 template <typename Type, int NDim>
-struct base_like : protected array_1d<len_type>
+struct base_like : protected array_1d<len_type, NDim>
 {
     struct no_base : index_base { constexpr no_base() : index_base(-1, construct{}) {} };
 
@@ -98,8 +99,9 @@ struct base_like : protected array_1d<len_type>
 
     base_like(index_base base) : base_(base) {}
 
-    using array_1d<len_type>::array_1d;
-    using array_1d<len_type>::size;
+    using array_1d<len_type, NDim>::array_1d;
+    using array_1d<len_type, NDim>::size;
+    using array_1d<len_type, NDim>::slurp;
 
     void base(const detail::array_type_t<len_type, NDim>& len,
               detail::array_type_t<len_type, NDim>& base) const
@@ -1812,9 +1814,9 @@ class marray_base
          */
         template <int NewNDim=DYNAMIC>
 #if MARRAY_DOXYGEN
-        possibly_mutable_view lowered(const array_1d<int, NDim>& split);
+        possibly_mutable_view lowered(const array_1d<int>& split);
 #else
-        marray_view<Type, NewNDim, Tags> lowered(const array_1d<int, NDim>& split)
+        marray_view<Type, NewNDim, Tags> lowered(const array_1d<int, NewNDim == DYNAMIC ? DYNAMIC : NewNDim-1>& split)
         {
             static_assert(NewNDim == DYNAMIC || NewNDim > 0,
                           "Cannot split into this number of dimensions");
@@ -1873,7 +1875,7 @@ class marray_base
 
         /* Inherit docs */
         template <int NewNDim=DYNAMIC>
-        auto lowered(const array_1d<int, NDim>& split) const
+        auto lowered(const array_1d<int, NewNDim == DYNAMIC ? DYNAMIC : NewNDim-1>& split) const
         {
             return const_cast<marray_base&>(*this).lowered<NewNDim>(split);
         }
