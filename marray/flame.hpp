@@ -72,7 +72,7 @@ inline len_type size(len_type) { return 1; };
 template <typename T> struct is_range : std::false_type {};
 template <typename I> struct is_range<range_t<I>> : std::true_type {};
 
-template <typename T> constexpr auto is_range_v = is_range<T>::value;
+template <typename T> constexpr inline auto is_range_v = is_range<T>::value;
 
 template <size_t I, typename... Args> using nth_type = std::tuple_element_t<I, std::tuple<Args...>>;
 
@@ -145,7 +145,7 @@ auto repartition(len_type bs, direction dir,
         ((sizes[NewIdx+1] += sizes[NewIdx]), ...);
 
         return std::make_tuple(convert(nth_arg<FirstIdx>(args...))...,
-                               make_range<Sizes>(sizes[NewIdx], sizes[NewIdx+1])...,
+                               make_range<len_type,Sizes>(sizes[NewIdx], sizes[NewIdx+1])...,
                                range_t<len_type>{last.front()+bs+NFixed, last.back()+1});
     }
     else
@@ -159,7 +159,7 @@ auto repartition(len_type bs, direction dir,
         (..., (sizes[NewIdx] = sizes[NewIdx+1]-sizes[NewIdx]));
 
         return std::make_tuple(range_t<len_type>{first.front(), first.back()+1-bs-NFixed},
-                               make_range<rev[NNew-1-NewIdx]>(sizes[NewIdx], sizes[NewIdx+1])...,
+                               make_range<len_type,rev[NNew-1-NewIdx]>(sizes[NewIdx], sizes[NewIdx+1])...,
                                convert(nth_arg<FirstIdx+1>(args...))...);
     }
 }
@@ -193,8 +193,14 @@ auto continue_with(direction dir,
 
     auto first = nth_arg<0>(args...).front();
     auto last = nth_arg<NOld-1>(args...).back();
+    //
+    // Normally MARRAY_ASSERT is simply replaced by a "no-op" if asserts are disabled. However, in the context
+    // of a fold expression the no-op doesn't contain an unexpanded parameter pack and so compilation fails.
+    //
+    #ifdef MARRAY_ENABLE_ASSERTS
     (MARRAY_ASSERT(back(nth_arg<Idx == NOld-1 ? NOld-2 : Idx>(args...))+1 ==
                    front(nth_arg<Idx == NOld-1 ? NOld-1 : Idx+1>(args..., last+1))), ...);
+    #endif
 
     if (dir == FORWARD)
     {
