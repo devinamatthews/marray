@@ -198,7 +198,7 @@ class range_t
         constexpr range_t(T from, T to)
         : delta_(1), from_(from), to_(to) {}
 
-        constexpr range_t(T from, T to, T delta)
+        constexpr range_t(T from, T to, T delta) __attribute__((always_inline))
         : delta_(delta), from_(from)
         {
             if (delta > 0)
