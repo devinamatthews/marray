@@ -5084,7 +5084,10 @@ skr2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
     MARRAY_ASSERT(B_.length(1) == k);
 
     MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
-    //TODO
+    bli_skr2k(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, k,
+              alpha, A_.data(), A_.stride(0), A_.stride(1),
+                     B_.data(), B_.stride(0), B_.stride(1),
+               beta, C_.data(), C_.stride(0), C_.stride(1));
 }
 
 /**
@@ -5193,7 +5196,10 @@ shr2k(char uplo, T alpha, U&& A, V&& B, W beta, X&& C)
     MARRAY_ASSERT(B_.length(1) == k);
 
     MARRAY_ASSERT(uplo == 'L' || uplo == 'U');
-    //TODO
+    bli_shr2k(uplo == 'U' ? BLIS_UPPER : BLIS_LOWER, BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, m, k,
+              alpha, A_.data(), A_.stride(0), A_.stride(1),
+                     B_.data(), B_.stride(0), B_.stride(1),
+               beta, C_.data(), C_.stride(0), C_.stride(1));
 }
 
 /**
