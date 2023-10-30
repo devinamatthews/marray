@@ -37,7 +37,7 @@ class indexed_dpd_marray_base : detail::dpd_base
     protected:
         typedef detail::dpd_base base;
         irrep_vector idx_irrep_;
-        std::vector<pointer> data_;
+        detail::array_type_t<pointer,DYNAMIC> data_;
         dpd_len_vector idx_len_;
         matrix<len_type> idx_;
         int dense_irrep_ = 0;
@@ -474,17 +474,17 @@ class indexed_dpd_marray_base : detail::dpd_base
          *
          **********************************************************************/
 
-        const std::vector<const_pointer>& cdata() const
+        row_view<const const_pointer> cdata() const
         {
-            return data();
+            return row_view<const const_pointer>{{data_.size()}, data_.data()};
         }
 
-        const std::vector<const_pointer>& data() const
+        row_view<const cptr> data() const
         {
-            return reinterpret_cast<const std::vector<const_pointer>&>(data_);
+            return row_view<const cptr>{{data_.size()}, data_.data()};
         }
 
-        const std::vector<pointer>& data()
+        const auto& data()
         {
             return data_;
         }
