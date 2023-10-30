@@ -1476,14 +1476,14 @@ inline void bli_gemv \
              conj_t  conjx, \
              dim_t   m, \
              dim_t   n, \
-       const ctype*  alpha, \
+       const ctype&  alpha, \
        const ctype*  a, inc_t rs_a, inc_t cs_a, \
        const ctype*  x, inc_t incx, \
-       const ctype*  beta, \
+       const ctype&  beta, \
              ctype*  y, inc_t incy  \
      ) \
 { \
-    bli_##ch##gemv( transa, conjx, m, n, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+    bli_##ch##gemv( transa, conjx, m, n, &alpha, a, rs_a, cs_a, x, incx, &beta, y, incy ); \
 } \
 \
 inline void bli_ger \
@@ -1492,13 +1492,13 @@ inline void bli_ger \
              conj_t conjy, \
              dim_t  m, \
              dim_t  n, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* x, inc_t incx, \
        const ctype* y, inc_t incy, \
              ctype* a, inc_t rs_a, inc_t cs_a  \
      ) \
 { \
-    bli_##ch##ger( conjx, conjy, m, n, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+    bli_##ch##ger( conjx, conjy, m, n, &alpha, x, incx, y, incy, a, rs_a, cs_a ); \
 } \
 \
 inline void bli_hemv \
@@ -1507,14 +1507,14 @@ inline void bli_hemv \
              conj_t conja, \
              conj_t conjx, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* a, inc_t rs_a, inc_t cs_a, \
        const ctype* x, inc_t incx, \
-       const ctype* beta, \
+       const ctype& beta, \
              ctype* y, inc_t incy  \
      ) \
 { \
-    bli_##ch##hemv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+    bli_##ch##hemv( uploa, conja, conjx, m, &alpha, a, rs_a, cs_a, x, incx, &beta, y, incy ); \
 } \
 \
 inline void bli_symv \
@@ -1523,14 +1523,14 @@ inline void bli_symv \
              conj_t conja, \
              conj_t conjx, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* a, inc_t rs_a, inc_t cs_a, \
        const ctype* x, inc_t incx, \
-       const ctype* beta, \
+       const ctype& beta, \
              ctype* y, inc_t incy  \
      ) \
 { \
-    bli_##ch##symv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+    bli_##ch##symv( uploa, conja, conjx, m, &alpha, a, rs_a, cs_a, x, incx, &beta, y, incy ); \
 } \
 \
 inline void bli_shmv \
@@ -1539,14 +1539,14 @@ inline void bli_shmv \
              conj_t conja, \
              conj_t conjx, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* a, inc_t rs_a, inc_t cs_a, \
        const ctype* x, inc_t incx, \
-       const ctype* beta, \
+       const ctype& beta, \
              ctype* y, inc_t incy  \
      ) \
 { \
-    bli_##ch##shmv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+    bli_##ch##shmv( uploa, conja, conjx, m, &alpha, a, rs_a, cs_a, x, incx, &beta, y, incy ); \
 } \
 \
 inline void bli_skmv \
@@ -1555,14 +1555,14 @@ inline void bli_skmv \
              conj_t conja, \
              conj_t conjx, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* a, inc_t rs_a, inc_t cs_a, \
        const ctype* x, inc_t incx, \
-       const ctype* beta, \
+       const ctype& beta, \
              ctype* y, inc_t incy  \
      ) \
 { \
-    bli_##ch##skmv( uploa, conja, conjx, m, alpha, a, rs_a, cs_a, x, incx, beta, y, incy ); \
+    bli_##ch##skmv( uploa, conja, conjx, m, &alpha, a, rs_a, cs_a, x, incx, &beta, y, incy ); \
 } \
 \
 inline void bli_her \
@@ -1570,12 +1570,12 @@ inline void bli_her \
              uplo_t   uploa, \
              conj_t   conjx, \
              dim_t    m, \
-       const ctyper* alpha, \
+       const ctyper& alpha, \
        const ctype*   x, inc_t incx, \
              ctype*   a, inc_t rs_a, inc_t cs_a  \
      ) \
 { \
-    bli_##ch##her( uploa, conjx, m, alpha, x, incx, a, rs_a, cs_a ); \
+    bli_##ch##her( uploa, conjx, m, &alpha, x, incx, a, rs_a, cs_a ); \
 } \
 \
 inline void bli_syr \
@@ -1583,12 +1583,12 @@ inline void bli_syr \
              uplo_t uploa, \
              conj_t conjx, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* x, inc_t incx, \
              ctype* a, inc_t rs_a, inc_t cs_a  \
      ) \
 { \
-    bli_##ch##syr( uploa, conjx, m, alpha, x, incx, a, rs_a, cs_a ); \
+    bli_##ch##syr( uploa, conjx, m, &alpha, x, incx, a, rs_a, cs_a ); \
 } \
 \
 inline void bli_her2 \
@@ -1597,13 +1597,13 @@ inline void bli_her2 \
              conj_t conjx, \
              conj_t conjy, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* x, inc_t incx, \
        const ctype* y, inc_t incy, \
              ctype* a, inc_t rs_a, inc_t cs_a  \
      ) \
 { \
-    bli_##ch##her2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+    bli_##ch##her2( uploa, conjx, conjy, m, &alpha, x, incx, y, incy, a, rs_a, cs_a ); \
 } \
 \
 inline void bli_syr2 \
@@ -1612,13 +1612,13 @@ inline void bli_syr2 \
              conj_t conjx, \
              conj_t conjy, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* x, inc_t incx, \
        const ctype* y, inc_t incy, \
              ctype* a, inc_t rs_a, inc_t cs_a  \
      ) \
 { \
-    bli_##ch##syr2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+    bli_##ch##syr2( uploa, conjx, conjy, m, &alpha, x, incx, y, incy, a, rs_a, cs_a ); \
 } \
 \
 inline void bli_shr2 \
@@ -1627,13 +1627,13 @@ inline void bli_shr2 \
              conj_t conjx, \
              conj_t conjy, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* x, inc_t incx, \
        const ctype* y, inc_t incy, \
              ctype* a, inc_t rs_a, inc_t cs_a  \
      ) \
 { \
-    bli_##ch##shr2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+    bli_##ch##shr2( uploa, conjx, conjy, m, &alpha, x, incx, y, incy, a, rs_a, cs_a ); \
 } \
 \
 inline void bli_skr2 \
@@ -1642,13 +1642,13 @@ inline void bli_skr2 \
              conj_t conjx, \
              conj_t conjy, \
              dim_t  m, \
-       const ctype* alpha, \
+       const ctype& alpha, \
        const ctype* x, inc_t incx, \
        const ctype* y, inc_t incy, \
              ctype* a, inc_t rs_a, inc_t cs_a  \
      ) \
 { \
-    bli_##ch##skr2( uploa, conjx, conjy, m, alpha, x, incx, y, incy, a, rs_a, cs_a ); \
+    bli_##ch##skr2( uploa, conjx, conjy, m, &alpha, x, incx, y, incy, a, rs_a, cs_a ); \
 } \
 \
 inline void bli_trmv \
@@ -1657,12 +1657,12 @@ inline void bli_trmv \
              trans_t transa, \
              diag_t  diaga, \
              dim_t   m, \
-       const ctype*  alpha, \
+       const ctype&  alpha, \
        const ctype*  a, inc_t rs_a, inc_t cs_a, \
              ctype*  x, inc_t incx  \
      ) \
 { \
-    bli_##ch##trmv( uploa, transa, diaga, m, alpha, a, rs_a, cs_a, x, incx ); \
+    bli_##ch##trmv( uploa, transa, diaga, m, &alpha, a, rs_a, cs_a, x, incx ); \
 } \
 \
 inline void bli_trsv \
@@ -1671,12 +1671,12 @@ inline void bli_trsv \
              trans_t transa, \
              diag_t  diaga, \
              dim_t   m, \
-       const ctype*  alpha, \
+       const ctype&  alpha, \
        const ctype*  a, inc_t rs_a, inc_t cs_a, \
              ctype*  x, inc_t incx  \
      ) \
 { \
-    bli_##ch##trsv( uploa, transa, diaga, m, alpha, a, rs_a, cs_a, x, incx ); \
+    bli_##ch##trsv( uploa, transa, diaga, m, &alpha, a, rs_a, cs_a, x, incx ); \
 }
 
 MARRAY_FOR_EACH_TYPE
