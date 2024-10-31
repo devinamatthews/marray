@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  codecov: codecov/codecov@4.0.1
+
 jobs:
   build:
     docker:
@@ -8,13 +11,14 @@ jobs:
       - checkout
       - run:
           name: Installing Dependencies
-          command: 'sudo apt-get update && sudo apt-get install -y gcc-10 g++-10 make'
+          command: 'sudo apt-get update && sudo apt-get install -y clang llvm-dev libclang-dev make'
       - run:
           name: Configuring
-          command: './configure CC=gcc-10 CXX=g++-10'
+          command: './configure CC=clang CXX=clang++ --enable-code-coverage'
       - run:
           name: Building
           command: 'make -j2'
       - run:
           name: Unit Testing
-          command: './bin/test'
+          command: './bin/run_tests.sh'
+      - codecov/upload
