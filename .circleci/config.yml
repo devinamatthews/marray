@@ -21,4 +21,5 @@ jobs:
       - run:
           name: Unit Testing
           command: './bin/run_tests.sh'
-      - codecov/upload
+      - codecov/upload:
+          excludes: force-cover-3.0
