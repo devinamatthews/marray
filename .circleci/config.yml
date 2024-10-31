@@ -11,7 +11,7 @@ jobs:
       - checkout
       - run:
           name: Installing Dependencies
-          command: 'sudo apt-get update && sudo apt-get install -y clang llvm-dev libclang-dev make'
+          command: 'sudo apt-get update && sudo apt-get install -y clang llvm-dev libclang-dev make python3'
       - run:
           name: Configuring
           command: './configure CC=clang CXX=clang++ --enable-code-coverage'
