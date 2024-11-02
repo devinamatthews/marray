@@ -4548,9 +4548,14 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
     if test x$ac_success = xno; then
-                for alternative in ${ax_cxx_compile_alternatives}; do
-      for switch in -std=c++${alternative} +std=c++${alternative} "-h std=c++${alternative}"; do
-        cachevar=`printf "%s\n" "ax_cv_cxx_compile_cxx17_$switch" | sed "$as_sed_sh"`
+                    for alternative in ${ax_cxx_compile_alternatives}; do
+      for switch in -std=c++${alternative} +std=c++${alternative} "-h std=c++${alternative}" MSVC; do
+        if test x"$switch" = xMSVC; then
+                                        switch=-std:c++${alternative}
+          cachevar=`printf "%s\n" "ax_cv_cxx_compile_cxx17_${switch}_MSVC" | sed "$as_sed_sh"`
+        else
+          cachevar=`printf "%s\n" "ax_cv_cxx_compile_cxx17_$switch" | sed "$as_sed_sh"`
+        fi
         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $CXX supports C++17 features with $switch" >&5
 printf %s "checking whether $CXX supports C++17 features with $switch... " >&6; }
 if eval test \${$cachevar+y}
@@ -4570,7 +4575,11 @@ else case e in #(
 
 #error "This is not a C++ compiler"
 
-#elif __cplusplus < 201103L
+// MSVC always sets __cplusplus to 199711L in older versions; newer versions
+// only set it correctly if /Zc:__cplusplus is specified as well as a
+// /std:c++NN switch:
+// https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
+#elif __cplusplus < 201103L && !defined _MSC_VER
 
 #error "This is not a C++11 compiler"
 
@@ -4857,7 +4866,7 @@ namespace cxx11
 
 #error "This is not a C++ compiler"
 
-#elif __cplusplus < 201402L
+#elif __cplusplus < 201402L && !defined _MSC_VER
 
 #error "This is not a C++14 compiler"
 
@@ -4977,7 +4986,7 @@ namespace cxx14
 
 #error "This is not a C++ compiler"
 
-#elif __cplusplus < 201703L
+#elif __cplusplus < 201703L && !defined _MSC_VER
 
 #error "This is not a C++17 compiler"
 
@@ -5343,7 +5352,7 @@ namespace cxx17
 
 }  // namespace cxx17
 
-#endif  // __cplusplus < 201703L
+#endif  // __cplusplus < 201703L && !defined _MSC_VER
 
 
 
