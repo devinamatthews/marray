@@ -21,22 +21,24 @@ namespace MArray
 namespace detail
 {
 
-template <typename T, typename=void>
-struct underlying_type_if
+template <typename T, bool=std::is_enum_v<T>>
+struct underlying_type_if;
+
+template <typename T>
+struct underlying_type_if<T, false>
 {
     typedef std::make_signed_t<T> type;
 };
 
 template <typename T>
-struct underlying_type_if<T, std::enable_if_t<std::is_enum<T>::value>>
+struct underlying_type_if<T, true>
 {
     typedef std::make_signed_t<std::underlying_type_t<T>> type;
 };
 
 template <typename... Ts> struct are_numeric;
 
-template <> struct are_numeric<>
-: std::integral_constant<bool,true> {};
+template <> struct are_numeric<> : std::true_type {};
 
 template <typename T, typename... Ts> struct are_numeric<T, Ts...>
 : std::integral_constant<bool, (std::is_integral<T>::value ||
