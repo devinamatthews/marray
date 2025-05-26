@@ -1,8 +1,8 @@
-#ifndef _MARRAY_VECTOR_HPP_
-#define _MARRAY_VECTOR_HPP_
+#ifndef MARRAY_VECTOR_HPP
+#define MARRAY_VECTOR_HPP
 
 #include <complex>
-#include "utility.hpp"
+#include <type_traits>
 
 #if __GNUC__ >= 6
 #pragma GCC diagnostic push
@@ -15,8 +15,8 @@ namespace MArray
 template <typename T, typename=void>
 struct vector_traits
 {
-    constexpr static unsigned vector_width = 1;
-    constexpr static unsigned alignment = 1;
+    static constexpr int vector_width = 1;
+    static constexpr int alignment = 1;
     typedef T vector_type;
 };
 
@@ -34,10 +34,14 @@ struct vector_traits
 
 #include "vector_sse41.hpp"
 
+#elif defined(__ARM_NEON)
+
+#include "vector_neon.hpp"
+
 #endif
 
 #if __GNUC__ >= 6
 #pragma GCC diagnostic pop
 #endif
 
-#endif
+#endif //MARRAY_VECTOR_HPP
