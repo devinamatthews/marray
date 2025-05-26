@@ -75,7 +75,7 @@ src/third_party/catch2/%: $(srcdir)/third_party/catch2/%
 	@cp $< $@
 
 $(FORCE_COVER): $(FORCE_COVER_DIR)
-	clang++ -O0 -g -std=c++20 `llvm-config --cxxflags` $(FORCE_COVER_DIR)/force_cover.cpp -o $@ \
+	clang++ -O0 -g -std=c++14 `llvm-config --cxxflags` $(FORCE_COVER_DIR)/force_cover.cpp -o $@ \
 	    -lclangTooling -lclangASTMatchers -lclangFormat -lclangFrontend -lclangDriver -lclangParse \
 	    -lclangSerialization -lclangSema -lclangEdit -lclangAnalysis -lclangToolingCore -lclangAST -lclangRewrite \
 	    -lclangLex -lclangBasic -lclangFrontendTool -lclangRewriteFrontend -lclangStaticAnalyzerFrontend \
